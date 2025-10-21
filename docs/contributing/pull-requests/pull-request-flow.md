@@ -93,7 +93,7 @@ Once your Pull Request is **Approved**, if you make any unexpected commits that 
 > [!NOTE]
 > **Maintainers**
 >
-> Verify that `Co-authored-by` headers added by GitHub are correct. Sometimes, when you merge the `main` branch into a Pull Request, GitHub will automatically add you as a co-author of that Pull Request. As this is not what we consider authorship, please ensure you remove any `Co-authored-by` headers of this nature.
+> Verify that `Co-authored-by` headers added by GitHub to the commit message are correct. Sometimes, when you merge the `main` branch into a Pull Request, GitHub will automatically add you as a co-author of that Pull Request. As this is not what we consider authorship, please ensure you remove any `Co-authored-by` headers of this nature.
 >
 > Leave any legitimitate `Co-authored-by` headers in place, e.g., from commits cherry-picked into the Pull Request.
 
