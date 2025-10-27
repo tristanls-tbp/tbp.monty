@@ -457,7 +457,8 @@ class InformedEnvironmentDataLoader(EnvironmentDataLoaderPerObject):
                 #       positioning procedure state so that the next time
                 #       SurfacePolicy falls off the object, it will try to find
                 #       the object using its full repertoire of actions.
-                self.motor_system._policy.touch_search_amount = 0
+                if isinstance(self.motor_system._policy, SurfacePolicy):
+                    self.motor_system._policy.touch_search_amount = 0
 
             self._observation, proprioceptive_state = self.step(actions)
             motor_system_state = MotorSystemState(proprioceptive_state)
