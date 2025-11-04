@@ -251,11 +251,12 @@ class BasePolicy(MotorPolicy):
     def post_action(
         self, actions: list[Action], _: MotorSystemState | None = None
     ) -> None:
-        action = actions[-1] if actions else None
-        self.action = action
+        self.action = actions[-1] if actions else None
         self.timestep += 1
         self.episode_step += 1
-        self.action_sequence.append([action])
+        if actions:
+            for action in actions:
+                self.action_sequence.append([action])
 
     def pre_episode(self):
         self.episode_step = 0
@@ -1241,12 +1242,13 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
     def post_action(
         self, actions: list[Action], state: MotorSystemState | None = None
     ) -> None:
-        action = actions[-1] if actions else None
-        self.action = action
+        self.action = actions[-1] if actions else None
         self.timestep += 1
         self.episode_step += 1
         state_copy = state.convert_motor_state() if state else None
-        self.action_sequence.append([action, state_copy])
+        if actions:
+            for action in actions:
+                self.action_sequence.append([action, state_copy])
 
 
 class NaiveScanPolicy(InformedPolicy):
