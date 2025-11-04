@@ -57,15 +57,18 @@ class MotorPolicy(abc.ABC):
         self.is_predefined = False
 
     @abc.abstractmethod
-    def dynamic_call(self, state: MotorSystemState | None = None) -> Action | None:
+    def dynamic_call(
+        self, observation: Mapping, state: MotorSystemState | None = None
+    ) -> list[Action]:
         """Use this method when actions are not predefined.
 
         Args:
+            observation: The current observation to pass to the motor policy.
             state: The current state of the motor system.
                 Defaults to None.
 
         Returns:
-            The action to take.
+            The actions to take.
         """
         pass
 
@@ -77,7 +80,7 @@ class MotorPolicy(abc.ABC):
 
     @abc.abstractmethod
     def post_action(
-        self, action: Action | None, state: MotorSystemState | None = None
+        self, actions: list[Action], state: MotorSystemState | None = None
     ) -> None:
         """This post action hook will automatically be called at the end of __call__.
 
@@ -86,7 +89,7 @@ class MotorPolicy(abc.ABC):
               motor system.
 
         Args:
-            action: The action to process the hook for.
+            actions: The actions to process the hook for.
             state: The current state of the motor system.
                 Defaults to None.
         """
@@ -120,10 +123,13 @@ class MotorPolicy(abc.ABC):
         """
         pass
 
-    def __call__(self, state: MotorSystemState | None = None) -> list[Action]:
+    def __call__(
+        self, observation: Mapping, state: MotorSystemState | None = None
+    ) -> list[Action]:
         """Select either dynamic or predefined call.
 
         Args:
+            observation: The current observation to pass to the motor policy.
             state: The current state of the motor system.
                 Defaults to None.
 
@@ -131,11 +137,11 @@ class MotorPolicy(abc.ABC):
             The actions to take.
         """
         if self.is_predefined:
-            action: Action | None = self.predefined_call()
+            actions = [self.predefined_call()]
         else:
-            action = self.dynamic_call(state)
-        self.post_action(action, state)
-        return [action] if action else []
+            actions = self.dynamic_call(observation, state)
+        self.post_action(actions, state)
+        return actions
 
 
 class BasePolicy(MotorPolicy):
@@ -205,19 +211,22 @@ class BasePolicy(MotorPolicy):
     # Methods that define behavior of __call__
     ###
 
-    def dynamic_call(self, _state: MotorSystemState | None = None) -> Action | None:
+    def dynamic_call(
+        self, _observation: Mapping, _state: MotorSystemState | None = None
+    ) -> list[Action]:
         """Return a random action.
 
         The MotorSystemState is ignored.
 
         Args:
+            _observation: The current observation to pass to the motor policy.
             _state: The current state of the motor system.
                 Defaults to None. Unused.
 
         Returns:
             A random action.
         """
-        return self.get_random_action(self.action)
+        return [self.get_random_action(self.action)]
 
     def get_random_action(self, action: Action) -> Action:
         """Returns random action sampled from allowable actions.
@@ -237,12 +246,13 @@ class BasePolicy(MotorPolicy):
         return self.action_list[self.episode_step % len(self.action_list)]
 
     def post_action(
-        self, action: Action | None, _: MotorSystemState | None = None
+        self, actions: list[Action], _: MotorSystemState | None = None
     ) -> None:
-        self.action = action
+        self.action = actions[-1]
         self.timestep += 1
         self.episode_step += 1
-        self.action_sequence.append([action])
+        for action in actions:
+            self.action_sequence.append([action])
 
     def pre_episode(self):
         self.episode_step = 0
@@ -861,7 +871,9 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
     # Methods that define behavior of __call__
     ###
 
-    def dynamic_call(self, state: MotorSystemState | None = None) -> Action | None:
+    def dynamic_call(
+        self, observation: Mapping, state: MotorSystemState | None = None
+    ) -> list[Action]:
         """Return the next action to take.
 
         This requires self.processed_observations to be updated at every step
@@ -869,23 +881,25 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
         extracted by the sensor module for the guiding sensor (patch).
 
         Args:
+            observation: The current observation.
             state: The current state of the motor system.
                 Defaults to None.
 
         Returns:
-            The action to take.
+            The actions to take.
         """
         if self.use_goal_state_driven_actions and self.driving_goal_state is not None:
-            # TODO: Fix the return type of dynamic_call to return a list[Action]
-            return self.execute_jump_attempt(state)
+            return self.execute_jump_attempt(observation, state)
 
         return (
-            super().dynamic_call(state)
+            super().dynamic_call(observation, state)
             if self.processed_observations.get_on_object()
-            else self.fixme_undo_last_action()
+            else [self.fixme_undo_last_action()]
         )
 
-    def execute_jump_attempt(self, state: MotorSystemState) -> list[Action]:
+    def execute_jump_attempt(
+        self, observation: Mapping, state: MotorSystemState
+    ) -> list[Action]:
         if self.jump_attempt_state == "idle":
             logger.debug(
                 "Attempting a 'jump' like movement to evaluate an object hypothesis"
@@ -938,25 +952,28 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
             # As for methods such as touch_object, we use the view-finder
             depth_at_center = PositioningProcedure.depth_at_center(
                 agent_id=self.agent_id,
-                observation=self._observation,  # TODO: Put an observation in here somehow
+                observation=observation,
                 sensor_id="view_finder",
             )
 
             # If depth_at_center < 1.0, there is a visible element within 1 meter of the
             # view-finder's central pixel)
             if depth_at_center < 1.0:
-                return self.handle_successful_jump(state)
+                return self.handle_successful_jump(observation, state)
 
             return self.handle_failed_jump()
 
         return []
 
-    def handle_successful_jump(self, state: MotorSystemState) -> list[Action]:
+    def handle_successful_jump(
+        self, observation: Mapping, state: MotorSystemState
+    ) -> list[Action]:
         """Deal with the results of a successful hypothesis-testing jump.
 
         A successful jump is "on-object", i.e. the object is perceived by the sensor.
 
         Args:
+            observation: The current observation.
             state: The current state of the motor system.
 
         Returns:
@@ -993,14 +1010,15 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
             self.jump_attempt_state = "idle"
             return []
 
-        return self.get_good_view_with_patch_refinement(state)
+        return self.get_good_view_with_patch_refinement(observation, state)
 
     def get_good_view_with_patch_refinement(
-        self, state: MotorSystemState
+        self, observation: Mapping, state: MotorSystemState
     ) -> list[Action]:
         """Get a good view of the object with patch refinement.
 
         Args:
+            observation: The current observation.
             state: The current state of the motor system.
 
         Returns:
@@ -1015,31 +1033,24 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
                     agent_id=self.agent_id,
                     desired_object_distance=self.desired_object_distance,
                     good_view_percentage=self.good_view_percentage,
-                    multiple_objects_present=self.num_distractors
-                    > 0,  # TODO: DataLoader variable
+                    multiple_objects_present=self.multiple_objects_present,
                     sensor_id="view_finder",
-                    target_semantic_id=self.primary_target[
-                        "semantic_id"
-                    ],  # TODO: DataLoader variable
+                    target_semantic_id=self.target_semantic_id,
                     allow_translation=False,
                     max_orientation_attempts=1,
                 )
 
             result = self.get_good_view_positioning_procedure.positioning_call(
-                self._observation,  # TODO: Put an observation in here somehow
+                observation,
                 state,
             )
             if not result.terminated and not result.truncated:
                 return result.actions
 
             self.get_good_view_positioning_procedure = None
-            if (
-                "patch" in self._observation[AgentID("agent_id_0")]
-            ):  # TODO: Put an observation in here somehow
+            if "patch" in observation[AgentID("agent_id_0")]:
                 self.jump_attempt_state = "get_good_view_patch"
-            elif (
-                "patch_0" in self._observation[AgentID("agent_id_0")]
-            ):  # TODO: Put an observation in here somehow
+            elif "patch_0" in observation[AgentID("agent_id_0")]:
                 self.jump_attempt_state = "get_good_view_patch_0"
             else:
                 self.jump_attempt_state = "idle"
@@ -1052,27 +1063,22 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
                     agent_id=self.agent_id,
                     desired_object_distance=self.desired_object_distance,
                     good_view_percentage=self.good_view_percentage,
-                    multiple_objects_present=self.num_distractors
-                    > 0,  # TODO: DataLoader variable
+                    multiple_objects_present=self.multiple_objects_present,
                     sensor_id="patch",
-                    target_semantic_id=self.primary_target[
-                        "semantic_id"
-                    ],  # TODO: DataLoader variable
+                    target_semantic_id=self.target_semantic_id,
                     allow_translation=False,  # only orientation movements
                     max_orientation_attempts=3,  # allow 3 reorientation attempts
                 )
 
             result = self.get_good_view_positioning_procedure.positioning_call(
-                self._observation,  # TODO: Put an observation in here somehow
+                observation,
                 state,
             )
             if not result.terminated and not result.truncated:
                 return result.actions
 
             self.get_good_view_positioning_procedure = None
-            if (
-                "patch_0" in self._observation[AgentID("agent_id_0")]
-            ):  # TODO: Put an observation in here somehow
+            if "patch_0" in observation[AgentID("agent_id_0")]:
                 self.jump_attempt_state = "get_good_view_patch_0"
             else:
                 self.jump_attempt_state = "idle"
@@ -1085,18 +1091,15 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
                     agent_id=self.agent_id,
                     desired_object_distance=self.desired_object_distance,
                     good_view_percentage=self.good_view_percentage,
-                    multiple_objects_present=self.num_distractors
-                    > 0,  # TODO: DataLoader variable
+                    multiple_objects_present=self.multiple_objects_present,
                     sensor_id="patch_0",
-                    target_semantic_id=self.primary_target[
-                        "semantic_id"
-                    ],  # TODO: DataLoader variable
+                    target_semantic_id=self.target_semantic_id,
                     allow_translation=False,  # only orientation movements
                     max_orientation_attempts=3,  # allow 3 reorientation attempts
                 )
 
             result = self.get_good_view_positioning_procedure.positioning_call(
-                self._observation,  # TODO: Put an observation in here somehow
+                observation,
                 state,
             )
             if not result.terminated and not result.truncated:
@@ -1212,13 +1215,14 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
         raise TypeError(f"Invalid action: {last_action}")
 
     def post_action(
-        self, action: Action | None, state: MotorSystemState | None = None
+        self, actions: list[Action], state: MotorSystemState | None = None
     ) -> None:
-        self.action = action
+        self.action = actions[-1]
         self.timestep += 1
         self.episode_step += 1
         state_copy = state.convert_motor_state() if state else None
-        self.action_sequence.append([action, state_copy])
+        for action in actions:
+            self.action_sequence.append([action, state_copy])
 
 
 class NaiveScanPolicy(InformedPolicy):
@@ -1251,12 +1255,15 @@ class NaiveScanPolicy(InformedPolicy):
     # Methods that define behavior of __call__
     ###
 
-    def dynamic_call(self, _state: MotorSystemState | None = None) -> Action:
+    def dynamic_call(
+        self, _observation: Mapping, _state: MotorSystemState | None = None
+    ) -> list[Action]:
         """Return the next action in the spiral being executed.
 
         The MotorSystemState is ignored.
 
         Args:
+            _observation: The current observation to pass to the motor policy.
             _state: The current state of the motor system.
                 Defaults to None. Unused.
 
@@ -1275,7 +1282,7 @@ class NaiveScanPolicy(InformedPolicy):
 
         self.check_cycle_action()
         self.step_on_action += 1
-        return self._naive_scan_actions[self.current_action_id]
+        return [self._naive_scan_actions[self.current_action_id]]
 
     def pre_episode(self):
         super().pre_episode()
@@ -1489,8 +1496,8 @@ class SurfacePolicy(InformedPolicy):
     # Methods that define behavior of __call__
     ###
     def dynamic_call(
-        self, state: MotorSystemState | None = None
-    ) -> OrientHorizontal | OrientVertical | MoveTangentially | MoveForward | None:
+        self, _observation: Mapping, state: MotorSystemState | None = None
+    ) -> list[Action]:
         """Return the next action to take.
 
         This requires self.processed_observations to be updated at every step
@@ -1498,6 +1505,7 @@ class SurfacePolicy(InformedPolicy):
         extracted by the sensor module for the guiding sensor (patch).
 
         Args:
+            _observation: The current observation to pass to the motor policy.
             state: The current state of the motor system.
                 Defaults to None.
 
@@ -1542,10 +1550,11 @@ class SurfacePolicy(InformedPolicy):
             self.action = self.action_sampler.sample_move_forward(self.agent_id)
             self.last_surface_policy_action = self.action
 
-        return self.get_next_action(state)
+        next_action = self.get_next_action(state)
+        return [next_action] if next_action else []
 
     def post_action(
-        self, action: Action, state: MotorSystemState | None = None
+        self, actions: list[Action], state: MotorSystemState | None = None
     ) -> None:
         """Temporary SurfacePolicy post_action to distinguish types of last action.
 
@@ -1565,7 +1574,7 @@ class SurfacePolicy(InformedPolicy):
         for TouchObject positioning procedure.
 
         Args:
-            action: The action that was just taken.
+            actions: The actions that were just taken.
             state: The current state of the motor system.
                 Defaults to None.
 
@@ -1576,8 +1585,8 @@ class SurfacePolicy(InformedPolicy):
             # will be no post_action calls when attempting to find the object.
             return
 
-        super().post_action(action, state)
-        self.last_surface_policy_action = action
+        super().post_action(actions, state)
+        self.last_surface_policy_action = actions[-1]
 
     def _orient_horizontal(self, state: MotorSystemState) -> OrientHorizontal:
         """Orient the agent horizontally.
