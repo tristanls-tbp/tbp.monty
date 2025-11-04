@@ -840,6 +840,17 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
         # Are updated in Monty step method.
         self.processed_observations = None
 
+        self.jump_attempt_state: Literal[
+            "idle",
+            "jump",
+            "get_good_view_view_finder",
+            "get_good_view_patch",
+            "get_good_view_patch_0",
+        ] = "idle"
+        self.pre_jump_state: AgentState
+        self.first_sensor: str  # SensorID
+        self.get_good_view_positioning_procedure: GetGoodView | None = None
+
     def pre_episode(self):
         if self.use_goal_state_driven_actions:
             JumpToGoalStateMixin.pre_episode(self)
@@ -864,11 +875,262 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
         Returns:
             The action to take.
         """
+        if self.use_goal_state_driven_actions and self.driving_goal_state is not None:
+            # TODO: Fix the return type of dynamic_call to return a list[Action]
+            return self.execute_jump_attempt(state)
+
         return (
             super().dynamic_call(state)
             if self.processed_observations.get_on_object()
             else self.fixme_undo_last_action()
         )
+
+    def execute_jump_attempt(self, state: MotorSystemState) -> list[Action]:
+        if self.jump_attempt_state == "idle":
+            logger.debug(
+                "Attempting a 'jump' like movement to evaluate an object hypothesis"
+            )
+
+            # Store the current location and orientation of the agent
+            # If the hypothesis-guided jump is unsuccesful (e.g. to empty space,
+            # or inside an object, we return here)
+            self.pre_jump_state = state[self.agent_id]
+
+            # Check that all sensors have identical rotations - this is because actions
+            # currently update them all together; if this changes, the code needs
+            # to be updated; TODO make this its own method
+            for ii, current_sensor in enumerate(self.pre_jump_state["sensors"].keys()):
+                if ii == 0:
+                    self.first_sensor = current_sensor
+                assert np.all(
+                    self.pre_jump_state["sensors"][current_sensor]["rotation"]
+                    == self.pre_jump_state["sensors"][self.first_sensor]["rotation"]
+                ), "Sensors are not identical in pose"
+
+            # TODO In general what would be best/cleanest way of routing information,
+            # e.g. perhaps the learning module should just pass a *displacement* (in
+            # internal coordinates, and a target surface normal)
+            # Could also consider making use of decide_location_for_movement (or
+            # decide_location_for_movement_matching)
+
+            (target_loc, target_np_quat) = self.derive_habitat_goal_state()
+
+            # Update observations and motor system-state based on new pose, accounting
+            # for resetting both the agent, as well as the poses of its coupled sensors;
+            # this is necessary for the distant agent, which pivots the camera around
+            # like a ball-and-socket joint; note the surface agent does not
+            # modify this from the the unit quaternion and [0, 0, 0] position
+            # anyways; further note this is globally applied to all sensors.
+            set_agent_pose = SetAgentPose(
+                agent_id=self.agent_id,
+                location=target_loc,
+                rotation_quat=target_np_quat,
+            )
+            set_sensor_rotation = SetSensorRotation(
+                agent_id=self.agent_id,
+                rotation_quat=qt.one,
+            )
+            self.jump_attempt_state = "jump"
+            return [set_agent_pose, set_sensor_rotation]
+
+        if self.jump_attempt_state == "jump":
+            # Check depth-at-center to see if the object is in front of us
+            # As for methods such as touch_object, we use the view-finder
+            depth_at_center = PositioningProcedure.depth_at_center(
+                agent_id=self.agent_id,
+                observation=self._observation,  # TODO: Put an observation in here somehow
+                sensor_id="view_finder",
+            )
+
+            # If depth_at_center < 1.0, there is a visible element within 1 meter of the
+            # view-finder's central pixel)
+            if depth_at_center < 1.0:
+                return self.handle_successful_jump(state)
+
+            return self.handle_failed_jump()
+
+        return []
+
+    def handle_successful_jump(self, state: MotorSystemState) -> list[Action]:
+        """Deal with the results of a successful hypothesis-testing jump.
+
+        A successful jump is "on-object", i.e. the object is perceived by the sensor.
+
+        Args:
+            state: The current state of the motor system.
+
+        Returns:
+            A list of actions to take, if any. Otherwise, returns an empty list.
+        """
+        logger.debug(
+            "Object visible, maintaining new pose for hypothesis-testing action"
+        )
+
+        # TODO: Just move this to SurfacePolicy `handle_successful_jump` override
+        if isinstance(self, SurfacePolicy):
+            # For the surface-agent policy, update last action as if we have
+            # just moved tangentially
+            # Results in us seemlessly transitioning into the typical
+            # corrective movements (forward or orientation) of the surface-agent
+            # policy
+            self.action = MoveTangentially(
+                agent_id=self.agent_id,
+                distance=0.0,
+                direction=(0, 0, 0),
+            )
+
+            # TODO cleanup where this is performed, and make variable names more general
+            # TODO also only log this when we are doing detailed logging
+            # TODO M clean up these action details loggings; this may need to remain
+            # local to a "motor-system buffer" given that these are model-free
+            # actions that have nothing to do with the LMs
+            # Store logging information about jump success
+            self.action_details["pc_heading"].append("jump")
+            self.action_details["avoidance_heading"].append(False)
+            self.action_details["z_defined_pc"].append(None)
+
+            # Reset the jump attempt state machine
+            self.jump_attempt_state = "idle"
+            return []
+
+        return self.get_good_view_with_patch_refinement(state)
+
+    def get_good_view_with_patch_refinement(
+        self, state: MotorSystemState
+    ) -> list[Action]:
+        """Get a good view of the object with patch refinement.
+
+        Args:
+            state: The current state of the motor system.
+
+        Returns:
+            A list of actions to take, if any. Otherwise, returns an empty list.
+        """
+        if self.jump_attempt_state == "jump":
+            self.jump_attempt_state = "get_good_view_view_finder"
+
+        if self.jump_attempt_state == "get_good_view_view_finder":
+            if self.get_good_view_positioning_procedure is None:
+                self.get_good_view_positioning_procedure = GetGoodView(
+                    agent_id=self.agent_id,
+                    desired_object_distance=self.desired_object_distance,
+                    good_view_percentage=self.good_view_percentage,
+                    multiple_objects_present=self.num_distractors
+                    > 0,  # TODO: DataLoader variable
+                    sensor_id="view_finder",
+                    target_semantic_id=self.primary_target[
+                        "semantic_id"
+                    ],  # TODO: DataLoader variable
+                    allow_translation=False,
+                    max_orientation_attempts=1,
+                )
+
+            result = self.get_good_view_positioning_procedure.positioning_call(
+                self._observation,  # TODO: Put an observation in here somehow
+                state,
+            )
+            if not result.terminated and not result.truncated:
+                return result.actions
+
+            self.get_good_view_positioning_procedure = None
+            if (
+                "patch" in self._observation[AgentID("agent_id_0")]
+            ):  # TODO: Put an observation in here somehow
+                self.jump_attempt_state = "get_good_view_patch"
+            elif (
+                "patch_0" in self._observation[AgentID("agent_id_0")]
+            ):  # TODO: Put an observation in here somehow
+                self.jump_attempt_state = "get_good_view_patch_0"
+            else:
+                self.jump_attempt_state = "idle"
+
+            return []
+
+        if self.jump_attempt_state == "get_good_view_patch":
+            if self.get_good_view_positioning_procedure is None:
+                self.get_good_view_positioning_procedure = GetGoodView(
+                    agent_id=self.agent_id,
+                    desired_object_distance=self.desired_object_distance,
+                    good_view_percentage=self.good_view_percentage,
+                    multiple_objects_present=self.num_distractors
+                    > 0,  # TODO: DataLoader variable
+                    sensor_id="patch",
+                    target_semantic_id=self.primary_target[
+                        "semantic_id"
+                    ],  # TODO: DataLoader variable
+                    allow_translation=False,  # only orientation movements
+                    max_orientation_attempts=3,  # allow 3 reorientation attempts
+                )
+
+            result = self.get_good_view_positioning_procedure.positioning_call(
+                self._observation,  # TODO: Put an observation in here somehow
+                state,
+            )
+            if not result.terminated and not result.truncated:
+                return result.actions
+
+            self.get_good_view_positioning_procedure = None
+            if (
+                "patch_0" in self._observation[AgentID("agent_id_0")]
+            ):  # TODO: Put an observation in here somehow
+                self.jump_attempt_state = "get_good_view_patch_0"
+            else:
+                self.jump_attempt_state = "idle"
+
+            return []
+
+        if self.jump_attempt_state == "get_good_view_patch_0":
+            if self.get_good_view_positioning_procedure is None:
+                self.get_good_view_positioning_procedure = GetGoodView(
+                    agent_id=self.agent_id,
+                    desired_object_distance=self.desired_object_distance,
+                    good_view_percentage=self.good_view_percentage,
+                    multiple_objects_present=self.num_distractors
+                    > 0,  # TODO: DataLoader variable
+                    sensor_id="patch_0",
+                    target_semantic_id=self.primary_target[
+                        "semantic_id"
+                    ],  # TODO: DataLoader variable
+                    allow_translation=False,  # only orientation movements
+                    max_orientation_attempts=3,  # allow 3 reorientation attempts
+                )
+
+            result = self.get_good_view_positioning_procedure.positioning_call(
+                self._observation,  # TODO: Put an observation in here somehow
+                state,
+            )
+            if not result.terminated and not result.truncated:
+                return result.actions
+
+            self.get_good_view_positioning_procedure = None
+            self.jump_attempt_state = "idle"
+
+        return []
+
+    def handle_failed_jump(self) -> list[Action]:
+        """Deal with the results of a failed hypothesis-testing jump.
+
+        A failed jump is "off-object", i.e. the object is not perceived by the sensor.
+
+        Returns:
+            A list of actions to take, if any. Otherwise, returns an empty list.
+        """
+        logger.debug("No object visible from hypothesis jump, or inside object!")
+        logger.debug("Returning to previous position")
+
+        set_agent_pose = SetAgentPose(
+            agent_id=self.agent_id,
+            location=self.pre_jump_state["position"],
+            rotation_quat=self.pre_jump_state["rotation"],
+        )
+        # All sensors are updated globally by actions, and are therefore
+        # identical
+        set_sensor_rotation = SetSensorRotation(
+            agent_id=self.agent_id,
+            rotation_quat=self.pre_jump_state["sensors"][self.first_sensor]["rotation"],
+        )
+        self.jump_attempt_state = "idle"
+        return [set_agent_pose, set_sensor_rotation]
 
     def fixme_undo_last_action(
         self,
