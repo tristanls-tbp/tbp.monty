@@ -24,7 +24,10 @@ import quaternion as qt
 import scipy.ndimage
 from scipy.spatial.transform import Rotation as rot  # noqa: N813
 
-from tbp.monty.frameworks.actions.action_samplers import ActionSampler
+from tbp.monty.frameworks.actions.action_samplers import (
+    ActionSampler,
+    UniformlyDistributedSampler,
+)
 from tbp.monty.frameworks.actions.actions import (
     Action,
     ActionJSONDecoder,
@@ -248,11 +251,11 @@ class BasePolicy(MotorPolicy):
     def post_action(
         self, actions: list[Action], _: MotorSystemState | None = None
     ) -> None:
-        self.action = actions[-1]
+        action = actions[-1] if actions else None
+        self.action = action
         self.timestep += 1
         self.episode_step += 1
-        for action in actions:
-            self.action_sequence.append([action])
+        self.action_sequence.append([action])
 
     def pre_episode(self):
         self.episode_step = 0
@@ -1038,6 +1041,13 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
                     target_semantic_id=self.target_semantic_id,
                     allow_translation=False,
                     max_orientation_attempts=1,
+                    # TODO: Remaining arguments are unused but required by BasePolicy.
+                    #       These will be removed when PositioningProcedure is split from
+                    #       BasePolicy
+                    rng=np.random.RandomState(),
+                    action_sampler_args=dict(actions=[LookUp]),
+                    action_sampler_class=UniformlyDistributedSampler,
+                    switch_frequency=0.0,
                 )
 
             result = self.get_good_view_positioning_procedure.positioning_call(
@@ -1068,6 +1078,13 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
                     target_semantic_id=self.target_semantic_id,
                     allow_translation=False,  # only orientation movements
                     max_orientation_attempts=3,  # allow 3 reorientation attempts
+                    # TODO: Remaining arguments are unused but required by BasePolicy.
+                    #       These will be removed when PositioningProcedure is split from
+                    #       BasePolicy
+                    rng=np.random.RandomState(),
+                    action_sampler_args=dict(actions=[LookUp]),
+                    action_sampler_class=UniformlyDistributedSampler,
+                    switch_frequency=0.0,
                 )
 
             result = self.get_good_view_positioning_procedure.positioning_call(
@@ -1096,6 +1113,13 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
                     target_semantic_id=self.target_semantic_id,
                     allow_translation=False,  # only orientation movements
                     max_orientation_attempts=3,  # allow 3 reorientation attempts
+                    # TODO: Remaining arguments are unused but required by BasePolicy.
+                    #       These will be removed when PositioningProcedure is split from
+                    #       BasePolicy
+                    rng=np.random.RandomState(),
+                    action_sampler_args=dict(actions=[LookUp]),
+                    action_sampler_class=UniformlyDistributedSampler,
+                    switch_frequency=0.0,
                 )
 
             result = self.get_good_view_positioning_procedure.positioning_call(
@@ -1217,12 +1241,12 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
     def post_action(
         self, actions: list[Action], state: MotorSystemState | None = None
     ) -> None:
-        self.action = actions[-1]
+        action = actions[-1] if actions else None
+        self.action = action
         self.timestep += 1
         self.episode_step += 1
         state_copy = state.convert_motor_state() if state else None
-        for action in actions:
-            self.action_sequence.append([action, state_copy])
+        self.action_sequence.append([action, state_copy])
 
 
 class NaiveScanPolicy(InformedPolicy):
@@ -1586,7 +1610,7 @@ class SurfacePolicy(InformedPolicy):
             return
 
         super().post_action(actions, state)
-        self.last_surface_policy_action = actions[-1]
+        self.last_surface_policy_action = actions[-1] if actions else None
 
     def _orient_horizontal(self, state: MotorSystemState) -> OrientHorizontal:
         """Orient the agent horizontally.
