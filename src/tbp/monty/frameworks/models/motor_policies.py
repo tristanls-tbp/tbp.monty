@@ -251,7 +251,13 @@ class BasePolicy(MotorPolicy):
     def post_action(
         self, actions: list[Action], _: MotorSystemState | None = None
     ) -> None:
-        self.action = actions[-1] if actions else None
+        action = actions[-1] if actions else None
+        # SetAgentPose and SetSensorRotation come from GetGoodView and
+        # don't work with fixme_undo_last_action()
+        if not isinstance(action, SetAgentPose) and not isinstance(
+            action, SetSensorRotation
+        ):
+            self.action = action
         self.timestep += 1
         self.episode_step += 1
         if actions:
@@ -1146,9 +1152,14 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
         logger.debug("No object visible from hypothesis jump, or inside object!")
         logger.debug("Returning to previous position")
 
+        location_magnum_vector = self.pre_jump_state["position"]
         set_agent_pose = SetAgentPose(
             agent_id=self.agent_id,
-            location=self.pre_jump_state["position"],
+            location=(
+                location_magnum_vector.x,
+                location_magnum_vector.y,
+                location_magnum_vector.z,
+            ),
             rotation_quat=self.pre_jump_state["rotation"],
         )
         # All sensors are updated globally by actions, and are therefore
@@ -1242,7 +1253,13 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
     def post_action(
         self, actions: list[Action], state: MotorSystemState | None = None
     ) -> None:
-        self.action = actions[-1] if actions else None
+        action = actions[-1] if actions else None
+        # SetAgentPose and SetSensorRotation come from GetGoodView and
+        # don't work with fixme_undo_last_action()
+        if not isinstance(action, SetAgentPose) and not isinstance(
+            action, SetSensorRotation
+        ):
+            self.action = action
         self.timestep += 1
         self.episode_step += 1
         state_copy = state.convert_motor_state() if state else None
