@@ -19,6 +19,7 @@ dependencies = [
     'importlib_resources', # imported via conda (conda-forge::importlib_resources)
     'matplotlib>=3.7.3', # imported via conda (conda-forge::matplotlib)
     'numpy', # imported via conda (conda-forge::numpy)
+    'opencv-python',
     'pandas', # imported via conda (conda-forge::pandas)
     'pillow', # imported via conda (conda-forge::pillow)
     'numpy-quaternion==2023.0.3', # imported via conda (conda-forge::quaternion)
