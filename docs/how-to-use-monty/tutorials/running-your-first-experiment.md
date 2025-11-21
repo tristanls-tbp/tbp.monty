@@ -26,6 +26,8 @@ To follow along, take a look at the `conf/experiment/tutorial/first_experiment.y
 # experiment. We'll use a model with a single learning module as specified in
 # monty_config. We'll also skip evaluation, train for a single epoch for a single step,
 # and only train on a single object, as specified in config and train_env_interface_args.
+
+# The order of the defaults matters. The defaults are applied in order, from top to bottom.
 defaults:
   # We use the pre-defined /experiment/config/supervised_pretraining values for the config (@config)
   - /experiment/config/supervised_pretraining@config
@@ -61,7 +63,6 @@ config:
       # Since this is a _target_, Hydra will instantiate this class using the _target_ and any
       # additional arguments you provide.
       _target_: tbp.monty.frameworks.config_utils.make_env_interface_configs.PredefinedObjectInitializer
-
 ```
 
 # Running the Experiment
