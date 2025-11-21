@@ -2,10 +2,6 @@
 title: Running Your First Experiment
 ---
 
-> [!WARNING]
->
-> Apologies, the code for this tutorial is out of date due to the major change in how we configure Monty. We'll update it soon™️.
-
 # Introduction
 In this tutorial we will introduce the basic mechanics of Monty experiment configs, how to run them, and what happens during the execution of a Monty experiment. Since we will focus mainly on the execution of an experiment, we'll configure and run the simplest possible experiment and walk through it step-by-step. Please have a look at the next tutorials for more concrete examples of running the code with our current graph learning approach.
 
@@ -21,71 +17,59 @@ In this tutorial we will introduce the basic mechanics of Monty experiment confi
 >
 > Below instructions assume you'll be running an experiment within the checked out `tbp.monty` repository. This is the recommended way to start. Once you are familiar with Monty, if you'd rather setup your experiment in your own repository, then take a look at [Running An Experiment From A Different Repository](./running-an-experiment-from-a-different-repository.md).
 
-To follow along, copy this code into the `benchmarks/configs/my_experiments.py` file.
+Monty uses [Hydra](https://hydra.cc/) for configuration.
 
-```python
-from dataclasses import asdict
+To follow along, take a look at the `conf/experiment/tutorial/first_experiment.yaml` file.
 
-from benchmarks.configs.names import MyExperiments
-from tbp.monty.frameworks.config_utils.config_args import (
-    LoggingConfig,
-    PatchAndViewMontyConfig,
-)
-from tbp.monty.frameworks.config_utils.make_env_interface_configs import (
-    get_env_interface_per_object_by_idx,
-    SupervisedPretrainingExperimentArgs,
-)
-from tbp.monty.frameworks.environments import embodied_data as ED
-from tbp.monty.frameworks.experiments.pretraining_experiments import (
-    MontySupervisedObjectPretrainingExperiment,
-)
-from tbp.monty.simulators.habitat.configs import (
-    PatchViewFinderMountHabitatEnvInterfaceConfig,
-)
-
-#####
+```yaml
 # To test your env and help you familiarize yourself with the code, we'll run the simplest possible
 # experiment. We'll use a model with a single learning module as specified in
 # monty_config. We'll also skip evaluation, train for a single epoch for a single step,
-# and only train on a single object, as specified in experiment_args and train_env_interface_args.
-#####
+# and only train on a single object, as specified in config and train_env_interface_args.
+defaults:
+  # We use the pre-defined /experiment/config/supervised_pretraining values for the config (@config)
+  - /experiment/config/supervised_pretraining@config
+  # We use the pre-defined /experiment/config/logging/defaults values for the logging (@config.logging)
+  - /experiment/config/logging/defaults@config.logging
+  # We use the pre-defined /experiment/config/monty/patch_and_view values for the monty_config (@config.monty_config)
+  - /experiment/config/monty/patch_and_view@config.monty_config
+  # Set up the environment and agent.
+  # We use the pre-defined /experiment/config/environment/patch_view_finder_mount_habitat values for
+  # the env_interface_config (@config.env_interface_config)
+  - /experiment/config/environment/patch_view_finder_mount_habitat@config.env_interface_config
+  # We use the pre-defined /experiment/config/environment_interface/per_object values for
+  # the train_env_interface_args (@config.train_env_interface_args)
+  - /experiment/config/environment_interface/per_object@config.train_env_interface_args
+  # We use the pre-defined /experiment/config/environment_interface/ycb/shuffled_objects list of objects
+  # to use for training.
+  - /experiment/config/environment_interface/ycb/shuffled_objects@config.train_env_interface_args.object_names
 
-first_experiment = dict(
-    experiment_class=MontySupervisedObjectPretrainingExperiment,
-    logging=LoggingConfig(),
-    experiment_args=SupervisedPretrainingExperimentArgs(
-        do_eval=False,
-        max_train_steps=1,
-        n_train_epochs=1,
-    ),
-    monty_config=PatchAndViewMontyConfig(),
-    # Set up the environment and agent.
-    env_interface_config=PatchViewFinderMountHabitatEnvInterfaceConfig(),
-    train_env_interface_class=ED.EnvironmentInterfacePerObject,
-    train_env_interface_args=get_env_interface_per_object_by_idx(start=0, stop=1),
-)
-
-experiments = MyExperiments(
-    first_experiment=first_experiment,
-)
-CONFIGS = asdict(experiments)
-```
-
-Next you will need to declare your experiment name as part of the `MyExperiments` dataclass in the `benchmarks/configs/names.py` file:
-
-```python
-@dataclass
-class MyExperiments:
-    first_experiment: dict
+# The top-level _target_ is the experiment we want to run.
+_target_: tbp.monty.frameworks.experiments.pretraining_experiments.MontySupervisedObjectPretrainingExperiment
+# We override some of the config values we got from the pre-defined /experiment/config/supervised_pretraining.
+config:
+  do_eval: false
+  max_train_steps: 1
+  n_train_epochs: 1
+  # We override the run_name in config.logging to be specific to our experiment.
+  logging:
+    run_name: first_experiment
+  train_env_interface_class: ${monty.class:tbp.monty.frameworks.environments.embodied_data.EnvironmentInterfacePerObject}
+  # We override the train_env_interface_args to be specific to our experiment.
+  train_env_interface_args:
+    # We use the pre-defined PredefinedObjectInitializer to initialize the object.
+    object_init_sampler:
+      # Since this is a _target_, Hydra will instantiate this class using the _target_ and any
+      # additional arguments you provide.
+      _target_: tbp.monty.frameworks.config_utils.make_env_interface_configs.PredefinedObjectInitializer
 ```
 
 # Running the Experiment
 
-To run this experiment you just defined, you can now simply navigate to the `benchmarks/` folder and call the `run.py` script with the experiment name as the `-e` argument.
+To run this experiment you just defined, you run `run.py experiment=tutorial/first_experiment` from the project folder. The experiment is called `tutorial/first_experiment` because of where you defined your experiment configuration: `conf/experiment/tutorial/first_experiment.yaml`.
 
 ```shell
-cd benchmarks
-python run.py -e first_experiment
+./run.py experiment=tutorial/first_experiment
 ```
 
 # What Just Happened?
