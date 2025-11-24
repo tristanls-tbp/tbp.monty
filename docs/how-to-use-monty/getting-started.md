@@ -206,7 +206,7 @@ export WANDB_DIR=${MONTY_LOGS}/wandb
 Now you can finally run an experiment! To do this, simply use this command:
 
 ```shell
-./run.py experiment=my_experiment
+python run.py experiment=my_experiment
 ```
 
 Replace `my_experiment` with the name of one of the experiment configs in `conf/experiment`. For example, a good one to start with could be `randrot_noise_10distinctobj_surf_agent`.
@@ -214,7 +214,7 @@ Replace `my_experiment` with the name of one of the experiment configs in `conf/
 If you want to run an experiment with parallel processing to make use of multiple CPUs, simply use the `run_parallel.py` script instead of the `run.py` script like this:
 
 ```shell
-./run_parallel.py experiment=my_experiment
+python run_parallel.py experiment=my_experiment
 ```
 
 # 5. What Next?

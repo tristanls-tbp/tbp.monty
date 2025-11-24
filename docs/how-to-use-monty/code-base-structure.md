@@ -8,11 +8,13 @@ The basic repository structure looks as follows:
 
 ```
 .
-|-- docs/                       # .md files for documentation
-|-- rfcs/                       # Merged RFCs
+|-- benchmarks/                 # CSVs with latest benchmark results
 |-- conf/                       # Monty configurations
-|   |-- experiment/
-|   `-- test/
+|   |-- benchmarks/             # Some shared benchmark constants
+|   |-- experiment/             # Configurations used for experiment
+|   `-- test/                   # Configurations used in tests
+|-- docs/                       # Source files for documentation
+|-- rfcs/                       # Merged RFCs
 |-- src/tbp/monty/
 |   |-- frameworks/
 |   |   |-- actions
@@ -31,7 +33,7 @@ The basic repository structure looks as follows:
 |           |-- environment.py
 |           |-- sensors.py
 |           `-- simulator.py
-|-- tests/                      # Tests
+|-- tests/
 |-- tools/
 `-- README.md
 ```
