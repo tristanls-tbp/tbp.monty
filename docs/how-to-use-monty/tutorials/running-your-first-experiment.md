@@ -17,9 +17,7 @@ In this tutorial we will introduce the basic mechanics of Monty experiment confi
 >
 > Below instructions assume you'll be running an experiment within the checked out `tbp.monty` repository. This is the recommended way to start. Once you are familiar with Monty, if you'd rather setup your experiment in your own repository, then take a look at [Running An Experiment From A Different Repository](./running-an-experiment-from-a-different-repository.md).
 
-Monty uses [Hydra](https://hydra.cc/) for configuration.
-
-To follow along, take a look at the `conf/experiment/tutorial/first_experiment.yaml` file.
+Monty uses [Hydra](https://hydra.cc/) for configuration. The `conf` directory serves as the root configuration directory, and experiment configs are located under `conf/experiment`. The experiment config for this tutorial is located at `conf/experiment/tutorial/first_experiment.yaml` which contains the following:
 
 ```yaml
 # To test your env and help you familiarize yourself with the code, we'll run the simplest possible
