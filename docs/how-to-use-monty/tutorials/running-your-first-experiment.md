@@ -65,11 +65,13 @@ config:
 
 # Running the Experiment
 
-To run this experiment you just defined, you run `run.py experiment=tutorial/first_experiment` from the project folder. The experiment is called `tutorial/first_experiment` because of where you defined your experiment configuration: `conf/experiment/tutorial/first_experiment.yaml`.
+Monty experiments are run with `run.py` (or `run_parallel.py`) located directly under `tbp.monty`. To run the experiment defined above, `cd` into `tbp.monty`, make sure the `tbp.monty` environment has been activated (via `conda activate tbp.monty`), and enter
 
 ```shell
-./run.py experiment=tutorial/first_experiment
+python run.py experiment=tutorial/first_experiment
 ```
+
+The `experiment` argument is determined by the location of the experiment config, relative to the `conf/experiment` directory. This experiment is named `tutorial/first_experiment` since the config is located at `conf/experiment/tutorial/first_experiment.yaml`.
 
 # What Just Happened?
 
@@ -100,7 +102,7 @@ If you examine the `MontyExperiment` class, the parent class of `MontySupervised
       - Do post-epoch logging.
   - Do post-train logging.
 
-and **this is exactly the procedure that was executed when you ran `./run.py experiment=tutorial/first_experiment`.** (Please note that we're writing `MontyExperiment` in the above sequence rather than `MontySupervisedObjectPretrainingExperiment` for the sake of generality). When we run Monty in evaluation mode, the same sequence of calls is initiated by `MontyExperiment.evaluate` minus the model updating step in `MontyExperiment.post_episode`. See [here](../../how-monty-works/experiment.md) for more details on epochs, episodes, and steps.
+and **this is exactly the procedure that was executed when you ran `python run.py experiment=tutorial/first_experiment`.** (Please note that we're writing `MontyExperiment` in the above sequence rather than `MontySupervisedObjectPretrainingExperiment` for the sake of generality). When we run Monty in evaluation mode, the same sequence of calls is initiated by `MontyExperiment.evaluate` minus the model updating step in `MontyExperiment.post_episode`. See [here](../../how-monty-works/experiment.md) for more details on epochs, episodes, and steps.
 
 ## Model
 
