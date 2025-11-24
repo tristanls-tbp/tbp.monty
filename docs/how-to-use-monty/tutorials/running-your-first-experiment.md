@@ -29,8 +29,8 @@ Monty uses [Hydra](https://hydra.cc/) for configuration. The `conf` directory se
 defaults:
   # We use the pre-defined /experiment/config/supervised_pretraining values for the config (@config)
   - /experiment/config/supervised_pretraining@config
-  # We use the pre-defined /experiment/config/logging/defaults values for the logging (@config.logging)
-  - /experiment/config/logging/defaults@config.logging
+  # We use the pre-defined /experiment/config/logging/pretrain values for the logging (@config.logging)
+  - /experiment/config/logging/pretrain@config.logging
   # We use the pre-defined /experiment/config/monty/patch_and_view values for the monty_config (@config.monty_config)
   - /experiment/config/monty/patch_and_view@config.monty_config
   # Set up the environment and agent.
