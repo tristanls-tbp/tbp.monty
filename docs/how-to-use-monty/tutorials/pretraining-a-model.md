@@ -59,7 +59,6 @@ config:
 >
 > Loggers have `output_dir` and `run_name` parameters, and since we will use `run.py`, the output will be saved to `OUTPUT_DIR/RUN_NAME`. The `MontySupervisedObjectPretrainingExperiment` suffixes `pretrained`, so the final model will be stored at `OUTPUT_DIR/RUN_NAME/pretrained`, which in our case will be `~/tbp/results/monty/projects/surf_agent_1lm_2obj_train/pretrained`.
 >
-> Inference logs will be saved at `~/tbp/results/monty/projects/surf_agent_1lm_2obj_eval/eval`.
 
 Next, we specify which objects the model will train on in the dataset, including the rotations in which the objects will be presented. The following code specifies two objects ("mug" and "banana") and 14 unique rotations, which means that both the mug and the banana will be shown 14 times, each time in a different rotation. During each of the overall 28 episodes, the sensors will move over the respective object and collect multiple observations to update the model of the object.
 
@@ -117,7 +116,7 @@ config:
   n_train_epochs: ${benchmarks.rotations_all_count}
   # Specify logging config overrides.
   logging:
-    output_dir: ${path.expanduser:"~/tbp/result/monty/projects"}
+    output_dir: ${path.expanduser:"~/tbp/results/monty/projects"}
     run_name: surf_agent_1lm_2obj_train
     wandb_handlers: []
   # Specify the Monty config overrides.
