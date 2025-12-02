@@ -49,7 +49,7 @@ To follow along, open the `conf/experiment/tutorial/surf_agent_2obj_train.yaml`.
 config:
   logging:
     # Specify directory where an output directory will be created.
-    output_dir: ${path.expanduser:"~/tbp/result/monty/projects"}
+    output_dir: ${path.expanduser:"~/tbp/results/monty/projects"}
     # Specify a name for the training run
     run_name: surf_agent_1lm_2obj_train
 ```
