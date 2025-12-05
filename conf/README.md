@@ -10,6 +10,8 @@ The `experiment` folder contains Monty experiment configurations. Most of these 
 
 The pretraining configurations are used for running supervised pretraining experiments to generate the models used for follow-on benchmark evaluation experiments. These only need to be rerun if a functional change to the way a learning module learns is introduced. We keep track of version numbers for these, e.g., `ycb_pretrained_v11`.
 
+Note that instead of running pretraining, you can also download our pretrained models as outlined in our [getting started guide](https://thousandbrainsproject.readme.io/docs/getting-started#42-download-pretrained-models).
+
 > [!CAUTION]
 >
 > Ensure that `config.logging.output_dir` for each pretraining experiment is set to where you want the model to be written to.
