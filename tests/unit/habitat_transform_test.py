@@ -102,8 +102,7 @@ class HabitatTransformTest(ParametrizedTestCase):
         self.assertEqual(len(unique_0_replacements), 1)
         self.assertEqual(unique_0_replacements[0], max_depth)
 
-    @parametrize("use_semantic_sensor", [param(True), param(False)])
-    def test_semantic_3d_local(self, use_semantic_sensor: bool):
+    def test_semantic_3d_local(self):
         resolution = TEST_OBS[AGENT_ID][SENSOR_ID]["depth"].shape
         # Replace 0 depth with max depth
         md_transform = MissingToMaxDepth(agent_id=AGENT_ID, max_depth=100)
@@ -113,7 +112,6 @@ class HabitatTransformTest(ParametrizedTestCase):
             agent_id=AGENT_ID,
             sensor_ids=[SENSOR_ID],
             resolutions=[resolution],
-            use_semantic_sensor=use_semantic_sensor,
         )
         obs = transform(md_obs)
         module_obs = obs[AGENT_ID][SENSOR_ID]
@@ -156,7 +154,6 @@ class HabitatTransformTest(ParametrizedTestCase):
         agent_rotation,
         sensor_position,
         sensor_rotation,
-        use_semantic_sensor: bool,
     ):
         resolution = TEST_OBS[AGENT_ID][SENSOR_ID]["depth"].shape
         md_transform = MissingToMaxDepth(agent_id=AGENT_ID, max_depth=100)
@@ -181,7 +178,6 @@ class HabitatTransformTest(ParametrizedTestCase):
             resolutions=[resolution],
             world_coord=True,
             get_all_points=False,
-            use_semantic_sensor=use_semantic_sensor,
         )
 
         obs = transform(md_obs, state=mock_state)
@@ -233,8 +229,7 @@ class HabitatTransformTest(ParametrizedTestCase):
             )
         )
 
-    @parametrize("use_semantic_sensor", [param(True), param(False)])
-    def test_semantic_3d_global_translation(self, use_semantic_sensor: bool):
+    def test_semantic_3d_global_translation(self):
         agent_position = np.array([0.0, 0.0, 0.0])
         agent_rotation = qt.quaternion(1.0, 0.0, 0.0, 0.0)
         # translate the sensor relative to the agent along all 3 axes
@@ -242,11 +237,7 @@ class HabitatTransformTest(ParametrizedTestCase):
         sensor_rotation = qt.quaternion(1.0, 0.0, 0.0, 0.0)
 
         md_obs, depth_obs, semantic_obs, semantic_3d_obs = self.setup_test_data(
-            agent_position,
-            agent_rotation,
-            sensor_position,
-            sensor_rotation,
-            use_semantic_sensor,
+            agent_position, agent_rotation, sensor_position, sensor_rotation
         )
 
         expected = TEST_OBS[AGENT_ID][SENSOR_ID]["depth"]
@@ -269,8 +260,7 @@ class HabitatTransformTest(ParametrizedTestCase):
 
         np.testing.assert_array_almost_equal(semantic_3d_obs, expected_semantic_3d)
 
-    @parametrize("use_semantic_sensor", [param(True), param(False)])
-    def test_semantic_3d_global_agent_rotation(self, use_semantic_sensor: bool):
+    def test_semantic_3d_global_agent_rotation(self):
         agent_position = np.array([0.0, 0.0, 0.0])
         x, y, z, w = Rotation.from_euler("xyz", [30, 45, -10], degrees=True).as_quat()
         # quaternion package uses w, x, y, z convention
@@ -279,11 +269,7 @@ class HabitatTransformTest(ParametrizedTestCase):
         sensor_rotation = qt.quaternion(1.0, 0.0, 0.0, 0.0)
 
         md_obs, depth_obs, semantic_obs, semantic_3d_obs = self.setup_test_data(
-            agent_position,
-            agent_rotation,
-            sensor_position,
-            sensor_rotation,
-            use_semantic_sensor,
+            agent_position, agent_rotation, sensor_position, sensor_rotation
         )
 
         expected = TEST_OBS[AGENT_ID][SENSOR_ID]["depth"]
@@ -306,8 +292,7 @@ class HabitatTransformTest(ParametrizedTestCase):
 
         np.testing.assert_array_almost_equal(semantic_3d_obs, expected_semantic_3d)
 
-    @parametrize("use_semantic_sensor", [param(True), param(False)])
-    def test_semantic_3d_global_sensor_rotation(self, use_semantic_sensor: bool):
+    def test_semantic_3d_global_sensor_rotation(self):
         agent_position = np.array([0.0, 0.0, 0.0])
         agent_rotation = qt.quaternion(1.0, 0.0, 0.0, 0.0)
         sensor_position = np.array([0.0, 0.0, 0.0])
@@ -315,11 +300,7 @@ class HabitatTransformTest(ParametrizedTestCase):
         sensor_rotation = qt.quaternion(w, x, y, z)
 
         md_obs, depth_obs, semantic_obs, semantic_3d_obs = self.setup_test_data(
-            agent_position,
-            agent_rotation,
-            sensor_position,
-            sensor_rotation,
-            use_semantic_sensor,
+            agent_position, agent_rotation, sensor_position, sensor_rotation
         )
 
         expected = TEST_OBS[AGENT_ID][SENSOR_ID]["depth"]
