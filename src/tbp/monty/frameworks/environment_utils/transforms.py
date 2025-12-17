@@ -272,7 +272,7 @@ class DepthTo3DLocations:
         depth_clip_sensors=None,
         world_coord=True,
         get_all_points=False,
-        use_semantic_sensor=False,  # Leaving in place so that configs don't break
+        use_semantic_sensor=False,  # noqa: ARG002 Leaving in place so that configs don't break
     ):
         self.needs_rng = False
 

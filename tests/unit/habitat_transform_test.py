@@ -14,7 +14,7 @@ import unittest
 import numpy as np
 import quaternion as qt
 from scipy.spatial.transform import Rotation
-from unittest_parametrize import ParametrizedTestCase, param, parametrize
+from unittest_parametrize import ParametrizedTestCase
 
 from tbp.monty.frameworks.agents import AgentID
 from tbp.monty.frameworks.environment_utils.transforms import (
