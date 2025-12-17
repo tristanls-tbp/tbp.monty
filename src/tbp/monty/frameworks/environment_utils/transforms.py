@@ -272,6 +272,7 @@ class DepthTo3DLocations:
         depth_clip_sensors=None,
         world_coord=True,
         get_all_points=False,
+        use_semantic_sensor=False,  # Leaving in place so that configs don't break
     ):
         self.needs_rng = False
 
@@ -423,7 +424,7 @@ class DepthTo3DLocations:
             # surface agent and are using the semantic sensor, we may use the
             # (clipped) ground-truth semantic mask as a shortcut (though it doesn't
             # use surface estimation--just on-objectness).
-            if self.depth_clip_sensors:
+            if self.depth_clip_sensors and "semantic" in agent_obs:
                 # NOTE: this particular combination of self.depth_clip_sensors and
                 # self.use_semantic_sensor is not commonly used at present, if ever.
                 # self.depth_clip_sensors implies a surface agent, and
