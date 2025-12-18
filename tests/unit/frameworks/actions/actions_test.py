@@ -38,6 +38,7 @@ from tests.unit.frameworks.actions.fakes.action import FakeAction
 
 RNG_SEED = 1337
 
+
 class ActionTest(unittest.TestCase):
     def test_action_name_is_class_name_in_snake_case(self) -> None:
         self.assertEqual("fake_action", FakeAction.action_name())
