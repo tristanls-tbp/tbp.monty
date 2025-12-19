@@ -65,6 +65,8 @@ class MontyExperiment:
         """
         self.config = config
 
+        self.reset_rng()
+
         self.do_train = config["do_train"]
         self.do_eval = config["do_eval"]
         self.max_eval_steps = config["max_eval_steps"]
@@ -77,7 +79,6 @@ class MontyExperiment:
         else:
             self.model_path = None
         self.min_lms_match = config["min_lms_match"]
-        self.rng = np.random.RandomState(config["seed"])
         self.show_sensor_output = config["show_sensor_output"]
         self.supervised_lm_ids = config["supervised_lm_ids"]
         if self.supervised_lm_ids == "all":
@@ -87,6 +88,10 @@ class MontyExperiment:
 
         if self.show_sensor_output:
             self.live_plotter = LivePlotter()
+
+    def reset_rng(self):
+        """Resets the random number generator from configuration seed."""
+        self.rng = np.random.RandomState(self.config["seed"])
 
     def setup_experiment(self, config: dict[str, Any]) -> None:
         """Set up the basic elements of a Monty experiment and initialize counters.
@@ -477,8 +482,10 @@ class MontyExperiment:
 
     def pre_episode(self):
         """Call pre_episode on elements in experiment and set mode."""
-        self.model.pre_episode()
-        self.env_interface.pre_episode()
+        self.reset_rng()
+
+        self.model.pre_episode(self.rng)
+        self.env_interface.pre_episode(self.rng)
 
         self.max_steps = self.max_train_steps
         if self.model.experiment_mode != "train":

@@ -150,7 +150,7 @@ class Monty(metaclass=abc.ABCMeta):
     ###
 
     @abc.abstractmethod
-    def pre_episode(self):
+    def pre_episode(self, rng: np.random.RandomState):
         """Recursively call pre_episode on child classes."""
         pass
 
@@ -345,7 +345,7 @@ class SensorModule(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def pre_episode(self):
+    def pre_episode(self, rng: np.random.RandomState):
         """This method is called before each episode."""
         pass
 

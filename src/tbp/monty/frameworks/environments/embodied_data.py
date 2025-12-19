@@ -104,7 +104,7 @@ class EnvironmentInterface:
         self.rng = rng
         self.seed = seed
         self.transform = transform
-        self._observation, proprioceptive_state = self.reset()
+        self._observation, proprioceptive_state = self.reset(self.rng)
         self.motor_system._state = (
             MotorSystemState(proprioceptive_state) if proprioceptive_state else None
         )
@@ -132,7 +132,8 @@ class EnvironmentInterface:
         self._counter += 1
         return self._observation
 
-    def reset(self):
+    def reset(self, rng: np.random.RandomState):
+        self.rng = rng
         observation = self.env.reset()
         state = self.env.get_state()
 
@@ -156,11 +157,11 @@ class EnvironmentInterface:
             observation = self.apply_transform(self.transform, observation, state)
         return observation, ProprioceptiveState(state) if state else None
 
-    def pre_episode(self):
-        self.motor_system.pre_episode()
+    def pre_episode(self, rng: np.random.RandomState):
+        self.motor_system.pre_episode(rng)
 
         # Reset the environment interface state.
-        self._observation, proprioceptive_state = self.reset()
+        self._observation, proprioceptive_state = self.reset(rng)
         self.motor_system._state = (
             MotorSystemState(proprioceptive_state) if proprioceptive_state else None
         )
@@ -254,8 +255,8 @@ class EnvironmentInterfacePerObject(EnvironmentInterface):
             parent_to_child_mapping if parent_to_child_mapping else {}
         )
 
-    def pre_episode(self):
-        super().pre_episode()
+    def pre_episode(self, rng: np.random.RandomState):
+        super().pre_episode(rng)
 
         self.motor_system._state[self.motor_system._policy.agent_id][
             "motor_only_step"
@@ -499,8 +500,8 @@ class InformedEnvironmentInterface(EnvironmentInterfacePerObject):
 
         return self._observation
 
-    def pre_episode(self):
-        super().pre_episode()
+    def pre_episode(self, rng: np.random.RandomState):
+        super().pre_episode(rng)
         if self.env._agents[0].action_space_type != "surface_agent":
             on_target_object = self.get_good_view_with_patch_refinement()
             if self.num_distractors == 0:
@@ -838,7 +839,7 @@ class OmniglotEnvironmentInterface(EnvironmentInterfacePerObject):
         self.rng = rng
         self.motor_system = motor_system
         self.transform = transform
-        self._observation, proprioceptive_state = self.reset()
+        self._observation, proprioceptive_state = self.reset(self.rng)
         self.motor_system._state = (
             MotorSystemState(proprioceptive_state) if proprioceptive_state else None
         )
@@ -939,7 +940,7 @@ class SaccadeOnImageEnvironmentInterface(EnvironmentInterfacePerObject):
         self.rng = rng
         self.motor_system = motor_system
         self.transform = transform
-        self._observation, proprioceptive_state = self.reset()
+        self._observation, proprioceptive_state = self.reset(self.rng)
         self.motor_system._state = (
             MotorSystemState(proprioceptive_state) if proprioceptive_state else None
         )
@@ -1036,7 +1037,7 @@ class SaccadeOnImageFromStreamEnvironmentInterface(SaccadeOnImageEnvironmentInte
         self.rng = rng
         self.motor_system = motor_system
         self.transform = transform
-        self._observation, proprioceptive_state = self.reset()
+        self._observation, proprioceptive_state = self.reset(self.rng)
         self.motor_system._state = (
             MotorSystemState(proprioceptive_state) if proprioceptive_state else None
         )

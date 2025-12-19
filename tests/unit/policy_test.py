@@ -223,9 +223,10 @@ class PolicyTest(unittest.TestCase):
         motor_system_args = motor_system_config["motor_system_args"]
         policy_class = motor_system_args["policy_class"]
         policy_args = motor_system_args["policy_args"]
-        policy = policy_class(rng=np.random.RandomState(123), **policy_args)
+        rng = np.random.RandomState(123)
+        policy = policy_class(rng=rng, **policy_args)
         motor_system = motor_system_class(policy=policy)
-        motor_system.pre_episode()
+        motor_system.pre_episode(rng)
 
         return motor_system, motor_system_args
 

@@ -53,7 +53,9 @@ class MontyForGraphMatching(MontyBase):
 
     # =============== Public Interface Functions ===============
     # ------------------- Main Algorithm -----------------------
-    def pre_episode(self, primary_target, semantic_id_to_label=None):
+    def pre_episode(
+        self, rng: np.random.RandomState, primary_target, semantic_id_to_label=None
+    ):
         """Reset values and call sub-pre_episode functions."""
         self._is_done = False
         self.reset_episode_steps()
@@ -66,7 +68,7 @@ class MontyForGraphMatching(MontyBase):
             lm.pre_episode(primary_target)
 
         for sm in self.sensor_modules:
-            sm.pre_episode()
+            sm.pre_episode(rng)
 
         logger.debug(
             f"Models in memory: {self.learning_modules[0].get_all_known_object_ids()}"

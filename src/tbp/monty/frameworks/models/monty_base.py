@@ -12,6 +12,8 @@ from __future__ import annotations
 import logging
 from typing import ClassVar
 
+import numpy as np
+
 from tbp.monty.frameworks.loggers.exp_logger import BaseMontyLogger, TestLogger
 from tbp.monty.frameworks.models.abstract_monty_classes import Monty
 from tbp.monty.frameworks.models.motor_system import MotorSystem
@@ -331,7 +333,7 @@ class MontyBase(Monty):
             lm.set_experiment_mode(mode)
         # for sm in self.sensor_modules: sm.set_experiment_mode() unused & removed
 
-    def pre_episode(self):
+    def pre_episode(self, rng: np.random.RandomState):
         self._is_done = False
         self.reset_episode_steps()
         self.switch_to_matching_step()
@@ -339,7 +341,7 @@ class MontyBase(Monty):
             lm.pre_episode()
 
         for sm in self.sensor_modules:
-            sm.pre_episode()
+            sm.pre_episode(rng)
 
     def post_episode(self):
         for lm in self.learning_modules:

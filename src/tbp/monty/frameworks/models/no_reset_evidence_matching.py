@@ -67,10 +67,12 @@ class MontyForNoResetEvidenceGraphMatching(MontyForEvidenceGraphMatching):
         # TODO: Remove initialization logic from `pre_episode`
         self.init_pre_episode = False
 
-    def pre_episode(self, primary_target, semantic_id_to_label=None):
+    def pre_episode(
+        self, rng: np.random.RandomState, primary_target, semantic_id_to_label=None
+    ):
         if not self.init_pre_episode:
             self.init_pre_episode = True
-            return super().pre_episode(primary_target, semantic_id_to_label)
+            return super().pre_episode(rng, primary_target, semantic_id_to_label)
 
         # reset terminal state
         self._is_done = False

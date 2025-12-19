@@ -126,7 +126,7 @@ class HabitatDataTest(unittest.TestCase):
             self.assertTrue(np.all(camera_obs_dist[MODALITY] == EXPECTED_STATES[i]))
 
         # Check dataset reset gets observations from simulator
-        initial_obs_dist, _ = env_interface_dist.reset()
+        initial_obs_dist, _ = env_interface_dist.reset(rng)
         initial_camera_obs_dist = initial_obs_dist[AGENT_ID][SENSOR_ID]
         self.assertTrue(np.all(initial_camera_obs_dist[MODALITY] == EXPECTED_STATES[0]))
 
@@ -182,7 +182,7 @@ class HabitatDataTest(unittest.TestCase):
             self.assertTrue(np.all(camera_obs_abs[MODALITY] == EXPECTED_STATES[i]))
 
         # Check env interface reset gets observations from simulator
-        initial_obs_abs, _ = env_interface_abs.reset()
+        initial_obs_abs, _ = env_interface_abs.reset(rng)
         initial_camera_obs_abs = initial_obs_abs[AGENT_ID][SENSOR_ID]
         self.assertTrue(np.all(initial_camera_obs_abs[MODALITY] == EXPECTED_STATES[0]))
 
@@ -236,7 +236,7 @@ class HabitatDataTest(unittest.TestCase):
             self.assertTrue(np.all(camera_obs_surf[MODALITY] == EXPECTED_STATES[i]))
 
         # Check dataset reset gets observations from simulator
-        initial_obs_surf, _ = env_interface_surf.reset()
+        initial_obs_surf, _ = env_interface_surf.reset(rng)
         initial_camera_obs_surf = initial_obs_surf[AGENT_ID][SENSOR_ID]
         self.assertTrue(np.all(initial_camera_obs_surf[MODALITY] == EXPECTED_STATES[0]))
 

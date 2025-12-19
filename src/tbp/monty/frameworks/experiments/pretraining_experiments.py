@@ -146,8 +146,11 @@ class MontySupervisedObjectPretrainingExperiment(MontyExperiment):
 
     def pre_episode(self):
         """Pre episode where we pass target object to the model for logging."""
-        self.model.pre_episode(self.env_interface.primary_target)
-        self.env_interface.pre_episode()
+        self.reset_rng()
+
+        # TODO: Fix invalid pre_episode signature call
+        self.model.pre_episode(self.rng, self.env_interface.primary_target)
+        self.env_interface.pre_episode(self.rng)
 
         self.max_steps = self.max_train_steps  # no eval mode here
 

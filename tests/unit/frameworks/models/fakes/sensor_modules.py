@@ -32,7 +32,7 @@ class FakeSensorModule(SensorModule):
     def update_state(self, state):
         pass
 
-    def pre_episode(self):
+    def pre_episode(self, rng: np.random.RandomState):
         pass
 
     def post_episode(self):

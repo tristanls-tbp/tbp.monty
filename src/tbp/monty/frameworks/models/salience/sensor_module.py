@@ -28,7 +28,7 @@ from tbp.monty.frameworks.models.states import GoalState, State
 class HabitatSalienceSM(SensorModule):
     def __init__(
         self,
-        rng,
+        rng: np.random.RandomState,
         sensor_module_id: str,
         save_raw_obs: bool = False,
         salience_strategy_class: type[SalienceStrategy] = UniformSalienceStrategy,
@@ -143,8 +143,9 @@ class HabitatSalienceSM(SensorModule):
 
         return (weighted_salience - min_) / scale
 
-    def pre_episode(self):
+    def pre_episode(self, rng: np.random.RandomState):
         """This method is called before each episode."""
+        self._rng = rng
         self._goals.clear()
         self._return_inhibitor.reset()
         self._snapshot_telemetry.reset()

@@ -1232,7 +1232,7 @@ class GraphLearningTest(BaseGraphTest):
                 # `pre_episode` method, but it expects to feed data from an environment
                 # interface to the model, and we aren't using that, so we call it again
                 # with the correct target value.
-                monty.pre_episode(self.placeholder_target)
+                monty.pre_episode(exp.rng, self.placeholder_target)
                 for step in range(tm.num_observations(episode_num)):
                     # Manually run through the internal Monty steps since we aren't
                     # using the data from the environment interface and are instead
