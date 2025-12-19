@@ -291,7 +291,11 @@ def generate_parallel_eval_configs(
 
             # No training
             new_experiment["config"].update(
-                do_eval=True, do_train=False, n_eval_epochs=1
+                do_eval=True,
+                do_train=False,
+                episode=episode_count,
+                epoch=epoch_count,
+                n_eval_epochs=1,
             )
 
             # Save results in parallel subdir of output_dir, update run_name
@@ -354,11 +358,13 @@ def generate_parallel_train_configs(experiment: DictConfig, name: str) -> list[M
     object_names = experiment.config["train_env_interface_args"]["object_names"]
     new_experiments = []
 
-    for obj in object_names:
+    for epoch, obj in enumerate(object_names):
         new_experiment: Mapping = OmegaConf.to_object(experiment)  # type: ignore[assignment]
 
         # No eval
-        new_experiment["config"].update(do_eval=False, do_train=True, n_train_epochs=1)
+        new_experiment["config"].update(
+            do_eval=False, do_train=True, epoch=epoch, n_train_epochs=1
+        )
 
         # Save results in parallel subdir of output_dir, update run_name
         output_dir = Path(new_experiment["config"]["logging"]["output_dir"])

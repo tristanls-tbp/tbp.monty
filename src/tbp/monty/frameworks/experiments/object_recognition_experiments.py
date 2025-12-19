@@ -45,7 +45,7 @@ class MontyObjectRecognitionExperiment(MontyExperiment):
         Pre episode where we pass the primary target object, as well as the mapping
         between semantic ID to labels, both for logging/evaluation purposes.
         """
-        self.reset_rng()
+        self.reset_episode_rng()
 
         # TODO, eventually it would be better to pass
         # self.env_interface.semantic_id_to_label via an "Observation" object when this

@@ -66,7 +66,7 @@ class DataCollectionExperiment(MontyObjectRecognitionExperiment):
 
     def pre_episode(self):
         """Pre episode where we pass target object to the model for logging."""
-        self.reset_rng()
+        self.reset_episode_rng()
 
         self.model.pre_episode(self.rng)
         self.env_interface.pre_episode(self.rng)

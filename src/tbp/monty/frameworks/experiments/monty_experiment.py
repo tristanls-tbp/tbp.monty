@@ -28,6 +28,7 @@ from tbp.monty.frameworks.environments.embodied_data import (
     SaccadeOnImageFromStreamEnvironmentInterface,
 )
 from tbp.monty.frameworks.environments.embodied_environment import EmbodiedEnvironment
+from tbp.monty.frameworks.experiments.seed import episode_seed
 from tbp.monty.frameworks.loggers.exp_logger import (
     BaseMontyLogger,
     LoggingCallbackHandler,
@@ -65,7 +66,9 @@ class MontyExperiment:
         """
         self.config = config
 
-        self.reset_rng()
+        # TODO: Is it necessary to set the RNG here?
+        # RNG will be reset with episode-specific seed before each episode.
+        self.rng = np.random.RandomState(config["seed"])
 
         self.do_train = config["do_train"]
         self.do_eval = config["do_eval"]
@@ -89,9 +92,17 @@ class MontyExperiment:
         if self.show_sensor_output:
             self.live_plotter = LivePlotter()
 
-    def reset_rng(self):
-        """Resets the random number generator from configuration seed."""
-        self.rng = np.random.RandomState(self.config["seed"])
+    def reset_episode_rng(self):
+        """Resets the random number generator using episode-specific seed."""
+        if self.model.experiment_mode == "train":
+            seed = episode_seed(
+                self.config["seed"], self.train_epochs, self.train_episodes
+            )
+        else:
+            seed = episode_seed(
+                self.config["seed"], self.eval_epochs, self.eval_episodes
+            )
+        self.rng = np.random.RandomState(seed)
 
     def setup_experiment(self, config: dict[str, Any]) -> None:
         """Set up the basic elements of a Monty experiment and initialize counters.
@@ -482,7 +493,7 @@ class MontyExperiment:
 
     def pre_episode(self):
         """Call pre_episode on elements in experiment and set mode."""
-        self.reset_rng()
+        self.reset_episode_rng()
 
         self.model.pre_episode(self.rng)
         self.env_interface.pre_episode(self.rng)
@@ -566,6 +577,14 @@ class MontyExperiment:
         else:
             self.eval_epochs += 1
             self.eval_env_interface.post_epoch()
+
+    def run(self):
+        """Run the experiment."""
+        if self.do_train:
+            self.train()
+
+        if self.do_eval:
+            self.evaluate()
 
     def train(self):
         """Run n_train_epochs."""
