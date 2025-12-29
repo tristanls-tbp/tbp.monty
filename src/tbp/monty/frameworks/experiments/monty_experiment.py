@@ -13,6 +13,7 @@ import copy
 import datetime
 import logging
 import pprint
+from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
@@ -45,9 +46,18 @@ from tbp.monty.frameworks.utils.dataclass_utils import (
 )
 from tbp.monty.frameworks.utils.live_plotter import LivePlotter
 
-__all__ = ["MontyExperiment"]
+__all__ = ["ExperimentMode", "MontyExperiment"]
 
 logger = logging.getLogger("tbp.monty")
+
+
+class ExperimentMode(Enum):
+    """Experiment mode."""
+
+    EVAL = "eval"
+    """Evaluation mode."""
+    TRAIN = "train"
+    """Training mode."""
 
 
 class MontyExperiment:
@@ -72,6 +82,7 @@ class MontyExperiment:
 
         self.do_train = config["do_train"]
         self.do_eval = config["do_eval"]
+        self.experiment_mode = ExperimentMode.TRAIN
         self.max_eval_steps = config["max_eval_steps"]
         self.max_train_steps = config["max_train_steps"]
         self.max_total_steps = config["max_total_steps"]
@@ -457,16 +468,14 @@ class MontyExperiment:
         )
 
     def get_epoch_state(self):
-        mode = self.model.experiment_mode
-
-        if mode == "train":
+        if self.experiment_mode is ExperimentMode.TRAIN:
             epoch = self.train_epochs
             episode = self.train_episodes
         else:
             epoch = self.eval_epochs
             episode = self.eval_episodes
 
-        return mode, epoch, episode
+        return self.experiment_mode, epoch, episode
 
     ####
     # Methods for running the experiment
@@ -499,7 +508,7 @@ class MontyExperiment:
         self.env_interface.pre_episode(self.rng)
 
         self.max_steps = self.max_train_steps
-        if self.model.experiment_mode != "train":
+        if self.experiment_mode is not ExperimentMode.TRAIN:
             self.max_steps = self.max_eval_steps
 
         self.logger_handler.pre_episode(self.logger_args)
@@ -523,7 +532,7 @@ class MontyExperiment:
         self.logger_handler.post_episode(self.logger_args)
         self.model.post_episode()
 
-        if self.model.experiment_mode == "train":
+        if self.experiment_mode is ExperimentMode.TRAIN:
             self.train_episodes += 1
             self.total_train_steps += steps
         else:
@@ -559,7 +568,7 @@ class MontyExperiment:
     def pre_epoch(self):
         """Set environment interface and call sub pre_epoch functions."""
         self.env_interface = self.train_env_interface
-        if self.model.experiment_mode != "train":
+        if self.experiment_mode is not ExperimentMode.TRAIN:
             self.env_interface = self.eval_env_interface
 
         self.env_interface.pre_epoch()
@@ -571,7 +580,7 @@ class MontyExperiment:
         self.save_state_dict(output_dir=self.output_dir / f"{self.train_epochs}")
         self.logger_handler.post_epoch(self.logger_args)
 
-        if self.model.experiment_mode == "train":
+        if self.experiment_mode is ExperimentMode.TRAIN:
             self.train_epochs += 1
             self.train_env_interface.post_epoch()
         else:
@@ -588,6 +597,8 @@ class MontyExperiment:
 
     def train(self):
         """Run n_train_epochs."""
+        logger.info(f"running {self.n_train_epochs} train epochs")
+        self.experiment_mode = ExperimentMode.TRAIN
         self.logger_handler.pre_train(self.logger_args)
         self.model.set_experiment_mode("train")
         for _ in range(self.n_train_epochs):
@@ -596,6 +607,8 @@ class MontyExperiment:
 
     def evaluate(self):
         """Run n_eval_epochs."""
+        logger.info(f"running {self.n_eval_epochs} eval epochs")
+        self.experiment_mode = ExperimentMode.EVAL
         # TODO: check that number of eval epochs is at least as many as length
         # of environment interface number of rotations
         self.logger_handler.pre_eval(self.logger_args)
@@ -630,7 +643,7 @@ class MontyExperiment:
         # TODO can consider a save frequency for training as well; e.g. currently
         # with training from scratch, we save +++ data
         if (
-            self.model.experiment_mode == "eval"
+            self.experiment_mode is ExperimentMode.EVAL
             and self.monty_logger.use_parallel_wandb_logging
         ):
             pass
