@@ -103,6 +103,11 @@ class MontyExperiment:
         if self.show_sensor_output:
             self.live_plotter = LivePlotter()
 
+        self.train_epochs = config.get("epoch", 0)
+        self.train_episodes = config.get("episode", 0)
+        self.eval_epochs = config.get("epoch", 0)
+        self.eval_episodes = config.get("episode", 0)
+
     def reset_episode_rng(self):
         """Resets the random number generator using episode-specific seed."""
         if self.model.experiment_mode == "train":
@@ -304,11 +309,7 @@ class MontyExperiment:
     def init_counters(self):
         # Initialize time stamp variables for logging
         self.total_train_steps = 0
-        self.train_episodes = 0
-        self.train_epochs = 0
         self.total_eval_steps = 0
-        self.eval_episodes = 0
-        self.eval_epochs = 0
         self.env_interface = None
 
     ####

@@ -622,8 +622,7 @@ class HabitatSM(SensorModule):
         self.visited_normals = []
 
     def pre_episode(self, rng: np.random.RandomState):
-        """Reset buffer and is_exploring flag."""
-        # self._rng = rng
+        self._rng = rng
         self._snapshot_telemetry.reset()
         self._state_filter.reset()
         self.is_exploring = False
