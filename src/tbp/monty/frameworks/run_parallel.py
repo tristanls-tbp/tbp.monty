@@ -31,6 +31,7 @@ from tbp.monty.frameworks.environments.embodied_data import (
 from tbp.monty.frameworks.environments.object_init_samplers import (
     Predefined,
 )
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.experiments.pretraining_experiments import (
     MontySupervisedObjectPretrainingExperiment,
 )
@@ -279,7 +280,9 @@ def generate_parallel_eval_configs(
     n_epochs = experiment.config["n_eval_epochs"]
     seed = experiment.config["seed"]
 
-    params = sample_params_to_init_args(sampler(seed, epoch_count, episode_count))
+    params = sample_params_to_init_args(
+        sampler(seed, ExperimentMode.EVAL, epoch_count, episode_count)
+    )
 
     # Try to mimic the exact workflow instead of guessing
     while epoch_count < n_epochs:
@@ -319,11 +322,13 @@ def generate_parallel_eval_configs(
             new_experiments.append(new_experiment)
             episode_count += 1
             params = sample_params_to_init_args(
-                sampler(seed, epoch_count, episode_count)
+                sampler(seed, ExperimentMode.EVAL, epoch_count, episode_count)
             )
 
         epoch_count += 1
-        params = sample_params_to_init_args(sampler(seed, epoch_count, episode_count))
+        params = sample_params_to_init_args(
+            sampler(seed, ExperimentMode.EVAL, epoch_count, episode_count)
+        )
 
     return new_experiments
 

@@ -11,8 +11,6 @@ from __future__ import annotations
 
 import pytest
 
-from tbp.monty.frameworks.experiments.monty_experiment import ExperimentMode
-
 pytest.importorskip(
     "habitat_sim",
     reason="Habitat Sim optional dependency not installed.",
@@ -30,6 +28,7 @@ import numpy as np
 import pandas as pd
 from omegaconf import DictConfig
 
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.evidence_matching.learning_module import (
     EvidenceGraphLM,
 )

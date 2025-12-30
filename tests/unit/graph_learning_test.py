@@ -11,13 +11,10 @@ from __future__ import annotations
 
 import pytest
 
-from tbp.monty.frameworks.experiments.monty_experiment import ExperimentMode
-
 pytest.importorskip(
     "habitat_sim",
     reason="Habitat Sim optional dependency not installed.",
 )
-
 import copy
 import shutil
 import tempfile
@@ -31,6 +28,7 @@ import numpy as np
 import pandas as pd
 from omegaconf import DictConfig
 
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.loggers.wandb_handlers import DetailedWandbMarkedObsHandler
 from tbp.monty.frameworks.models.feature_location_matching import FeatureGraphLM
 from tbp.monty.frameworks.models.graph_matching import GraphLM

@@ -10,13 +10,10 @@
 
 import pytest
 
-from tbp.monty.frameworks.experiments.monty_experiment import ExperimentMode
-
 pytest.importorskip(
     "habitat_sim",
     reason="Habitat Sim optional dependency not installed.",
 )
-
 import copy
 import shutil
 import tempfile
@@ -40,6 +37,7 @@ from tbp.monty.frameworks.actions.actions import (
     TurnRight,
 )
 from tbp.monty.frameworks.agents import AgentID
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.evidence_matching.learning_module import (
     EvidenceGraphLM,
 )

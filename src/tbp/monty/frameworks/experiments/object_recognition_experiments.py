@@ -15,8 +15,8 @@ import torch
 from tbp.monty.frameworks.environments.embodied_data import (
     SaccadeOnImageEnvironmentInterface,
 )
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.experiments.monty_experiment import (
-    ExperimentMode,
     MontyExperiment,
 )
 

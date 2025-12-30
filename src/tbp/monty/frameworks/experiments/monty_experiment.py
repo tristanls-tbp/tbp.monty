@@ -13,7 +13,6 @@ import copy
 import datetime
 import logging
 import pprint
-from enum import Enum
 from pathlib import Path
 from typing import Any, Literal
 
@@ -29,6 +28,7 @@ from tbp.monty.frameworks.environments.embodied_data import (
     SaccadeOnImageFromStreamEnvironmentInterface,
 )
 from tbp.monty.frameworks.environments.embodied_environment import EmbodiedEnvironment
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.experiments.seed import episode_seed
 from tbp.monty.frameworks.loggers.exp_logger import (
     BaseMontyLogger,
@@ -46,18 +46,9 @@ from tbp.monty.frameworks.utils.dataclass_utils import (
 )
 from tbp.monty.frameworks.utils.live_plotter import LivePlotter
 
-__all__ = ["ExperimentMode", "MontyExperiment"]
+__all__ = ["MontyExperiment"]
 
 logger = logging.getLogger("tbp.monty")
-
-
-class ExperimentMode(Enum):
-    """Experiment mode."""
-
-    EVAL = "eval"
-    """Evaluation mode."""
-    TRAIN = "train"
-    """Training mode."""
 
 
 class MontyExperiment:
@@ -112,11 +103,17 @@ class MontyExperiment:
         """Resets the random number generator using episode-specific seed."""
         if self.model.experiment_mode == "train":
             seed = episode_seed(
-                self.config["seed"], self.train_epochs, self.train_episodes
+                self.config["seed"],
+                ExperimentMode.TRAIN,
+                self.train_epochs,
+                self.train_episodes,
             )
         else:
             seed = episode_seed(
-                self.config["seed"], self.eval_epochs, self.eval_episodes
+                self.config["seed"],
+                ExperimentMode.EVAL,
+                self.eval_epochs,
+                self.eval_episodes,
             )
         self.rng = np.random.RandomState(seed)
 
@@ -252,6 +249,7 @@ class MontyExperiment:
             env_interface_args = dict(
                 env=self.env,
                 transform=env_interface_config["transform"],
+                experiment_mode=ExperimentMode.TRAIN,
                 **config["train_env_interface_args"],
             )
 
@@ -267,6 +265,7 @@ class MontyExperiment:
             env_interface_args = dict(
                 env=self.env,
                 transform=env_interface_config["transform"],
+                experiment_mode=ExperimentMode.EVAL,
                 **config["eval_env_interface_args"],
             )
 

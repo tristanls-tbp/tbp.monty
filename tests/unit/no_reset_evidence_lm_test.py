@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import pytest
 
-from tbp.monty.frameworks.experiments.monty_experiment import ExperimentMode
-
 pytest.importorskip(
     "habitat_sim",
     reason="Habitat Sim optional dependency not installed.",
@@ -26,6 +24,7 @@ from typing import Any
 import hydra
 import numpy as np
 
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tests.unit.resources.unit_test_utils import BaseGraphTest
 
 

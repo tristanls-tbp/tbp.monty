@@ -32,6 +32,7 @@ from tbp.monty.frameworks.environments.two_d_data import (
     SaccadeOnImageEnvironment,
     SaccadeOnImageFromStreamEnvironment,
 )
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.abstract_monty_classes import (
     AgentObservations,
     Modality,
@@ -181,6 +182,7 @@ class EmbodiedDataTest(unittest.TestCase):
             rng=rng,
             motor_system=motor_system_dist,
             seed=seed,
+            experiment_mode=ExperimentMode.EVAL,
         )
 
         for i in range(1, NUM_STEPS):
@@ -222,6 +224,7 @@ class EmbodiedDataTest(unittest.TestCase):
             rng=rng,
             motor_system=motor_system_abs,
             seed=seed,
+            experiment_mode=ExperimentMode.EVAL,
         )
 
         for i in range(1, NUM_STEPS):
@@ -259,7 +262,11 @@ class EmbodiedDataTest(unittest.TestCase):
         )
         env = FakeEnvironmentRel()
         env_interface_dist = EnvironmentInterface(
-            env=env, rng=rng, motor_system=motor_system_dist, seed=seed
+            env=env,
+            rng=rng,
+            motor_system=motor_system_dist,
+            seed=seed,
+            experiment_mode=ExperimentMode.EVAL,
         )
 
         for i, item in enumerate(env_interface_dist):
@@ -282,7 +289,11 @@ class EmbodiedDataTest(unittest.TestCase):
         )
         env = FakeEnvironmentAbs()
         env_interface_abs = EnvironmentInterface(
-            env=env, rng=rng, motor_system=motor_system_abs, seed=seed
+            env=env,
+            rng=rng,
+            motor_system=motor_system_abs,
+            seed=seed,
+            experiment_mode=ExperimentMode.EVAL,
         )
 
         for i, item in enumerate(env_interface_abs):

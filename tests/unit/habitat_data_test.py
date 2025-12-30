@@ -12,6 +12,7 @@ import pytest
 from omegaconf import OmegaConf
 
 from tbp.monty.frameworks.agents import AgentID
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.abstract_monty_classes import Modality
 from tbp.monty.frameworks.sensors import SensorID
 
@@ -115,7 +116,11 @@ class HabitatDataTest(unittest.TestCase):
         env_init_args = {"agents": self.camera_dist_config}
         env = HabitatEnvironment(**env_init_args)
         env_interface_dist = EnvironmentInterface(
-            env, rng=rng, motor_system=motor_system_dist, seed=seed
+            env,
+            rng=rng,
+            motor_system=motor_system_dist,
+            seed=seed,
+            experiment_mode=ExperimentMode.EVAL,
         )
 
         # Check if env interface is getting observations from simulator
@@ -172,6 +177,7 @@ class HabitatDataTest(unittest.TestCase):
             rng=rng,
             motor_system=motor_system_abs,
             seed=seed,
+            experiment_mode=ExperimentMode.EVAL,
         )
 
         # Check if env interfaces are getting observations from simulator
@@ -225,7 +231,11 @@ class HabitatDataTest(unittest.TestCase):
         env_init_args = {"agents": self.camera_surf_config}
         env = HabitatEnvironment(**env_init_args)
         env_interface_surf = EnvironmentInterface(
-            env, rng=rng, motor_system=motor_system_surf, seed=seed
+            env,
+            rng=rng,
+            motor_system=motor_system_surf,
+            seed=seed,
+            experiment_mode=ExperimentMode.EVAL,
         )
 
         # Check if datasets are getting observations from simulator
@@ -277,7 +287,11 @@ class HabitatDataTest(unittest.TestCase):
         env_init_args = {"agents": self.camera_dist_config}
         env = HabitatEnvironment(**env_init_args)
         env_interface_dist = EnvironmentInterface(
-            env, motor_system=motor_system_dist, rng=rng, seed=seed
+            env,
+            motor_system=motor_system_dist,
+            rng=rng,
+            seed=seed,
+            experiment_mode=ExperimentMode.EVAL,
         )
 
         for i, item in enumerate(env_interface_dist):
@@ -314,7 +328,11 @@ class HabitatDataTest(unittest.TestCase):
         env_init_args = {"agents": self.camera_abs_config}
         env = HabitatEnvironment(**env_init_args)
         env_interface_abs = EnvironmentInterface(
-            env, motor_system=motor_system_abs, rng=rng, seed=seed
+            env,
+            motor_system=motor_system_abs,
+            rng=rng,
+            seed=seed,
+            experiment_mode=ExperimentMode.EVAL,
         )
         for i, item in enumerate(env_interface_abs):
             camera_obs_abs = item[AGENT_ID][SENSOR_ID]
@@ -353,7 +371,11 @@ class HabitatDataTest(unittest.TestCase):
         env_init_args = {"agents": self.camera_surf_config}
         env = HabitatEnvironment(**env_init_args)
         env_interface_surf = EnvironmentInterface(
-            env, motor_system=motor_system_surf, rng=rng, seed=seed
+            env,
+            motor_system=motor_system_surf,
+            rng=rng,
+            seed=seed,
+            experiment_mode=ExperimentMode.EVAL,
         )
         for i, item in enumerate(env_interface_surf):
             camera_obs_surf = item[AGENT_ID][SENSOR_ID]

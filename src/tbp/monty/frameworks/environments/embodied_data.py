@@ -33,6 +33,7 @@ from tbp.monty.frameworks.environments.embodied_environment import (
     ObjectID,
     SemanticID,
 )
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.motor_policies import (
     GetGoodView,
     InformedPolicy,
@@ -72,6 +73,8 @@ class EnvironmentInterface:
         motor_system: :class:`MotorSystem`
         rng: Random number generator to use.
         seed: The configured random seed.
+        experiment_mode: The experiment mode that this environment interface is used
+            in.
         transform: Callable used to transform the observations returned by
             the environment.
 
@@ -93,6 +96,7 @@ class EnvironmentInterface:
         motor_system: MotorSystem,
         rng,
         seed: int,
+        experiment_mode: ExperimentMode,
         transform=None,
     ):
         if not isinstance(motor_system, MotorSystem):
@@ -109,6 +113,7 @@ class EnvironmentInterface:
             MotorSystemState(proprioceptive_state) if proprioceptive_state else None
         )
         self._counter = 0
+        self.experiment_mode = experiment_mode
 
     def __iter__(self) -> Self:
         """Implement the iterator protocol.
@@ -245,7 +250,7 @@ class EnvironmentInterfacePerObject(EnvironmentInterface):
         self.epochs = 0
         self.object_init_sampler = object_init_sampler
         self.object_params = self.object_init_sampler(
-            self.seed, self.epochs, self.episodes
+            self.seed, self.experiment_mode, self.epochs, self.episodes
         )
         self.current_object = 0
         self.n_objects = len(self.object_names)
@@ -266,7 +271,7 @@ class EnvironmentInterfacePerObject(EnvironmentInterface):
         super().post_episode()
         self.episodes += 1
         self.object_params = self.object_init_sampler(
-            self.seed, self.epochs, self.episodes
+            self.seed, self.experiment_mode, self.epochs, self.episodes
         )
         self.cycle_object()
 
@@ -276,7 +281,7 @@ class EnvironmentInterfacePerObject(EnvironmentInterface):
     def post_epoch(self):
         self.epochs += 1
         self.object_params = self.object_init_sampler(
-            self.seed, self.epochs, self.episodes
+            self.seed, self.experiment_mode, self.epochs, self.episodes
         )
 
     def create_semantic_mapping(self):

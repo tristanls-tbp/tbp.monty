@@ -14,7 +14,7 @@ from pathlib import Path
 import pandas as pd
 import wandb
 
-from tbp.monty.frameworks.experiments import MontyExperiment
+from tbp.monty.frameworks.experiments.monty_experiment import MontyExperiment
 
 
 def make_stats_df(stats):
