@@ -502,6 +502,17 @@ class MontyExperiment:
 
     def pre_episode(self):
         """Call pre_episode on elements in experiment and set mode."""
+        if self.experiment_mode is ExperimentMode.TRAIN:
+            logger.info(
+                f"running train epoch {self.train_epochs} "
+                f"train episode {self.train_episodes}"
+            )
+        else:
+            logger.info(
+                f"running eval epoch {self.eval_epochs} "
+                f"eval episode {self.eval_episodes}"
+            )
+
         self.reset_episode_rng()
 
         self.model.pre_episode(self.rng)
@@ -567,6 +578,10 @@ class MontyExperiment:
 
     def pre_epoch(self):
         """Set environment interface and call sub pre_epoch functions."""
+        if self.experiment_mode is ExperimentMode.TRAIN:
+            logger.info(f"running train epoch {self.train_epochs}")
+        else:
+            logger.info(f"running eval epoch {self.eval_epochs}")
         self.env_interface = self.train_env_interface
         if self.experiment_mode is not ExperimentMode.TRAIN:
             self.env_interface = self.eval_env_interface

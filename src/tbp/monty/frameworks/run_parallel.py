@@ -139,13 +139,10 @@ def move_reproducibility_data(base_dir: Path, parallel_dirs: Iterable[Path]):
     outdir.mkdir(parents=True)
     repro_dirs = [pdir / "reproduce_episode_data" for pdir in parallel_dirs]
 
-    # Headache to accont for the fact that everyone is episode 0
-    for cnt, rdir in enumerate(repro_dirs):
-        episode0actions = rdir / "eval_episode_0_actions.jsonl"
-        episode0target = rdir / "eval_episode_0_target.txt"
-        assert episode0actions.exists() and episode0target.exists()
-        episode0actions.rename(outdir / f"eval_episode_{cnt}_actions.jsonl")
-        episode0target.rename(outdir / f"eval_episode_{cnt}_target.txt")
+    for rdir in repro_dirs:
+        for f in rdir.glob("*"):
+            assert f.is_file()
+            f.rename(outdir / f.name)
 
 
 def print_config(config: DictConfig) -> None:
@@ -311,8 +308,6 @@ def generate_parallel_eval_configs(
                 new_experiment["config"]["logging"]["experiment_name"] = name
             else:
                 new_experiment["config"]["logging"]["log_parallel_wandb"] = False
-
-            new_experiment["config"]["logging"]["episode_id_parallel"] = episode_count
 
             new_experiment["config"]["eval_env_interface_args"].update(
                 object_names=[obj],

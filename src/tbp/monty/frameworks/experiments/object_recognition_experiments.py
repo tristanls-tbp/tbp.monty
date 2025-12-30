@@ -47,6 +47,17 @@ class MontyObjectRecognitionExperiment(MontyExperiment):
         Pre episode where we pass the primary target object, as well as the mapping
         between semantic ID to labels, both for logging/evaluation purposes.
         """
+        if self.experiment_mode is ExperimentMode.TRAIN:
+            logger.info(
+                f"running train epoch {self.train_epochs} "
+                f"train episode {self.train_episodes}"
+            )
+        else:
+            logger.info(
+                f"running eval epoch {self.eval_epochs} "
+                f"eval episode {self.eval_episodes}"
+            )
+
         self.reset_episode_rng()
 
         # TODO, eventually it would be better to pass
