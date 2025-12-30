@@ -405,11 +405,11 @@ def single_evaluate(experiment):
             # `self.use_parallel_wandb_logging` set to True
             # This way, the logger does not flush its buffer in the
             # `exp.run()` call above.
-            return get_episode_stats(exp, "eval")
+            return get_episode_stats(exp, "eval", exp.config.episode)
 
 
-def get_episode_stats(exp, mode):
-    eval_stats = exp.monty_logger.get_formatted_overall_stats(mode, 0)
+def get_episode_stats(exp, mode, episode: int = 0):
+    eval_stats = exp.monty_logger.get_formatted_overall_stats(mode, episode)
     exp.monty_logger.flush()
     # Remove overall stats field since they are only averaged over 1 episode
     # and might cause confusion.
