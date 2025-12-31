@@ -278,7 +278,7 @@ def generate_parallel_eval_configs(
     seed = experiment.config["seed"]
 
     params = sample_params_to_init_args(
-        sampler(seed, ExperimentMode.EVAL, epoch_count, episode_count)
+        sampler(seed, ExperimentMode.EVAL, episode_count)
     )
 
     # Try to mimic the exact workflow instead of guessing
@@ -291,7 +291,6 @@ def generate_parallel_eval_configs(
                 do_eval=True,
                 do_train=False,
                 episode=episode_count,
-                epoch=epoch_count,
                 n_eval_epochs=1,
             )
 
@@ -317,12 +316,12 @@ def generate_parallel_eval_configs(
             new_experiments.append(new_experiment)
             episode_count += 1
             params = sample_params_to_init_args(
-                sampler(seed, ExperimentMode.EVAL, epoch_count, episode_count)
+                sampler(seed, ExperimentMode.EVAL, episode_count)
             )
 
         epoch_count += 1
         params = sample_params_to_init_args(
-            sampler(seed, ExperimentMode.EVAL, epoch_count, episode_count)
+            sampler(seed, ExperimentMode.EVAL, episode_count)
         )
 
     return new_experiments
@@ -355,13 +354,11 @@ def generate_parallel_train_configs(experiment: DictConfig, name: str) -> list[M
     object_names = experiment.config["train_env_interface_args"]["object_names"]
     new_experiments = []
 
-    for epoch, obj in enumerate(object_names):
+    for obj in object_names:
         new_experiment: Mapping = OmegaConf.to_object(experiment)  # type: ignore[assignment]
 
         # No eval
-        new_experiment["config"].update(
-            do_eval=False, do_train=True, epoch=epoch, n_train_epochs=1
-        )
+        new_experiment["config"].update(do_eval=False, do_train=True, n_train_epochs=1)
 
         # Save results in parallel subdir of output_dir, update run_name
         output_dir = Path(new_experiment["config"]["logging"]["output_dir"])

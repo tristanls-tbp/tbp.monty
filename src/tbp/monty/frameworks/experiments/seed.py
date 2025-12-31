@@ -11,22 +11,21 @@ import hashlib
 from tbp.monty.frameworks.experiments.mode import ExperimentMode
 
 
-def episode_seed(seed: int, mode: ExperimentMode, epoch: int, episode: int) -> int:
+def episode_seed(seed: int, mode: ExperimentMode, episode: int) -> int:
     """Generate a seed for an episode.
 
     In some cases, for each episode, we want to deterministically modify
-    the experiment's random seed based on the experiment mode,epoch and episode.
+    the experiment's random seed based on the experiment mode and episode.
     We don't want to start with the same experiment random seed for each episode.
     For example, if we want to present objects in a random rotation for
     each episode, starting with the same random seed for each episode would
     result in the same rotation for each object in each episode. As another
     example, if we add noise during training, we want to add different noise
-    during evaluation, even if the epoch and episode are the same.
+    during evaluation, even if the episode is the same.
 
     Args:
         seed: The experiment's random seed.
         mode: The experiment mode.
-        epoch: The epoch number.
         episode: The episode number.
 
     Returns:
@@ -34,9 +33,7 @@ def episode_seed(seed: int, mode: ExperimentMode, epoch: int, episode: int) -> i
     """
     return (
         int(
-            hashlib.sha256(
-                f"{seed}-{mode.value}-{epoch}-{episode}".encode()
-            ).hexdigest(),
+            hashlib.sha256(f"{seed}-{mode.value}-{episode}".encode()).hexdigest(),
             16,
         )
         % 2**32

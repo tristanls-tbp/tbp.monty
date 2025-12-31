@@ -16,8 +16,8 @@ from tbp.monty.frameworks.utils.transform_utils import scipy_to_numpy_quat
 
 
 class Default:
-    def __call__(self, seed: int, mode: ExperimentMode, epoch: int, episode: int):
-        seed = episode_seed(seed, mode, epoch, episode)
+    def __call__(self, seed: int, mode: ExperimentMode, epoch: int, episode: int):  # noqa: ARG002
+        seed = episode_seed(seed, mode, episode)
         rng = np.random.RandomState(seed)
         euler_rotation = rng.uniform(0, 360, 3)
         q = Rotation.from_euler("xyz", euler_rotation, degrees=True).as_quat()
@@ -93,8 +93,8 @@ class RandomRotation(Default):
         else:
             self.scale = [1.0, 1.0, 1.0]
 
-    def __call__(self, seed: int, mode: ExperimentMode, epoch: int, episode: int):
-        seed = episode_seed(seed, mode, epoch, episode)
+    def __call__(self, seed: int, mode: ExperimentMode, epoch: int, episode: int):  # noqa: ARG002
+        seed = episode_seed(seed, mode, episode)
         rng = np.random.RandomState(seed)
         euler_rotation = rng.uniform(0, 360, 3)
         q = Rotation.from_euler("xyz", euler_rotation, degrees=True).as_quat()

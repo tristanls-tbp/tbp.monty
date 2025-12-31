@@ -94,9 +94,7 @@ class MontyExperiment:
         if self.show_sensor_output:
             self.live_plotter = LivePlotter()
 
-        self.train_epochs = config.get("epoch", 0)
         self.train_episodes = config.get("episode", 0)
-        self.eval_epochs = config.get("epoch", 0)
         self.eval_episodes = config.get("episode", 0)
 
     def reset_episode_rng(self):
@@ -105,14 +103,12 @@ class MontyExperiment:
             seed = episode_seed(
                 self.config["seed"],
                 ExperimentMode.TRAIN,
-                self.train_epochs,
                 self.train_episodes,
             )
         else:
             seed = episode_seed(
                 self.config["seed"],
                 ExperimentMode.EVAL,
-                self.eval_epochs,
                 self.eval_episodes,
             )
         logger.info(f"resetting RNG to seed {seed}")
@@ -310,6 +306,8 @@ class MontyExperiment:
         self.total_train_steps = 0
         self.total_eval_steps = 0
         self.env_interface = None
+        self.eval_epochs = 0
+        self.train_epochs = 0
 
     ####
     # Logging
