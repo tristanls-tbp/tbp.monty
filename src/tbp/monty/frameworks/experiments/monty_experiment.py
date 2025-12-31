@@ -115,6 +115,7 @@ class MontyExperiment:
                 self.eval_epochs,
                 self.eval_episodes,
             )
+        logger.info(f"resetting RNG to seed {seed}")
         self.rng = np.random.RandomState(seed)
 
     def setup_experiment(self, config: dict[str, Any]) -> None:
