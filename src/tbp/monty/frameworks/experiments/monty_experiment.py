@@ -159,8 +159,7 @@ class MontyExperiment:
             lm_class = lm_cfg["learning_module_class"]
             lm_args = lm_cfg["learning_module_args"]
             assert issubclass(lm_class, LearningModule)
-            learning_modules[lm_id] = lm_class(**lm_args)
-            learning_modules[lm_id].rng = self.rng
+            learning_modules[lm_id] = lm_class(rng=self.rng, **lm_args)
             learning_modules[lm_id].learning_module_id = lm_id
 
         # Create sensor modules

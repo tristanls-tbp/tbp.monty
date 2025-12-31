@@ -148,7 +148,7 @@ class HabitatSalienceSM(SensorModule):
 
         return (weighted_salience - min_) / scale
 
-    def pre_episode(self, rng: np.random.RandomState):
+    def pre_episode(self, rng: np.random.RandomState) -> None:
         """This method is called before each episode."""
         self._rng = rng
         self._goals.clear()

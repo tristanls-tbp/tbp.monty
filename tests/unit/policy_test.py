@@ -242,6 +242,7 @@ class PolicyTest(unittest.TestCase):
         )
 
         graph_lm = EvidenceGraphLM(
+            rng=np.random.RandomState(),
             max_match_distance=0.005,
             tolerances={
                 "patch": {
@@ -1031,10 +1032,11 @@ class PolicyTest(unittest.TestCase):
         )
 
         lm.pre_episode(
+            rng=np.random.RandomState(),
             primary_target=dict(
                 object="dummy_object",
                 quat_rotation=[1.0, 0.0, 0.0, 0.0],  # Filler value
-            )
+            ),
         )
 
         lm.matching_step(observations=[State(**fake_sensation_config)])

@@ -28,6 +28,7 @@ class DisplacementGraphLM(GraphLM):
 
     def __init__(
         self,
+        rng: np.random.RandomState,
         k=None,
         match_attribute=None,
         tolerance=0.001,
@@ -37,6 +38,7 @@ class DisplacementGraphLM(GraphLM):
         """Initialize Learning Module.
 
         Args:
+            rng: The random number generator.
             k: How many nearest neighbors should nodes in graphs connect to.
             match_attribute: Which displacement to use for matching.
                 Should be in ['displacement', 'PPF'].
@@ -51,7 +53,7 @@ class DisplacementGraphLM(GraphLM):
                 thresholds based on e.g. surface normal angle difference, or principal
                 curvature magnitude difference.
         """
-        super().__init__()
+        super().__init__(rng=rng)
         self.graph_memory = DisplacementGraphMemory(
             graph_delta_thresholds=graph_delta_thresholds,
             k=k,

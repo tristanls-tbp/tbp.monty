@@ -338,7 +338,7 @@ class MontyBase(Monty):
         self.reset_episode_steps()
         self.switch_to_matching_step()
         for lm in self.learning_modules:
-            lm.pre_episode()
+            lm.pre_episode(rng)
 
         for sm in self.sensor_modules:
             sm.pre_episode(rng)

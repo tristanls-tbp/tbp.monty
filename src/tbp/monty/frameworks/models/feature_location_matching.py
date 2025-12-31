@@ -41,6 +41,7 @@ class FeatureGraphLM(GraphLM):
 
     def __init__(
         self,
+        rng: np.random.RandomState,
         max_match_distance,
         tolerances,
         path_similarity_threshold=0.1,
@@ -53,6 +54,7 @@ class FeatureGraphLM(GraphLM):
         """Initialize Learning Module.
 
         Args:
+            rng: The random number generator.
             max_match_distance: Maximum distance of a tested and stored location to
                 be matched.
             tolerances: How much can each observed feature deviate from the stored
@@ -74,7 +76,7 @@ class FeatureGraphLM(GraphLM):
             umbilical_num_poses: Number of samples rotations in the direction
                 of the plane perpendicular to the surface normal.
         """
-        super().__init__()
+        super().__init__(rng=rng)
         self.graph_memory = FeatureGraphMemory(
             graph_delta_thresholds=graph_delta_thresholds,
         )
@@ -643,7 +645,7 @@ class FeatureGraphLM(GraphLM):
                 for _ in range(n_samples):
                     # If we do this we need a better terminal condition for similar
                     # rotations or more robustness. n_sample currently set to 0.
-                    rand_rot = self.rng.vonmises(0, kappa, 3)
+                    rand_rot = self._rng.vonmises(0, kappa, 3)
                     rot = Rotation.from_euler(
                         "xyz", [rand_rot[0], rand_rot[1], rand_rot[2]]
                     )

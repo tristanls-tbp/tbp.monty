@@ -931,7 +931,7 @@ class EvidenceGoalStateGenerator(GraphGoalStateGenerator):
         )
 
         if (
-            len(pm_smaller_thresh) == 1 and (self.parent_lm.rng.uniform() <= 0.5)
+            len(pm_smaller_thresh) == 1 and (self.parent_lm._rng.uniform() <= 0.5)
         ) or len(pm_base_thresh) == 1:
             # We always focus on pose if there is just 1 possible match - if we are part
             # of the way towards being certain about the ID

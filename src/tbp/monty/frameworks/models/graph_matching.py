@@ -55,7 +55,7 @@ class MontyForGraphMatching(MontyBase):
     # ------------------- Main Algorithm -----------------------
     def pre_episode(
         self, rng: np.random.RandomState, primary_target, semantic_id_to_label=None
-    ):
+    ) -> None:
         """Reset values and call sub-pre_episode functions."""
         self._is_done = False
         self.reset_episode_steps()
@@ -65,7 +65,7 @@ class MontyForGraphMatching(MontyBase):
         self.semantic_id_to_label = semantic_id_to_label
 
         for lm in self.learning_modules:
-            lm.pre_episode(primary_target)
+            lm.pre_episode(rng, primary_target)
 
         for sm in self.sensor_modules:
             sm.pre_episode(rng)
@@ -557,15 +557,17 @@ class MontyForGraphMatching(MontyBase):
 class GraphLM(LearningModule):
     """General Learning Module that contains a graph memory."""
 
-    def __init__(self, initialize_base_modules=True):
+    def __init__(self, rng: np.random.RandomState, initialize_base_modules=True):
         """Initialize general Learning Module based on graphs.
 
         Args:
+            rng: The random number generator.
             initialize_base_modules: Provides option to not intialize
                 the base modules if more specialized versions will be initialized in
                 child LMs. Defaults to True.
         """
         super().__init__()
+        self._rng = rng
         self.buffer = FeatureAtLocationBuffer()
         self.buffer.reset()
         self.learning_module_id = "LM_0"
@@ -597,15 +599,19 @@ class GraphLM(LearningModule):
             self.possible_poses,
         ) = self.graph_memory.get_initial_hypotheses()
 
-    def pre_episode(self, primary_target):
+    def pre_episode(self, rng: np.random.RandomState, primary_target) -> None:
         """Set target object var and reset others from last episode.
 
-        primary_target : the primary target for the learning module/
-            Monty system to recognize (e.g. the object the agent begins on, or an
-            important object in the environment; NB that a learning module can also
-            correctly classify a "stepwise_target", corresponding to the object that
-            it is currently on, while it is attempting to classify the primary_target)
+        Args:
+            rng: The random number generator.
+            primary_target: The primary target for the learning module/
+                Monty system to recognize (e.g. the object the agent begins on, or an
+                important object in the environment; NB that a learning module can also
+                correctly classify a "stepwise_target", corresponding to the object that
+                it is currently on, while it is attempting to classify the
+                primary_target)
         """
+        self._rng = rng
         self.reset()
         self.buffer.reset()
         if self.gsg is not None:

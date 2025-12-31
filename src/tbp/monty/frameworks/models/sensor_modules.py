@@ -438,7 +438,7 @@ class Probe(SensorModule):
 
         return None
 
-    def pre_episode(self, rng: np.random.RandomState):  # noqa: ARG002
+    def pre_episode(self, rng: np.random.RandomState) -> None:  # noqa: ARG002
         """Reset buffer and is_exploring flag."""
         self._snapshot_telemetry.reset()
         self.is_exploring = False
@@ -626,7 +626,7 @@ class HabitatSM(SensorModule):
         self.visited_locs = []
         self.visited_normals = []
 
-    def pre_episode(self, rng: np.random.RandomState):
+    def pre_episode(self, rng: np.random.RandomState) -> None:
         self._rng = rng
         self._snapshot_telemetry.reset()
         self._state_filter.reset()
