@@ -140,8 +140,7 @@ class EnvironmentInterface:
 
     def reset(self, rng: np.random.RandomState):
         self.rng = rng
-        observation = self.env.reset()
-        state = self.env.get_state()
+        observation, state = self.env.reset()
 
         if self.transform is not None:
             observation = self.apply_transform(self.transform, observation, state)
@@ -159,8 +158,7 @@ class EnvironmentInterface:
         return observation
 
     def step(self, actions: Sequence[Action]):
-        observation = self.env.step(actions)
-        state = self.env.get_state()
+        observation, state = self.env.step(actions)
         if self.transform is not None:
             observation = self.apply_transform(self.transform, observation, state)
         return observation, state
