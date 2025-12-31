@@ -12,6 +12,7 @@ from tbp.monty.frameworks.experiments.mode import ExperimentMode
 
 __all__ = ["episode_seed"]
 
+
 def episode_seed(seed: int, mode: ExperimentMode, episode: int) -> int:
     """Generate a seed for an episode.
 

@@ -11,6 +11,7 @@ from enum import Enum
 
 __all__ = ["ExperimentMode"]
 
+
 class ExperimentMode(Enum):
     """Experiment mode."""
 

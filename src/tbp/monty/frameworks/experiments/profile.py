@@ -18,6 +18,7 @@ from tbp.monty.frameworks.experiments.monty_experiment import MontyExperiment
 
 __all__ = ["ProfileExperimentMixin"]
 
+
 def make_stats_df(stats):
     """Convert cProfile.Profile() stats to dataframe.
 
