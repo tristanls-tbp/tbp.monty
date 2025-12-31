@@ -1,4 +1,4 @@
-# Copyright 2025 Thousand Brains Project
+# Copyright 2025-2026 Thousand Brains Project
 # Copyright 2022-2024 Numenta Inc.
 #
 # Copyright may exist in Contributors' modifications
@@ -29,6 +29,8 @@ from tbp.monty.frameworks.utils.spatial_arithmetics import (
     get_unique_rotations,
     rotate_pose_dependent_features,
 )
+
+__all__ = ["FeatureGraphLM", "FeatureGraphMemory"]
 
 logger = logging.getLogger(__name__)
 

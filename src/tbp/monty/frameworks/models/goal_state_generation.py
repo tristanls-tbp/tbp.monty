@@ -1,4 +1,4 @@
-# Copyright 2025 Thousand Brains Project
+# Copyright 2025-2026 Thousand Brains Project
 # Copyright 2023-2024 Numenta Inc.
 #
 # Copyright may exist in Contributors' modifications
@@ -16,6 +16,8 @@ import numpy as np
 from tbp.monty.frameworks.models.abstract_monty_classes import GoalStateGenerator
 from tbp.monty.frameworks.models.states import GoalState
 from tbp.monty.frameworks.utils.communication_utils import get_state_from_channel
+
+__all__ = ["EvidenceGoalStateGenerator", "GraphGoalStateGenerator"]
 
 logger = logging.getLogger(__name__)
 

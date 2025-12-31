@@ -1,4 +1,4 @@
-# Copyright 2025 Thousand Brains Project
+# Copyright 2025-2026 Thousand Brains Project
 #
 # Copyright may exist in Contributors' modifications
 # and/or contributions to the work.
@@ -26,6 +26,8 @@ from tbp.monty.frameworks.models.salience.strategies import (
 from tbp.monty.frameworks.models.sensor_modules import SnapshotTelemetry
 from tbp.monty.frameworks.models.states import GoalState, State
 from tbp.monty.frameworks.sensors import SensorID
+
+__all__ = ["HabitatSalienceSM"]
 
 
 class HabitatSalienceSM(SensorModule):

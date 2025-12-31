@@ -1,4 +1,4 @@
-# Copyright 2025 Thousand Brains Project
+# Copyright 2025-2026 Thousand Brains Project
 #
 # Copyright may exist in Contributors' modifications
 # and/or contributions to the work.
@@ -9,6 +9,7 @@
 
 from enum import Enum
 
+__all__ = ["ExperimentMode"]
 
 class ExperimentMode(Enum):
     """Experiment mode."""

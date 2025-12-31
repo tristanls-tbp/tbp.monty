@@ -1,4 +1,4 @@
-# Copyright 2025 Thousand Brains Project
+# Copyright 2025-2026 Thousand Brains Project
 # Copyright 2022-2024 Numenta Inc.
 #
 # Copyright may exist in Contributors' modifications
@@ -45,6 +45,8 @@ from tbp.monty.frameworks.utils.logging_utils import (
     maybe_rename_existing_file,
 )
 from tbp.monty.hydra import register_resolvers
+
+__all__ = ["main"]
 
 logger = logging.getLogger(__name__)
 

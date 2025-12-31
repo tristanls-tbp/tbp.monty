@@ -1,4 +1,4 @@
-# Copyright 2025 Thousand Brains Project
+# Copyright 2025-2026 Thousand Brains Project
 # Copyright 2022-2024 Numenta Inc.
 #
 # Copyright may exist in Contributors' modifications
@@ -29,6 +29,8 @@ from tbp.monty.frameworks.models.goal_state_generation import GraphGoalStateGene
 from tbp.monty.frameworks.models.monty_base import MontyBase
 from tbp.monty.frameworks.models.object_model import GraphObjectModel
 from tbp.monty.frameworks.models.states import GoalState
+
+__all__ = ["GraphLM", "GraphMemory", "MontyForGraphMatching"]
 
 logger = logging.getLogger(__name__)
 
