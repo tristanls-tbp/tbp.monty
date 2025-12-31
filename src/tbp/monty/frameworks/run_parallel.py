@@ -39,7 +39,6 @@ from tbp.monty.frameworks.experiments.profile import ProfileExperimentMixin
 from tbp.monty.frameworks.loggers.monty_handlers import (
     BasicCSVStatsHandler,
     DetailedJSONHandler,
-    ReproduceEpisodeHandler,
 )
 from tbp.monty.frameworks.utils.logging_utils import (
     maybe_rename_existing_dir,
@@ -129,20 +128,6 @@ def post_parallel_profile_cleanup(parallel_dirs: Iterable[Path], base_dir: Path,
     post_parallel_log_cleanup(episode_csvs, episode_outfile, cat_fn=cat_csv)
     post_parallel_log_cleanup(setup_csvs, setup_outfile, cat_fn=cat_csv)
     post_parallel_log_cleanup(overall_csvs, overall_outfile, cat_fn=cat_csv)
-
-
-def move_reproducibility_data(base_dir: Path, parallel_dirs: Iterable[Path]):
-    outdir = base_dir / "reproduce_episode_data"
-    if outdir.exists():
-        shutil.rmtree(outdir)
-
-    outdir.mkdir(parents=True)
-    repro_dirs = [pdir / "reproduce_episode_data" for pdir in parallel_dirs]
-
-    for rdir in repro_dirs:
-        for f in rdir.glob("*"):
-            assert f.is_file()
-            f.rename(outdir / f.name)
 
 
 def print_config(config: DictConfig) -> None:
@@ -513,10 +498,6 @@ def post_parallel_eval(experiments: list[Mapping], base_dir: Path) -> None:
             outfile = base_dir / filename
             maybe_rename_existing_file(outfile)
             post_parallel_log_cleanup(filenames, outfile, cat_fn=cat_csv)
-            continue
-
-        if issubclass(handler, ReproduceEpisodeHandler):
-            move_reproducibility_data(base_dir, parallel_dirs)
             continue
 
     if experiments[0]["config"]["logging"]["python_log_to_file"]:
