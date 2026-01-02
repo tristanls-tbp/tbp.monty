@@ -67,8 +67,6 @@ class MontyExperiment:
         """
         self.config = config
 
-        # TODO: Is it necessary to set the RNG here?
-        # RNG will be reset with episode-specific seed before each episode.
         self.rng = np.random.RandomState(config["seed"])
 
         self.do_train = config["do_train"]
