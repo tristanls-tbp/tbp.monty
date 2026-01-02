@@ -325,6 +325,11 @@ class MontyExperiment:
         Returns:
             dict with current expirent state.
         """
+        current_rng_seed = (
+            self._rng_seed_history[-1]
+            if self._rng_seed_history
+            else self.config["seed"]
+        )
         args = dict(
             total_train_steps=self.total_train_steps,
             train_episodes=self.train_episodes,
@@ -332,6 +337,7 @@ class MontyExperiment:
             total_eval_steps=self.total_eval_steps,
             eval_episodes=self.eval_episodes,
             eval_epochs=self.eval_epochs,
+            episode_seed=current_rng_seed,
         )
         # FIXME: 'target' attribute is specific to `EnvironmentInterfacePerObject`
         if isinstance(self.env_interface, EnvironmentInterfacePerObject):
