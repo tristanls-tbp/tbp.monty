@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, Dict, NewType
+from typing import Dict, TypedDict
 
 import numpy as np
 import numpy.typing as npt
@@ -25,7 +25,6 @@ __all__ = [
     "GoalStateGenerator",
     "LMMemory",
     "LearningModule",
-    "Modality",
     "Monty",
     "ObjectModel",
     "Observations",
@@ -34,11 +33,7 @@ __all__ = [
 ]
 
 
-Modality = NewType("Modality", str)
-"""Unique identifier for a modality."""
-
-
-class SensorObservations(Dict[Modality, npt.NDArray[Any]]):
+class SensorObservations(TypedDict, total=False):
     """Observations from a sensor."""
 
     rgba: npt.NDArray[np.int_]  # TODO: Verify specific type
@@ -46,7 +41,7 @@ class SensorObservations(Dict[Modality, npt.NDArray[Any]]):
     semantic: npt.NDArray[np.int_]  # TODO: Verify specific type
     semantic_3d: npt.NDArray[np.int_]  # TODO: Verify specific type
     sensor_frame_data: npt.NDArray[np.int_]  # TODO: Verify specific type
-    world_camera: npt.NDArray[np.int_]  # TODO: Verify specific type
+    world_camera: npt.NDArray[np.float64]  # TODO: Verify specific type
     pixel_loc: npt.NDArray[np.float64]  # TODO: Verify specific type
     raw: npt.NDArray[np.uint8]
 
