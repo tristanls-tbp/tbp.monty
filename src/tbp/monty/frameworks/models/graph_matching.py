@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import logging
-from typing import ClassVar
+from typing import ClassVar, cast
 
 import numpy as np
 import torch
@@ -189,7 +189,7 @@ class MontyForGraphMatching(MontyBase):
         self._is_done = True
 
     # ------------------ Logging & Saving ----------------------
-    def load_state_dict_from_parallel(self, parallel_dirs, save=False):
+    def load_state_dict_from_parallel(self, parallel_dirs, save=False) -> None:
         lm_dict = {}
         for pdir in parallel_dirs:
             state_dict = torch.load(pdir / "model.pt")
@@ -200,6 +200,38 @@ class MontyForGraphMatching(MontyBase):
                         target_to_graph_id={},
                         graph_id_to_target={},
                     )
+
+                # new_graph_memory = state_dict["lm_dict"][lm]["graph_memory"]
+                # for object_id in new_graph_memory.keys():
+                #     new_graph_data = new_graph_memory[object_id]
+                #     current_graph_memory = lm_dict[lm]["graph_memory"]
+                #     if object_id not in current_graph_memory:
+                #         current_graph_memory[object_id] = new_graph_data
+                #     else:
+                #         current_graph_data = current_graph_memory[object_id]
+                #         for channel_id in new_graph_data.keys():
+                #             new_object_model: GraphObjectModel = cast(
+                #                 "GraphObjectModel", new_graph_data[channel_id]
+                #             )
+                #             if channel_id not in current_graph_data.keys():
+                #                 current_graph_data[channel_id] = new_object_model
+                #             else:
+                #                 current_object_model: GraphObjectModel = cast(
+                #                     "GraphObjectModel", current_graph_data[channel_id]
+                #                 )
+                #                 for key in new_object_model._graph.keys:
+                #                     value = new_object_model._graph[key]
+                #                     if key not in current_object_model._graph.keys:
+                #                         current_object_model._graph[key] = value
+                #                     elif torch.is_tensor(value):
+                #                         current_object_model._graph[key] = torch.cat(
+                #                             [
+                #                                 current_object_model._graph[key],
+                #                                 value,
+                #                             ],
+                #                             dim=0,
+                #                         )
+                #         current_graph_memory[object_id] = current_graph_data
 
                 lm_dict[lm]["graph_memory"].update(
                     state_dict["lm_dict"][lm]["graph_memory"]
@@ -1176,7 +1208,9 @@ class GraphMemory(LMMemory):
                         object_rotation,
                     )
                 else:
-                    logger.info(f"{graph_id} not in memory ({self.get_memory_ids()})")
+                    logger.warning(
+                        f"{graph_id} not in memory ({self.get_memory_ids()})"
+                    )
                     print(f"building graph for {input_channel}")
                     self._build_graph(
                         input_channel_locations,

@@ -10,6 +10,7 @@
 
 import copy
 import logging
+from typing import Any
 
 import numpy as np
 import torch
@@ -50,7 +51,7 @@ class GraphObjectModel(ObjectModel):
         """
         logger.info(f"init object model with id {object_id}")
         self.object_id = object_id
-        self._graph = None
+        self._graph: Data | None = None
         self.has_ppf = False
 
     # =============== Public Interface Functions ===============
@@ -150,7 +151,7 @@ class GraphObjectModel(ObjectModel):
         if self._graph is not None:
             return self._graph.feature_mapping.keys()
 
-    def set_graph(self, graph):
+    def set_graph(self, graph: Data):
         """Set self._graph property with given graph (i.e. from pretraining)."""
         self._graph = graph
 

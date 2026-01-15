@@ -340,16 +340,20 @@ def generate_parallel_train_configs(experiment: DictConfig, name: str) -> list[M
     )
     object_names = experiment.config["train_env_interface_args"]["object_names"]
     new_experiments = []
+    episode_count = 0
 
+    # for _ in range(len(sampler)):
     for obj in object_names:
         new_experiment: Mapping = OmegaConf.to_object(experiment)  # type: ignore[assignment]
 
         # No eval
-        new_experiment["config"].update(do_eval=False, do_train=True, n_train_epochs=1)
+        new_experiment["config"].update(
+            do_eval=False, do_train=True, episode=episode_count, n_train_epochs=1
+        )
 
         # Save results in parallel subdir of output_dir, update run_name
         output_dir = Path(new_experiment["config"]["logging"]["output_dir"])
-        run_name = f"{name}-parallel_train_episode_{obj}"
+        run_name = f"{name}-parallel_train_episode_{episode_count}"
         new_experiment["config"]["logging"]["run_name"] = run_name
         new_experiment["config"]["logging"]["output_dir"] = output_dir / name / run_name
         new_experiment["config"]["logging"]["wandb_handlers"] = []
@@ -358,12 +362,14 @@ def generate_parallel_train_configs(experiment: DictConfig, name: str) -> list[M
         # Object id, pose parameters for single episode
         new_experiment["config"]["train_env_interface_args"].update(
             object_names=[obj for _ in range(len(sampler))]
+            # object_names=[obj],
         )
         new_experiment["config"]["train_env_interface_args"]["object_init_sampler"][
             "change_every_episode"
         ] = True
 
         new_experiments.append(new_experiment)
+        episode_count += 1
 
     return new_experiments
 

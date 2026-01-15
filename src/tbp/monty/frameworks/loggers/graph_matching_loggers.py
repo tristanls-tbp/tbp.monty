@@ -9,12 +9,15 @@
 # https://opensource.org/licenses/MIT.
 
 import copy
+import json
+import logging
 
 import numpy as np
 import pandas as pd
 import wandb
 from sklearn.preprocessing import LabelEncoder
 
+from tbp.monty.frameworks.actions.actions import ActionJSONEncoder
 from tbp.monty.frameworks.loggers.exp_logger import BaseMontyLogger
 from tbp.monty.frameworks.utils.logging_utils import (
     get_stats_per_lm,
@@ -48,6 +51,8 @@ place at the end of an episode. Why all the callbacks then, like post_step, post
 etc.? We are building a plane while flying it. Best not to throw the landing gear out
 the window just because it isn't being used right now.
 """
+
+logger = logging.getLogger(__name__)
 
 
 class BasicGraphMatchingLogger(BaseMontyLogger):
@@ -230,6 +235,9 @@ class BasicGraphMatchingLogger(BaseMontyLogger):
 
         self.data["BASIC"][f"{mode}_overall_stats"][episode] = overall_stats
         self.data["BASIC"][f"{mode}_actions"][episode] = actions
+        logger.warning(f"episode: {episode}, target: {logger_args['target']['object']}")
+        for action in actions:
+            logger.warning(json.dumps(action[0], cls=ActionJSONEncoder))
         self.data["BASIC"][f"{mode}_targets"][episode] = target_dict
         self.data["BASIC"][f"{mode}_timing"][episode] = logger_time
         self.data["BASIC"][f"{mode}_stats"][episode]["target"] = target_dict
@@ -280,6 +288,7 @@ class BasicGraphMatchingLogger(BaseMontyLogger):
                 else 0  # Handles division by 0
             )
 
+        episode_performance = None
         stats["episode_lm_performances"].append(lm_performances)
         for p in self.performance_options:
             if p in lm_performances:
@@ -289,9 +298,10 @@ class BasicGraphMatchingLogger(BaseMontyLogger):
                 # but still have an overall performance of correct (or other).
                 episode_performance = p
 
-        for p in self.performance_options:
-            stats[f"episode_{p}"] = int(p == episode_performance)
-            stats[f"num_{p}"] += int(p == episode_performance)
+        if episode_performance is not None:
+            for p in self.performance_options:
+                stats[f"episode_{p}"] = int(p == episode_performance)
+                stats[f"num_{p}"] += int(p == episode_performance)
 
         stats["num_episodes"] += 1
 

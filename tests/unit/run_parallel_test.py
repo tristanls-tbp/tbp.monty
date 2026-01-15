@@ -8,8 +8,11 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT.
 from __future__ import annotations
+from typing import cast
 
 import pytest
+
+from tbp.monty.frameworks.models.object_model import GraphObjectModel
 
 pytest.importorskip(
     "habitat_sim",
@@ -62,6 +65,41 @@ class RunParallelTest(unittest.TestCase):
             self.eval_lt_cfg = hydra_config("eval_lt", self.output_dir / "lt")
             self.eval_gt_cfg = hydra_config("eval_gt", self.output_dir / "gt")
 
+    def assert_trained_models_equal(self, serial_model: dict, parallel_model: dict):
+        if set(parallel_model["lm_dict"].keys()) != set(serial_model["lm_dict"].keys()):
+            raise AssertionError("LM IDs do not match")
+
+        for lm_id in parallel_model["lm_dict"].keys():
+            p = parallel_model["lm_dict"][lm_id]
+            s = serial_model["lm_dict"][lm_id]
+            if set(p.keys()) != set(s.keys()):
+                raise AssertionError(f"LM {lm_id} keys do not match")
+
+            p_graph_memory = p["graph_memory"]
+            s_graph_memory = s["graph_memory"]
+            if set(p_graph_memory.keys()) != set(s_graph_memory.keys()):
+                raise AssertionError(f"LM {lm_id} graph memory keys do not match")
+
+            for graph_id in p_graph_memory.keys():
+                p_graph = p_graph_memory[graph_id]
+                s_graph = s_graph_memory[graph_id]
+                if set(p_graph.keys()) != set(s_graph.keys()):
+                    raise AssertionError(
+                        f"LM {lm_id} graph {graph_id} keys do not match"
+                    )
+
+                for data_id in p_graph.keys():
+                    p_graph_data: GraphObjectModel = cast(
+                        "GraphObjectModel", p_graph[data_id]
+                    )
+                    s_graph_data: GraphObjectModel = cast(
+                        "GraphObjectModel", s_graph[data_id]
+                    )
+                    if not p_graph_data.assert_equal(s_graph_data):
+                        raise AssertionError(
+                            f"LM {lm_id} graph {graph_id} data {data_id} does not match"
+                        )
+
     def test_run_parallel_equals_serial_for_various_n_eval_epochs(self):
         # serial run
         exp = hydra.utils.instantiate(self.supervised_pre_training_cfg.experiment)
@@ -82,6 +120,38 @@ class RunParallelTest(unittest.TestCase):
             / "model.pt"
         )
         serial_model = torch.load(self.output_dir / "pretrained" / "model.pt")
+        print(parallel_model["lm_dict"])
+        print(
+            parallel_model["lm_dict"][0]["graph_memory"]["capsule3DSolid"][
+                "patch"
+            ].num_nodes
+        )
+        print(
+            type(
+                parallel_model["lm_dict"][0]["graph_memory"]["capsule3DSolid"][
+                    "patch"
+                ].x
+            )
+        )
+        print(
+            type(
+                parallel_model["lm_dict"][0]["graph_memory"]["capsule3DSolid"]["patch"]
+            )
+        )
+        parallel_capsule3DSolid = parallel_model["lm_dict"][0]["graph_memory"][
+            "capsule3DSolid"
+        ]["patch"]
+        serial_capsule3DSolid = serial_model["lm_dict"][0]["graph_memory"][
+            "capsule3DSolid"
+        ]["patch"]
+        print("parallel_capsule3DSolid", parallel_capsule3DSolid)
+        print("serial_capsule3DSolid", serial_capsule3DSolid)
+        print(
+            "parallel_capsule3DSolid.equal(serial_capsule3DSolid)",
+            parallel_capsule3DSolid.equal(serial_capsule3DSolid),
+        )
+        self.assert_trained_models_equal(serial_model, parallel_model)
+        assert False
 
         # Same objects
         self.assertEqual(
