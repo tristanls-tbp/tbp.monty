@@ -52,7 +52,6 @@ from tbp.monty.frameworks.models.motor_system_state import (
     ProprioceptiveState,
 )
 from tbp.monty.frameworks.models.states import State
-from tbp.monty.frameworks.utils.dataclass_utils import config_to_dict
 from tbp.monty.frameworks.utils.transform_utils import numpy_to_scipy_quat
 
 
@@ -207,25 +206,6 @@ class PolicyTest(unittest.TestCase):
             exp.run()
 
     # ==== MORE INVOLVED TESTS OF ACTION POLICIES ====
-
-    def initialize_motor_system(self, config_object):
-        """Setups up a motor system for testing.
-
-        Returns:
-            motor_system: created motor system instance
-            motor_system_args: motor system arguments for reference
-        """
-        motor_system_config = config_to_dict(config_object)
-        motor_system_class = motor_system_config["motor_system_class"]
-        motor_system_args = motor_system_config["motor_system_args"]
-        policy_class = motor_system_args["policy_class"]
-        policy_args = motor_system_args["policy_args"]
-        rng = np.random.RandomState(123)
-        policy = policy_class(rng=rng, **policy_args)
-        motor_system = motor_system_class(policy=policy)
-        motor_system.pre_episode(rng)
-
-        return motor_system, motor_system_args
 
     def initialize_lm_with_gsg(self):
         """Setups up an LM with a goal-state generator for testing.
@@ -731,11 +711,15 @@ class PolicyTest(unittest.TestCase):
         hypothetical outputs from the motor-system.
         """
         motor_system_cfg = OmegaConf.to_object(self.motor_system_cfg_fragment)
-        motor_system_cfg["motor_system_args"]["policy_args"]["max_pc_bias_steps"] = 2
-        motor_system, motor_system_args = self.initialize_motor_system(motor_system_cfg)
+        policy_class = motor_system_cfg["motor_system_args"]["policy_class"]
+        policy_args = motor_system_cfg["motor_system_args"]["policy_args"]
+        policy_args["max_pc_bias_steps"] = 2
+        rng = np.random.RandomState(123)
+        policy = policy_class(rng=rng, **policy_args)
+        policy.pre_episode(rng)
 
         # Initialize motor-system state
-        motor_system._state = ProprioceptiveState(
+        proprioceptive_state = ProprioceptiveState(
             {
                 AgentID("agent_id_0"): AgentState(
                     position=np.array([0, 0, 0]),  # unused
@@ -752,77 +736,73 @@ class PolicyTest(unittest.TestCase):
         # also in environmental coordinates, so we compare these
         # Note that the movement is a unit vector because it is a direction, the amount
         # (i.e. size) of the translation is represented separately.
-        motor_system._policy.processed_observations = self.fake_obs_pc[0]
-        direction = motor_system._policy.tangential_direction(motor_system._state)
+        policy.processed_observations = self.fake_obs_pc[0]
+        direction = policy.tangential_direction(proprioceptive_state)
         assert np.all(np.isclose(direction, [1, 0, 0])), (
             "Not following correct PC direction"
         )
-        assert motor_system._policy.following_pc_counter == 1, (
+        assert policy.following_pc_counter == 1, (
             "Should have followed PC and incremented counter"
         )
-        assert motor_system._policy.continuous_pc_steps == 1, (
+        assert policy.continuous_pc_steps == 1, (
             "Should have incremented continuous counter"
         )
 
         # Step 2
-        motor_system._policy.processed_observations = self.fake_obs_pc[1]
-        direction = motor_system._policy.tangential_direction(motor_system._state)
+        policy.processed_observations = self.fake_obs_pc[1]
+        direction = policy.tangential_direction(proprioceptive_state)
         assert np.all(np.isclose(direction, [1, 0, 0])), (
             "Not following correct PC direction"
         )
-        assert motor_system._policy.following_pc_counter == 2, (
+        assert policy.following_pc_counter == 2, (
             "Should have followed PC and incremented counter"
         )
-        assert motor_system._policy.continuous_pc_steps == 2, (
+        assert policy.continuous_pc_steps == 2, (
             "Should have incremented continuous counter"
         )
 
         # Step 3: Our bias should change from following minimal to maximal
         # PC
-        motor_system._policy.processed_observations = self.fake_obs_pc[2]
-        direction = motor_system._policy.tangential_direction(motor_system._state)
+        policy.processed_observations = self.fake_obs_pc[2]
+        direction = policy.tangential_direction(proprioceptive_state)
         assert np.all(np.isclose(direction, [0, 1, 0])), (
             "Not following correct PC direction"
         )
-        assert motor_system._policy.following_pc_counter == 1, (
+        assert policy.following_pc_counter == 1, (
             "Should have reset following PC counter due to bias change, and incremented"
         )
-        assert motor_system._policy.continuous_pc_steps == 1, (
+        assert policy.continuous_pc_steps == 1, (
             "Should have reset continous counter due to bias change, and incremented"
         )
 
         # Step 4
-        motor_system._policy.processed_observations = self.fake_obs_pc[3]
-        direction = motor_system._policy.tangential_direction(motor_system._state)
+        policy.processed_observations = self.fake_obs_pc[3]
+        direction = policy.tangential_direction(proprioceptive_state)
         assert np.all(np.isclose(direction, [0, 1, 0])), (
             "Not following correct PC direction"
         )
-        assert motor_system._policy.following_pc_counter == 2, (
+        assert policy.following_pc_counter == 2, (
             "Should have followed PC and incremented counter"
         )
-        assert motor_system._policy.continuous_pc_steps == 2, (
+        assert policy.continuous_pc_steps == 2, (
             "Should have incremented continuous counter"
         )
 
         # Step 5: Pass observation *without* a well-defined PC direction
-        motor_system._policy.processed_observations = self.fake_obs_pc[4]
-        direction = motor_system._policy.tangential_direction(motor_system._state)
+        policy.processed_observations = self.fake_obs_pc[4]
+        direction = policy.tangential_direction(proprioceptive_state)
         assert np.isclose(
             np.dot(self.fake_obs_pc[4].get_surface_normal(), direction), 0
         ), "Direction should be orthogonal to tangent (surface) plane"
-        assert motor_system._policy.ignoring_pc_counter == 1, (
+        assert policy.ignoring_pc_counter == 1, (
             "Should have reset ignoring_pc_counter, and then incremented"
         )
-        assert motor_system._policy.continuous_pc_steps == 0, (
-            "Should have reset continuous counter"
-        )
-        assert motor_system._policy.following_pc_counter == 2, (
+        assert policy.continuous_pc_steps == 0, "Should have reset continuous counter"
+        assert policy.following_pc_counter == 2, (
             "Should have not changed following_pc_counter"
         )
-        assert motor_system._policy.using_pc_guide is False, (
-            "Should not be using PC guide"
-        )
-        assert motor_system._policy.prev_angle is None, "Should have reset prev_angle"
+        assert policy.using_pc_guide is False, "Should not be using PC guide"
+        assert policy.prev_angle is None, "Should have reset prev_angle"
 
         # Step 6 : Follow principal curvature, but the agent is rotated, so the policy
         # needs to ensure PC is still handled correctly (PC and the returned movement
@@ -830,13 +810,11 @@ class PolicyTest(unittest.TestCase):
         # the same); note the agent is still orthogonal to the PC directions.
 
         # Update relevant motor-system variables
-        motor_system._policy.ignoring_pc_counter = motor_system_args["policy_args"][
-            "min_general_steps"
-        ]
-        motor_system._state[AgentID("agent_id_0")].rotation = qt.quaternion(0, 0, 1, 0)
+        policy.ignoring_pc_counter = policy_args["min_general_steps"]
+        proprioceptive_state[AgentID("agent_id_0")].rotation = qt.quaternion(0, 0, 1, 0)
 
-        motor_system._policy.processed_observations = self.fake_obs_pc[5]
-        direction = motor_system._policy.tangential_direction(motor_system._state)
+        policy.processed_observations = self.fake_obs_pc[5]
+        direction = policy.tangential_direction(proprioceptive_state)
         assert np.all(np.isclose(direction, [1.0, 0.0, 0])), (
             "Not following correct PC direction"
         )
@@ -1069,7 +1047,14 @@ class PolicyTest(unittest.TestCase):
         lm, gsg_args = self.initialize_lm_with_gsg()
 
         motor_system_cfg = OmegaConf.to_object(self.motor_system_cfg_fragment)
-        motor_system, _ = self.initialize_motor_system(motor_system_cfg)
+        motor_system_class = motor_system_cfg["motor_system_class"]
+        motor_system_args = motor_system_cfg["motor_system_args"]
+        policy_class = motor_system_args["policy_class"]
+        policy_args = motor_system_args["policy_args"]
+        rng = np.random.RandomState(123)
+        policy = policy_class(rng=rng, **policy_args)
+        motor_system = motor_system_class(policy=policy)
+        motor_system.pre_episode(rng)
 
         # The target displacement of the agent from the object; used to determine
         # the validity of the final agent location
