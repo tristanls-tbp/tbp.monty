@@ -35,8 +35,6 @@ from tbp.monty.frameworks.actions.actions import (
     MoveTangentially,
     OrientHorizontal,
     OrientVertical,
-    SetAgentPose,
-    SetSensorRotation,
     TurnLeft,
     TurnRight,
     VectorXYZ,
