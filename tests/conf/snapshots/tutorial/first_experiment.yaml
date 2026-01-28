@@ -112,8 +112,6 @@ experiment:
               - ${monty.class:tbp.monty.frameworks.actions.actions.LookDown}
               - ${monty.class:tbp.monty.frameworks.actions.actions.TurnLeft}
               - ${monty.class:tbp.monty.frameworks.actions.actions.TurnRight}
-              - ${monty.class:tbp.monty.frameworks.actions.actions.SetAgentPose}
-              - ${monty.class:tbp.monty.frameworks.actions.actions.SetSensorRotation}
               rotation_degrees: 5.0
             action_sampler_class: ${monty.class:tbp.monty.frameworks.actions.action_samplers.ConstantSampler}
           policy_class: ${monty.class:tbp.monty.frameworks.models.motor_policies.InformedPolicy}

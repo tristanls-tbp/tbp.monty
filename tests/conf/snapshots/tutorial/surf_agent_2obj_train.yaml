@@ -112,8 +112,6 @@ experiment:
               - ${monty.class:tbp.monty.frameworks.actions.actions.MoveTangentially}
               - ${monty.class:tbp.monty.frameworks.actions.actions.OrientHorizontal}
               - ${monty.class:tbp.monty.frameworks.actions.actions.OrientVertical}
-              - ${monty.class:tbp.monty.frameworks.actions.actions.SetAgentPose}
-              - ${monty.class:tbp.monty.frameworks.actions.actions.SetSensorRotation}
               rotation_degrees: 5.0
             action_sampler_class: ${monty.class:tbp.monty.frameworks.actions.action_samplers.ConstantSampler}
             alpha: 0.1

@@ -35,8 +35,6 @@ from tbp.monty.frameworks.actions.actions import (
     MoveTangentially,
     OrientHorizontal,
     OrientVertical,
-    SetAgentPose,
-    SetSensorRotation,
     TurnLeft,
     TurnRight,
     VectorXYZ,
@@ -183,9 +181,7 @@ class BasePolicy(MotorPolicy):
         self.episode_step = 0
         self.episode_count = 0
         # Ensure our first action only samples from those that can be random
-        self.action: Action | None = self.get_random_action(
-            self.action_sampler.sample(self.agent_id, self.rng)
-        )
+        self.action: Action | None = self.get_random_action()
 
         ###
         # Load data for predefined actions and amounts if specified
@@ -212,34 +208,27 @@ class BasePolicy(MotorPolicy):
     # Methods that define behavior of __call__
     ###
 
-    def dynamic_call(self, _state: MotorSystemState | None = None) -> Action | None:
+    def dynamic_call(self, state: MotorSystemState | None = None) -> Action | None:  # noqa: ARG002
         """Return a random action.
 
         The MotorSystemState is ignored.
 
         Args:
-            _state: The current state of the motor system.
+            state: The current state of the motor system.
                 Defaults to None. Unused.
 
         Returns:
             A random action.
         """
-        return self.get_random_action(self.action)
+        return self.get_random_action()
 
-    def get_random_action(self, action: Action) -> Action:
+    def get_random_action(self) -> Action:
         """Returns random action sampled from allowable actions.
 
         Enables expanding the action space of the base policy with actions that
         we don't necessarily want to randomly sample
         """
-        while True:
-            # TODO: Remove this extraneous call to rand()
-            if self.rng.rand():
-                action = self.action_sampler.sample(self.agent_id, self.rng)
-            if not isinstance(action, SetAgentPose) and not isinstance(
-                action, SetSensorRotation
-            ):
-                return action
+        return self.action_sampler.sample(self.agent_id, self.rng)
 
     def predefined_call(self) -> Action:
         return self.action_list[self.episode_step % len(self.action_list)]
