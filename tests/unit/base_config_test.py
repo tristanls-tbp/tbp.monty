@@ -62,7 +62,7 @@ class BaseConfigTest(unittest.TestCase):
         exp = hydra.utils.instantiate(self.base_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.TRAIN
-            exp.model.set_experiment_mode("train")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.env_interface = exp.train_env_interface
             exp.run_episode()
 
@@ -71,7 +71,7 @@ class BaseConfigTest(unittest.TestCase):
         exp = hydra.utils.instantiate(self.base_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.TRAIN
-            exp.model.set_experiment_mode("train")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.run_epoch()
 
     # @unittest.skip("debugging")
@@ -79,7 +79,7 @@ class BaseConfigTest(unittest.TestCase):
         exp = hydra.utils.instantiate(self.base_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.EVAL
-            exp.model.set_experiment_mode("eval")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.run_epoch()
 
     # @unittest.skip("debugging")
@@ -237,7 +237,7 @@ class DetailedEvidenceLmLoggingConfigTest(unittest.TestCase):
         """
         exp = hydra.utils.instantiate(self.cfg.test)
         with exp:
-            exp.model.set_experiment_mode("eval")
+            exp.model.set_experiment_mode(ExperimentMode.EVAL)
             exp.run_epoch()
 
         # Detailed logging handler should create a detailed_run_stats.json file

@@ -16,7 +16,7 @@ import json
 import logging
 import math
 from pathlib import Path
-from typing import Literal, cast
+from typing import cast
 
 import numpy as np
 import quaternion as qt
@@ -41,6 +41,7 @@ from tbp.monty.frameworks.agents import AgentID
 from tbp.monty.frameworks.environments.positioning_procedures import (
     PositioningProcedure,
 )
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.motor_system_state import AgentState, MotorSystemState
 from tbp.monty.frameworks.models.states import State
 from tbp.monty.frameworks.sensors import SensorID
@@ -117,7 +118,7 @@ class MotorPolicy(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def set_experiment_mode(self, mode: Literal["train", "eval"]) -> None:
+    def set_experiment_mode(self, mode: ExperimentMode) -> None:
         """Sets the experiment mode.
 
         Args:
@@ -287,7 +288,7 @@ class BasePolicy(MotorPolicy):
         self.timestep = state_dict["timestep"]
         self.episode_step = state_dict["episode_step"]
 
-    def set_experiment_mode(self, mode: Literal["train", "eval"]) -> None:
+    def set_experiment_mode(self, mode: ExperimentMode) -> None:
         pass
 
 

@@ -110,7 +110,7 @@ class ProfileExperimentMixinTest(TestCase):
         exp = hydra.utils.instantiate(self.base_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.TRAIN
-            exp.model.set_experiment_mode("train")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.env_interface = exp.train_env_interface
             exp.run_episode()
 
@@ -127,7 +127,7 @@ class ProfileExperimentMixinTest(TestCase):
         exp = hydra.utils.instantiate(self.base_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.TRAIN
-            exp.model.set_experiment_mode("train")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.run_epoch()
 
         self.assertSetEqual(
@@ -145,7 +145,7 @@ class ProfileExperimentMixinTest(TestCase):
         exp = hydra.utils.instantiate(self.base_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.EVAL
-            exp.model.set_experiment_mode("eval")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.run_epoch()
 
         self.assertSetEqual(
