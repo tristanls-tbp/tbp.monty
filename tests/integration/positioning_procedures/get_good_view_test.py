@@ -104,8 +104,8 @@ class GetGoodViewTest(unittest.TestCase):
             with exp:
                 exp.train()
 
-                exp.experiment_mode = ExperimentMode.TRAIN
-                exp.model.set_experiment_mode("train")
+                exp.experiment_mode = ExperimentMode.EVAL
+                exp.model.set_experiment_mode("eval")
                 exp.pre_epoch()
                 exp.pre_episode()
 
