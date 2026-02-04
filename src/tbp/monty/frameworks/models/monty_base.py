@@ -312,7 +312,7 @@ class MontyBase(Monty):
                 logger.info(f"finished exploring after {self.exploratory_steps} steps")
 
             elif self.step_type == "matching_step":
-                if self.experiment_mode == ExperimentMode.TRAIN:
+                if self.experiment_mode is ExperimentMode.TRAIN:
                     self.switch_to_exploratory_step()
                 else:
                     self._is_done = True
@@ -448,10 +448,10 @@ class MontyBase(Monty):
     @property
     def min_steps(self):
         if self.step_type == "matching_step":
-            if self.experiment_mode == ExperimentMode.TRAIN:
+            if self.experiment_mode is ExperimentMode.TRAIN:
                 return self.min_train_steps
 
-            if self.experiment_mode == ExperimentMode.EVAL:
+            if self.experiment_mode is ExperimentMode.EVAL:
                 return self.min_eval_steps
 
         elif self.step_type == "exploratory_step":

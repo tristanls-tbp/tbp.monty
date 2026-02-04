@@ -112,7 +112,7 @@ def plot_graph(
 def get_model_id(epoch, mode):
     if epoch == 0:
         model_id = "pretrained"
-    elif mode == ExperimentMode.EVAL:
+    elif mode is ExperimentMode.EVAL:
         model_id = str(epoch)
     else:
         model_id = str(epoch - 1)

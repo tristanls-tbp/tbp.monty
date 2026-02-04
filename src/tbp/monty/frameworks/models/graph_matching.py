@@ -442,12 +442,12 @@ class MontyForGraphMatching(MontyBase):
                     # pose_time out. Other terminal states remain the same.
                     self._set_time_outs(global_time_out=False)
 
-                    if self.experiment_mode == ExperimentMode.TRAIN:
+                    if self.experiment_mode is ExperimentMode.TRAIN:
                         self.switch_to_exploratory_step()
                         for sm in self.sensor_modules:
                             sm.is_exploring = True
 
-                    elif self.experiment_mode == ExperimentMode.EVAL:
+                    elif self.experiment_mode is ExperimentMode.EVAL:
                         if self.matching_steps > self.min_eval_steps:
                             self._is_done = True
 
@@ -646,7 +646,7 @@ class GraphLM(LearningModule):
 
     def post_episode(self):
         """If training, update memory after each episode."""
-        if (self.mode == ExperimentMode.TRAIN) and len(self.buffer) > 0:
+        if self.mode is ExperimentMode.TRAIN and len(self.buffer) > 0:
             logger.info(f"\n---Updating memory of {self.learning_module_id}---")
             self._update_memory()
             self._update_target_graph_mapping(self.detected_object, self.primary_target)

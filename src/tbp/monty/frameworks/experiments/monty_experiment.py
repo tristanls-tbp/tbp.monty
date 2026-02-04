@@ -100,7 +100,7 @@ class MontyExperiment:
         """Resets the random number generator using episode-specific seed."""
         episodes = (
             self.train_episodes
-            if self.model.experiment_mode == ExperimentMode.TRAIN
+            if self.model.experiment_mode is ExperimentMode.TRAIN
             else self.eval_episodes
         )
         seed = episode_seed(self.config["seed"], self.model.experiment_mode, episodes)

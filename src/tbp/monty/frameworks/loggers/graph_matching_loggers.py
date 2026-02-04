@@ -240,7 +240,7 @@ class BasicGraphMatchingLogger(BaseMontyLogger):
         self, mode: ExperimentMode, episode, episode_steps, monty_matching_steps
     ) -> None:
         """Update overall run stats for mode."""
-        if mode == ExperimentMode.TRAIN:
+        if mode is ExperimentMode.TRAIN:
             stats = self.overall_train_stats
         else:
             stats = self.overall_eval_stats
@@ -302,7 +302,7 @@ class BasicGraphMatchingLogger(BaseMontyLogger):
         stats["num_episodes"] += 1
 
     def get_formatted_overall_stats(self, mode, episode):
-        if mode == ExperimentMode.TRAIN:
+        if mode is ExperimentMode.TRAIN:
             stats = self.overall_train_stats
         else:
             stats = self.overall_eval_stats

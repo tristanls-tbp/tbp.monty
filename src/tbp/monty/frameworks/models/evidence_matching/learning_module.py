@@ -506,7 +506,7 @@ class EvidenceGraphLM(GraphLM):
             graph_id = self.get_possible_matches()[0]
         # If we are evaluating and reach a time out, we set the object to the
         # most likely hypothesis (if evidence for it is above object_evidence_threshold)
-        elif self.mode == ExperimentMode.EVAL and terminal_state in {
+        elif self.mode is ExperimentMode.EVAL and terminal_state in {
             "time_out",
             "pose_time_out",
         }:
