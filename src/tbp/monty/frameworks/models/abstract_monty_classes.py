@@ -16,6 +16,7 @@ import numpy as np
 import numpy.typing as npt
 
 from tbp.monty.frameworks.agents import AgentID
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.motor_system_state import AgentState
 from tbp.monty.frameworks.models.states import GoalState
 from tbp.monty.frameworks.sensors import SensorID
@@ -175,11 +176,14 @@ class Monty(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def set_experiment_mode(self, mode):
+    def set_experiment_mode(self, mode: ExperimentMode) -> None:
         """Set the experiment mode.
 
         Update state variables based on which method (train or evaluate) is being
         called at the experiment level.
+
+        Args:
+            mode: The experiment mode.
         """
         pass
 
@@ -213,11 +217,14 @@ class LearningModule(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def set_experiment_mode(self, mode):
+    def set_experiment_mode(self, mode: ExperimentMode) -> None:
         """Set the experiment mode.
 
         Update state variables based on which method (train or evaluate) is being called
         at the experiment level.
+
+        Args:
+            mode: The experiment mode.
         """
         pass
 

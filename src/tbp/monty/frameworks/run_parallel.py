@@ -107,7 +107,9 @@ def post_parallel_log_cleanup(filenames: Iterable[Path], outfile: Path, cat_fn):
         f.unlink(missing_ok=True)
 
 
-def post_parallel_profile_cleanup(parallel_dirs: Iterable[Path], base_dir: Path, mode):
+def post_parallel_profile_cleanup(
+    parallel_dirs: Iterable[Path], base_dir: Path, mode: ExperimentMode
+):
     profile_dirs = [pdir / "profile" for pdir in parallel_dirs]
 
     episode_csvs = []
@@ -117,15 +119,15 @@ def post_parallel_profile_cleanup(parallel_dirs: Iterable[Path], base_dir: Path,
     for profile_dir in profile_dirs:
         epsd_csv_paths = list(profile_dir.glob("*episode*.csv"))
         setup_csv = profile_dir / "profile-setup_experiment.csv"
-        overall_csv = profile_dir / f"profile-{mode}.csv"
+        overall_csv = profile_dir / f"profile-{mode.value}.csv"
 
         episode_csvs.extend(epsd_csv_paths)
         setup_csvs.append(setup_csv)
         overall_csvs.append(overall_csv)
 
-    episode_outfile = base_dir / f"profile-{mode}_episodes.csv"
+    episode_outfile = base_dir / f"profile-{mode.value}_episodes.csv"
     setup_outfile = base_dir / "profile-setup_experiment.csv"
-    overall_outfile = base_dir / f"profile-{mode}.csv"
+    overall_outfile = base_dir / f"profile-{mode.value}.csv"
 
     post_parallel_log_cleanup(episode_csvs, episode_outfile, cat_fn=cat_csv)
     post_parallel_log_cleanup(setup_csvs, setup_outfile, cat_fn=cat_csv)
@@ -389,10 +391,10 @@ def single_evaluate(experiment):
             # `self.use_parallel_wandb_logging` set to True
             # This way, the logger does not flush its buffer in the
             # `exp.run()` call above.
-            return get_episode_stats(exp, "eval", exp.config.episode)
+            return get_episode_stats(exp, ExperimentMode.EVAL, exp.config.episode)
 
 
-def get_episode_stats(exp, mode, episode: int = 0):
+def get_episode_stats(exp, mode: ExperimentMode, episode: int = 0):
     eval_stats = exp.monty_logger.get_formatted_overall_stats(mode, episode)
     exp.monty_logger.flush()
     # Remove overall stats field since they are only averaged over 1 episode
@@ -542,7 +544,7 @@ def post_parallel_train(experiments: list[Mapping], base_dir: Path) -> None:
         post_parallel_log_cleanup(filenames, outfile, cat_fn=cat_files)
 
     if isinstance(exp, ProfileExperimentMixin):
-        post_parallel_profile_cleanup(parallel_dirs, base_dir, "train")
+        post_parallel_profile_cleanup(parallel_dirs, base_dir, ExperimentMode.TRAIN)
 
     with exp:
         exp.model.load_state_dict_from_parallel(parallel_dirs, save=True)

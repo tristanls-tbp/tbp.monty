@@ -93,7 +93,7 @@ class NoResetEvidenceLMTest(BaseGraphTest):
             eval_exp.model.learning_modules[0].load_state_dict(pretrained_models)
 
             eval_exp.experiment_mode = ExperimentMode.EVAL
-            eval_exp.model.set_experiment_mode("eval")
+            eval_exp.model.set_experiment_mode(eval_exp.experiment_mode)
             eval_exp.pre_epoch()
 
             # first episode

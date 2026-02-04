@@ -17,6 +17,7 @@ import torch
 from scipy.spatial.transform import Rotation
 
 from tbp.monty.frameworks.environments.environment import SemanticID
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.loggers.exp_logger import BaseMontyLogger
 from tbp.monty.frameworks.loggers.graph_matching_loggers import (
     BasicGraphMatchingLogger,
@@ -441,12 +442,12 @@ class MontyForGraphMatching(MontyBase):
                     # pose_time out. Other terminal states remain the same.
                     self._set_time_outs(global_time_out=False)
 
-                    if self.experiment_mode == "train":
+                    if self.experiment_mode == ExperimentMode.TRAIN:
                         self.switch_to_exploratory_step()
                         for sm in self.sensor_modules:
                             sm.is_exploring = True
 
-                    elif self.experiment_mode == "eval":
+                    elif self.experiment_mode == ExperimentMode.EVAL:
                         if self.matching_steps > self.min_eval_steps:
                             self._is_done = True
 
@@ -540,7 +541,9 @@ class MontyForGraphMatching(MontyBase):
 class GraphLM(LearningModule):
     """General Learning Module that contains a graph memory."""
 
-    def __init__(self, rng: np.random.RandomState, initialize_base_modules=True):
+    def __init__(
+        self, rng: np.random.RandomState, initialize_base_modules=True
+    ) -> None:
         """Initialize general Learning Module based on graphs.
 
         Args:
@@ -560,7 +563,9 @@ class GraphLM(LearningModule):
             self.gsg = GraphGoalStateGenerator(self)
             self.gsg.reset()
 
-        self.mode = None  # initialize to neither training nor testing
+        self.mode: ExperimentMode | None = (
+            None  # initialize to neither training nor testing
+        )
         # Dictionaries to tell which objects were involved in building a graph
         # and which graphs correspond to each target object
         self.target_to_graph_id = {}
@@ -641,7 +646,7 @@ class GraphLM(LearningModule):
 
     def post_episode(self):
         """If training, update memory after each episode."""
-        if (self.mode == "train") and len(self.buffer) > 0:
+        if (self.mode == ExperimentMode.TRAIN) and len(self.buffer) > 0:
             logger.info(f"\n---Updating memory of {self.learning_module_id}---")
             self._update_memory()
             self._update_target_graph_mapping(self.detected_object, self.primary_target)
@@ -737,12 +742,7 @@ class GraphLM(LearningModule):
 
     # ------------------ Getters & Setters ---------------------
 
-    def set_experiment_mode(self, mode):
-        """Set LM and GM mode to train or eval."""
-        assert mode in [
-            "train",
-            "eval",
-        ], "mode must be either `train` or `eval`"
+    def set_experiment_mode(self, mode: ExperimentMode) -> None:
         self.mode = mode
 
     def set_detected_object(self, terminal_state):
@@ -1091,7 +1091,7 @@ class GraphMemory(LMMemory):
     Subclasses are DisplacementGraphMemory, FeatureGraphMemory and EvidenceGraphMemory.
     """
 
-    def __init__(self, graph_delta_thresholds=None, k=None):
+    def __init__(self, graph_delta_thresholds=None, k=None) -> None:
         """Initialize a graph memory structure. This can then be filled with graphs.
 
         Args:
@@ -1107,7 +1107,7 @@ class GraphMemory(LMMemory):
         """
         self.graph_delta_thresholds = graph_delta_thresholds
         self.k = k
-        self.mode = None
+        self.mode: ExperimentMode | None = None
         self.models_in_memory = {}
 
         # Array representation of features for each graph -> faster matching

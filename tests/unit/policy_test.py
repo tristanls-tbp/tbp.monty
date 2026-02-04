@@ -247,7 +247,7 @@ class PolicyTest(unittest.TestCase):
         exp = hydra.utils.instantiate(self.surf_poor_initial_view_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.TRAIN
-            exp.model.set_experiment_mode("train")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.pre_epoch()
             exp.pre_episode()
 
@@ -297,7 +297,7 @@ class PolicyTest(unittest.TestCase):
         exp = hydra.utils.instantiate(self.dist_fixed_action_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.TRAIN
-            exp.model.set_experiment_mode("train")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.pre_epoch()
 
             # Only do a single episode
@@ -405,7 +405,7 @@ class PolicyTest(unittest.TestCase):
         exp = hydra.utils.instantiate(self.surf_fixed_action_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.TRAIN
-            exp.model.set_experiment_mode("train")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.pre_epoch()
 
             # Only do a single episode
@@ -544,7 +544,7 @@ class PolicyTest(unittest.TestCase):
         exp = hydra.utils.instantiate(self.rotated_cube_view_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.TRAIN
-            exp.model.set_experiment_mode("train")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.pre_epoch()
             exp.pre_episode()
 

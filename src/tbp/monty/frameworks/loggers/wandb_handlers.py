@@ -16,6 +16,7 @@ import pandas as pd
 import wandb
 from typing_extensions import override
 
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.loggers.monty_handlers import MontyHandler
 from tbp.monty.frameworks.utils.logging_utils import (
     format_columns_for_wandb,
@@ -58,7 +59,14 @@ class WandbWrapper(MontyHandler):
         )
         self.wandb_handlers = [wandb_handler() for wandb_handler in wandb_handlers]
 
-    def report_episode(self, data, output_dir, episode, mode="train", **kwargs):
+    def report_episode(
+        self,
+        data,
+        output_dir,
+        episode,
+        mode: ExperimentMode = ExperimentMode.TRAIN,
+        **kwargs,
+    ):
         for handler in self.wandb_handlers:
             handler.report_episode(data, output_dir, episode, mode=mode, **kwargs)
 
@@ -98,7 +106,9 @@ class WandbHandler(MontyHandler):
     def log_level(cls):
         return ""
 
-    def report_episode(self, data, output_dir, mode="train", **kwargs):
+    def report_episode(
+        self, data, output_dir, mode: ExperimentMode = ExperimentMode.TRAIN, **kwargs
+    ):
         pass
 
     def close(self):
@@ -113,7 +123,14 @@ class BasicWandbTableStatsHandler(WandbHandler):
         return "BASIC"
 
     @override
-    def report_episode(self, data, output_dir, episode, mode="train", **kwargs):
+    def report_episode(
+        self,
+        data,
+        output_dir,
+        episode,
+        mode: ExperimentMode = ExperimentMode.TRAIN,
+        **kwargs,
+    ):
         ###
         # Log basic statistics
         # Ignore the episode value
@@ -121,8 +138,8 @@ class BasicWandbTableStatsHandler(WandbHandler):
 
         # Get stats data depending on mode (train or eval)
         basic_logs = data["BASIC"]
-        mode_key = f"{mode}_stats"
-        stats_table = f"{mode}_stats_table"
+        mode_key = f"{mode.value}_stats"
+        stats_table = f"{mode.value}_stats_table"
         stats = basic_logs.get(mode_key, {})
 
         # if len(stats) > 0:
@@ -162,11 +179,18 @@ class DetailedWandbTableStatsHandler(BasicWandbTableStatsHandler):
     def log_level(cls):
         return "DETAILED"
 
-    def report_episode(self, data, output_dir, episode, mode="train", **kwargs):
+    def report_episode(
+        self,
+        data,
+        output_dir,
+        episode,
+        mode: ExperimentMode = ExperimentMode.TRAIN,
+        **kwargs,
+    ):
         super().report_episode(data, output_dir, episode, mode, **kwargs)
         basic_logs = data["BASIC"]
         # Get actions depending on mode (train or eval)
-        action_key = f"{mode}_actions"
+        action_key = f"{mode.value}_actions"
         action_data = basic_logs.get(action_key, {})
 
         assert len(action_data) == 1, "expected data for exactly one episode"
@@ -175,7 +199,7 @@ class DetailedWandbTableStatsHandler(BasicWandbTableStatsHandler):
         # TODO: is table the best format for this?
 
         episode = list(action_data.keys())[0]
-        table_name = f"{mode}_actions/episode_{episode}_table"
+        table_name = f"{mode.value}_actions/episode_{episode}_table"
         actions = action_data[episode]
         for i, action in enumerate(actions):
             a = action[0]
@@ -204,9 +228,16 @@ class BasicWandbChartStatsHandler(WandbHandler):
         return "BASIC"
 
     @override
-    def report_episode(self, data, output_dir, episode, mode="train", **kwargs):
+    def report_episode(
+        self,
+        data,
+        output_dir,
+        episode,
+        mode: ExperimentMode = ExperimentMode.TRAIN,
+        **kwargs,
+    ):
         basic_logs = data["BASIC"]
-        mode_key = f"{mode}_overall_stats"
+        mode_key = f"{mode.value}_overall_stats"
         stats = basic_logs.get(mode_key, {})
         wandb.log(stats[episode], step=episode, commit=False)
 
@@ -252,7 +283,14 @@ class DetailedWandbHandler(WandbHandler):
         return frames_per_sm
 
     @override
-    def report_episode(self, data, output_dir, episode, mode="train", **kwargs):
+    def report_episode(
+        self,
+        data,
+        output_dir,
+        episode,
+        mode: ExperimentMode = ExperimentMode.TRAIN,
+        **kwargs,
+    ):
         # mode is ignored when reporting this episode
 
         detailed_stats = data["DETAILED"]

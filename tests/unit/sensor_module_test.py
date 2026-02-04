@@ -62,7 +62,7 @@ class SensorModuleTest(unittest.TestCase):
         exp = hydra.utils.instantiate(self.base_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.TRAIN
-            exp.model.set_experiment_mode("train")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.pre_epoch()
             exp.pre_episode()
             for step, observation in enumerate(exp.env_interface):
@@ -76,7 +76,7 @@ class SensorModuleTest(unittest.TestCase):
         exp = hydra.utils.instantiate(self.sensor_feature_cfg.test)
         with exp:
             exp.experiment_mode = ExperimentMode.TRAIN
-            exp.model.set_experiment_mode("train")
+            exp.model.set_experiment_mode(exp.experiment_mode)
             exp.pre_epoch()
             exp.pre_episode()
             for _, observation in enumerate(exp.env_interface):

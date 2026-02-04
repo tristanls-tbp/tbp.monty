@@ -21,6 +21,7 @@ from typing import Container, Literal
 
 from typing_extensions import override
 
+from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.buffer import BufferEncoder
 from tbp.monty.frameworks.utils.logging_utils import (
     lm_stats_to_dataframe,
@@ -101,7 +102,7 @@ class DetailedJSONHandler(MontyHandler):
         data,
         global_episode_id: int,
         local_episode: int,
-        mode: Literal["train", "eval"],
+        mode: ExperimentMode,
     ) -> dict:
         """Get detailed episode stats.
 
@@ -110,7 +111,7 @@ class DetailedJSONHandler(MontyHandler):
         """
         output_data = {}
 
-        basic_stats = data["BASIC"][f"{mode}_stats"][local_episode]
+        basic_stats = data["BASIC"][f"{mode.value}_stats"][local_episode]
         detailed_pool = data["DETAILED"]
         detailed_stats = detailed_pool.get(local_episode)
         if detailed_stats is None:
@@ -121,9 +122,16 @@ class DetailedJSONHandler(MontyHandler):
 
         return output_data
 
-    def report_episode(self, data, output_dir, local_episode, mode="train", **kwargs):
+    def report_episode(
+        self,
+        data,
+        output_dir,
+        local_episode,
+        mode: ExperimentMode = ExperimentMode.TRAIN,
+        **kwargs,
+    ):
         """Report episode data."""
-        global_episode_id = kwargs[f"{mode}_episodes_to_total"][local_episode]
+        global_episode_id = kwargs[f"{mode.value}_episodes_to_total"][local_episode]
 
         if not self._should_save_episode(global_episode_id):
             logger.debug(
@@ -207,12 +215,19 @@ class BasicCSVStatsHandler(MontyHandler):
         self.reports_per_file = {}
 
     @override
-    def report_episode(self, data, output_dir, episode, mode="train", **kwargs):
+    def report_episode(
+        self,
+        data,
+        output_dir,
+        episode,
+        mode: ExperimentMode = ExperimentMode.TRAIN,
+        **kwargs,
+    ):
         # episode is ignored when reporting stats to CSV
         # Look for train_stats or eval_stats under BASIC logs
         basic_logs = data["BASIC"]
-        mode_key = f"{mode}_stats"
-        output_file = Path(output_dir) / f"{mode}_stats.csv"
+        mode_key = f"{mode.value}_stats"
+        output_file = Path(output_dir) / f"{mode.value}_stats.csv"
         stats = basic_logs.get(mode_key, {})
         logger.debug(pformat(stats))
 

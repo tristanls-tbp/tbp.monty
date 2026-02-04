@@ -53,7 +53,7 @@ class GetGoodViewTest(unittest.TestCase):
             exp: MontyObjectRecognitionExperiment = hydra.utils.instantiate(config.test)
             with exp:
                 exp.experiment_mode = ExperimentMode.TRAIN
-                exp.model.set_experiment_mode("train")
+                exp.model.set_experiment_mode(exp.experiment_mode)
                 exp.pre_epoch()
                 exp.pre_episode()
 
@@ -105,7 +105,7 @@ class GetGoodViewTest(unittest.TestCase):
                 exp.train()
 
                 exp.experiment_mode = ExperimentMode.TRAIN
-                exp.model.set_experiment_mode("train")
+                exp.model.set_experiment_mode(exp.experiment_mode)
                 exp.pre_epoch()
                 exp.pre_episode()
 
