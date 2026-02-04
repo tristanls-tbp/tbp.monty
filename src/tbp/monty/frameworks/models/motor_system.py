@@ -9,8 +9,6 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
 import numpy as np
 
 from tbp.monty.frameworks.actions.actions import Action

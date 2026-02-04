@@ -16,7 +16,7 @@ import json
 import logging
 import math
 from pathlib import Path
-from typing import Literal, cast
+from typing import cast
 
 import numpy as np
 import quaternion as qt
