@@ -98,12 +98,12 @@ class MontyExperiment:
 
     def reset_episode_rng(self):
         """Resets the random number generator using episode-specific seed."""
-        episode = (
+        episodes = (
             self.train_episodes
             if self.model.experiment_mode == ExperimentMode.TRAIN
             else self.eval_episodes
         )
-        seed = episode_seed(self.config["seed"], self.model.experiment_mode, episode)
+        seed = episode_seed(self.config["seed"], self.model.experiment_mode, episodes)
 
         if seed in self._rng_seed_history:
             logger.warning(f"RNG seed {seed} was used in a previous episode")

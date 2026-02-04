@@ -138,8 +138,8 @@ class BasicWandbTableStatsHandler(WandbHandler):
 
         # Get stats data depending on mode (train or eval)
         basic_logs = data["BASIC"]
-        mode_key = f"{mode.value}_stats"
-        stats_table = f"{mode.value}_stats_table"
+        mode_key = f"{mode}_stats"
+        stats_table = f"{mode}_stats_table"
         stats = basic_logs.get(mode_key, {})
 
         # if len(stats) > 0:
@@ -190,7 +190,7 @@ class DetailedWandbTableStatsHandler(BasicWandbTableStatsHandler):
         super().report_episode(data, output_dir, episode, mode, **kwargs)
         basic_logs = data["BASIC"]
         # Get actions depending on mode (train or eval)
-        action_key = f"{mode.value}_actions"
+        action_key = f"{mode}_actions"
         action_data = basic_logs.get(action_key, {})
 
         assert len(action_data) == 1, "expected data for exactly one episode"
@@ -199,7 +199,7 @@ class DetailedWandbTableStatsHandler(BasicWandbTableStatsHandler):
         # TODO: is table the best format for this?
 
         episode = list(action_data.keys())[0]
-        table_name = f"{mode.value}_actions/episode_{episode}_table"
+        table_name = f"{mode}_actions/episode_{episode}_table"
         actions = action_data[episode]
         for i, action in enumerate(actions):
             a = action[0]
@@ -237,7 +237,7 @@ class BasicWandbChartStatsHandler(WandbHandler):
         **kwargs,
     ):
         basic_logs = data["BASIC"]
-        mode_key = f"{mode.value}_overall_stats"
+        mode_key = f"{mode}_overall_stats"
         stats = basic_logs.get(mode_key, {})
         wandb.log(stats[episode], step=episode, commit=False)
 

@@ -179,7 +179,7 @@ class BasicGraphMatchingLogger(BaseMontyLogger):
 
     def log_episode(self, logger_args, output_dir, model):
         mode = model.experiment_mode
-        episode = logger_args[f"{mode.value}_episodes"]
+        episode = logger_args[f"{mode}_episodes"]
 
         for handler in self.handlers:
             handler.report_episode(self.data, output_dir, episode, mode)
@@ -220,21 +220,21 @@ class BasicGraphMatchingLogger(BaseMontyLogger):
                     self.lms.append(lm)
 
         mode = model.experiment_mode
-        episode = logger_args[f"{mode.value}_episodes"]
+        episode = logger_args[f"{mode}_episodes"]
         actions = model.motor_system._policy.action_sequence
         logger_time = {k: v for k, v in logger_args.items() if k != "target"}
-        self.data["BASIC"][f"{mode.value}_stats"][episode] = performance_dict
+        self.data["BASIC"][f"{mode}_stats"][episode] = performance_dict
 
         self.update_overall_stats(
             mode, episode, model.episode_steps, model.matching_steps
         )
         overall_stats = self.get_formatted_overall_stats(mode, episode)
 
-        self.data["BASIC"][f"{mode.value}_overall_stats"][episode] = overall_stats
-        self.data["BASIC"][f"{mode.value}_actions"][episode] = actions
-        self.data["BASIC"][f"{mode.value}_targets"][episode] = target_dict
-        self.data["BASIC"][f"{mode.value}_timing"][episode] = logger_time
-        self.data["BASIC"][f"{mode.value}_stats"][episode]["target"] = target_dict
+        self.data["BASIC"][f"{mode}_overall_stats"][episode] = overall_stats
+        self.data["BASIC"][f"{mode}_actions"][episode] = actions
+        self.data["BASIC"][f"{mode}_targets"][episode] = target_dict
+        self.data["BASIC"][f"{mode}_timing"][episode] = logger_time
+        self.data["BASIC"][f"{mode}_stats"][episode]["target"] = target_dict
 
     def update_overall_stats(
         self, mode: ExperimentMode, episode, episode_steps, monty_matching_steps
@@ -248,7 +248,7 @@ class BasicGraphMatchingLogger(BaseMontyLogger):
         lm_performances = []
         for lm in self.lms:
             # This accumulates stats from all LM
-            episode_stats = self.data["BASIC"][f"{mode.value}_stats"][episode][lm]
+            episode_stats = self.data["BASIC"][f"{mode}_stats"][episode][lm]
             performance = episode_stats["primary_performance"]
 
             if performance is not None:  # in pre training performance is None
@@ -477,7 +477,7 @@ class BasicGraphMatchingLogger(BaseMontyLogger):
                 ) * 100
 
         for lm in self.lms:
-            lm_stats = self.data["BASIC"][f"{mode.value}_stats"][episode][lm]
+            lm_stats = self.data["BASIC"][f"{mode}_stats"][episode][lm]
             overall_stats[f"{lm}/episode/steps_to_individual_ts"] = lm_stats[
                 "individual_ts_reached_at_step"
             ]
@@ -529,7 +529,7 @@ class DetailedGraphMatchingLogger(BasicGraphMatchingLogger):
 
     def log_episode(self, logger_args, output_dir, model):
         mode = model.experiment_mode
-        episode = logger_args[f"{mode.value}_episodes"]
+        episode = logger_args[f"{mode}_episodes"]
         kwargs = dict(
             train_episodes_to_total=self.train_episodes_to_total,
             eval_episodes_to_total=self.eval_episodes_to_total,
@@ -609,7 +609,7 @@ class SelectiveEvidenceLogger(BasicGraphMatchingLogger):
 
     def log_episode(self, logger_args, output_dir, model):
         mode = model.experiment_mode
-        episode = logger_args[f"{mode.value}_episodes"]
+        episode = logger_args[f"{mode}_episodes"]
         kwargs = dict(
             train_episodes_to_total=self.train_episodes_to_total,
             eval_episodes_to_total=self.eval_episodes_to_total,

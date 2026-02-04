@@ -119,15 +119,15 @@ def post_parallel_profile_cleanup(
     for profile_dir in profile_dirs:
         epsd_csv_paths = list(profile_dir.glob("*episode*.csv"))
         setup_csv = profile_dir / "profile-setup_experiment.csv"
-        overall_csv = profile_dir / f"profile-{mode.value}.csv"
+        overall_csv = profile_dir / f"profile-{mode}.csv"
 
         episode_csvs.extend(epsd_csv_paths)
         setup_csvs.append(setup_csv)
         overall_csvs.append(overall_csv)
 
-    episode_outfile = base_dir / f"profile-{mode.value}_episodes.csv"
+    episode_outfile = base_dir / f"profile-{mode}_episodes.csv"
     setup_outfile = base_dir / "profile-setup_experiment.csv"
-    overall_outfile = base_dir / f"profile-{mode.value}.csv"
+    overall_outfile = base_dir / f"profile-{mode}.csv"
 
     post_parallel_log_cleanup(episode_csvs, episode_outfile, cat_fn=cat_csv)
     post_parallel_log_cleanup(setup_csvs, setup_outfile, cat_fn=cat_csv)
