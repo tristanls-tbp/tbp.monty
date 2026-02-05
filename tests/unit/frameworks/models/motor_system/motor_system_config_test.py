@@ -9,7 +9,6 @@
 import unittest
 
 import hydra
-import numpy as np
 
 from tbp.monty.frameworks.actions.action_samplers import ActionSampler
 from tests import HYDRA_ROOT
@@ -58,7 +57,6 @@ class MotorSystemConfigTest(unittest.TestCase):
         # TODO - change when we switch to instantiating the policy directly
         motor_policy_class = self.motor_system["motor_system_args"]["policy_class"]
         motor_policy_args = self.motor_system["motor_system_args"]["policy_args"]
-        rng = np.random.default_rng(42)
-        motor_policy = motor_policy_class(rng=rng, **motor_policy_args)
+        motor_policy = motor_policy_class(**motor_policy_args)
 
         self.assertIs(motor_policy.action_sampler, action_sampler)
