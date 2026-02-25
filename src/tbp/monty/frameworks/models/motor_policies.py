@@ -413,6 +413,7 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
         # Observations after passing through sensor modules.
         # Are updated in Monty step method.
         self._processed_observations = None
+        self._undo_action: Action | None = None
 
     @property
     def processed_observations(self) -> State | None:
@@ -424,6 +425,7 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
 
     def pre_episode(self) -> None:
         self._processed_observations = None
+        self._undo_action = None
         if self.use_goal_state_driven_actions:
             JumpToGoalStateMixin.pre_episode(self)
 
@@ -436,8 +438,8 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
     def dynamic_call(
         self,
         ctx: RuntimeContext,
-        observations: Observations,
-        state: MotorSystemState | None = None,
+        observations: Observations,  # noqa: ARG002
+        state: MotorSystemState | None = None,  # noqa: ARG002
     ) -> MotorPolicyResult:
         """Return a motor policy result containing the next actions to take.
 
@@ -455,15 +457,21 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
             A MotorPolicyResult that contains the actions to take.
         """
         if self.processed_observations.get_on_object():
-            return super().dynamic_call(ctx, observations, state)
+            action = self.action_sampler.sample(self.agent_id, ctx.rng)
+            self._undo_action = self.fixme_undo_last_action(action)
+            return MotorPolicyResult([action])
 
-        return MotorPolicyResult([self.fixme_undo_last_action()])
+        if self._undo_action is not None:
+            action = self._undo_action
+            self._undo_action = self.fixme_undo_last_action(action)
+            return MotorPolicyResult([action])
+
+        return MotorPolicyResult([])
 
     def fixme_undo_last_action(
         self,
-    ) -> (
-        LookDown | LookUp | TurnLeft | TurnRight | MoveForward | MoveTangentially | None
-    ):
+        last_action: Action,
+    ) -> LookDown | LookUp | TurnLeft | TurnRight | MoveForward | MoveTangentially:
         """Returns an action that undoes last action for supported actions.
 
         Previous InformedPolicy.dynamic_call() implementation when not on object:
@@ -496,12 +504,6 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
         An Action.undo of some sort would be a better solution, however it is not
         yet clear to me what to do for actions that do not support undo.
         """
-        if self.actions:
-            assert len(self.actions) == 1, "Expected one action"
-            last_action = self.actions[0]
-        else:
-            return None
-
         if isinstance(last_action, LookDown):
             return LookDown(
                 agent_id=last_action.agent_id,
