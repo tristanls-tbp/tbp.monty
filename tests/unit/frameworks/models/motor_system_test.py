@@ -51,7 +51,7 @@ class SensorStateTest(unittest.TestCase):
 
     def test_returns_sensor_state_if_sensor_module_is_found(self):
         sensor_state = SensorState(
-            position=(0.0, 0.0, 0.0), rotation=(1.0, 0.0, 0.0, 0.0)
+            position=(1.0, 3.0, 5.0), rotation=(0.0, 1.0, 0.0, 0.0)
         )
         motor_system = MotorSystem(
             policy=MagicMock(),
