@@ -16,7 +16,8 @@ from tbp.monty.frameworks.actions.actions import Action
 from tbp.monty.frameworks.agents import AgentID
 from tbp.monty.frameworks.models.abstract_monty_classes import Observations
 from tbp.monty.frameworks.models.motor_policies import MotorPolicy
-from tbp.monty.frameworks.models.motor_system_state import MotorSystemState
+from tbp.monty.frameworks.models.motor_system_state import MotorSystemState, SensorState
+from tbp.monty.frameworks.sensors import SensorID
 
 __all__ = ["MotorSystem"]
 
@@ -71,3 +72,28 @@ class MotorSystem:
         state_copy = self._state.convert_motor_state() if self._state else None
         self._action_sequence.append((policy_result.actions, state_copy))
         return policy_result.actions
+
+    def sensor_state(self, sensor_module_id: SensorID) -> SensorState:
+        """Return the proprioceptive state of a sensor module.
+
+        Args:
+            sensor_module_id: The ID of the sensor module.
+
+        Returns:
+            The proprioceptive state of the sensor module.
+
+        Raises:
+            RuntimeError: If the motor system state is not set.
+            ValueError: If the sensor module is not found.
+        """
+        if self._state is None:
+            raise RuntimeError("Motor system state is not set")
+
+        # TODO: Here is an example of why proprioceptive state should be a flat data
+        #       structure rather than nested.
+        for agent_id in self._state:
+            agent_state = self._state[agent_id]
+            if sensor_module_id in agent_state.sensors:
+                return agent_state.sensors[sensor_module_id]
+
+        raise ValueError(f"Sensor module {sensor_module_id} not found")
