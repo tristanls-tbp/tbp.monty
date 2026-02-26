@@ -281,9 +281,7 @@ class EnvironmentInterfacePerObject(EnvironmentInterface):
     def pre_episode(self, rng: np.random.RandomState):
         super().pre_episode(rng)
 
-        self.motor_system._state[
-            self.motor_system._policy.agent_id
-        ].motor_only_step = False
+        self.motor_system.motor_only_step = False
 
     def post_episode(self):
         super().post_episode()
@@ -500,16 +498,14 @@ class InformedEnvironmentInterface(EnvironmentInterfacePerObject):
             self.motor_system._policy.touch_search_amount = 0
 
         self._observation, proprioceptive_state = self._step(actions)
-        motor_system_state = MotorSystemState(proprioceptive_state)
+        self.motor_system._state = MotorSystemState(proprioceptive_state)
 
         # TODO: Refactor this so that all of this is contained within the
         #       SurfacePolicy and/or positioning procedure.
         if isinstance(self.motor_system._policy, SurfacePolicy):
             # When we are attempting to find the object, we are always performing
             # a motor-only step.
-            motor_system_state[
-                self.motor_system._policy.agent_id
-            ].motor_only_step = attempting_to_find_object
+            self.motor_system.motor_only_step = attempting_to_find_object
 
             if (
                 not attempting_to_find_object
@@ -524,11 +520,7 @@ class InformedEnvironmentInterface(EnvironmentInterfacePerObject):
                 # want to send data to the learning module after taking the
                 # OrientVertical action. The other three actions in the cycle
                 # are motor-only to keep the surface agent on the object.
-                motor_system_state[
-                    self.motor_system._policy.agent_id
-                ].motor_only_step = True
-
-        self.motor_system._state = motor_system_state
+                self.motor_system.motor_only_step = True
 
         return self._observation
 
@@ -556,9 +548,9 @@ class InformedEnvironmentInterface(EnvironmentInterfacePerObject):
         # For first step of surface-agent policy, always bypass LM processing
         # For distant-agent policy, we still process the first sensation if it is
         # on the object
-        self.motor_system._state[
-            self.motor_system._policy.agent_id
-        ].motor_only_step = isinstance(self.motor_system._policy, SurfacePolicy)
+        self.motor_system.motor_only_step = isinstance(
+            self.motor_system._policy, SurfacePolicy
+        )
 
         return self._observation
 
@@ -704,9 +696,7 @@ class InformedEnvironmentInterface(EnvironmentInterfacePerObject):
         else:
             self.handle_failed_jump(pre_jump_state, first_sensor)
 
-        self.motor_system._state[
-            self.motor_system._policy.agent_id
-        ].motor_only_step = True
+        self.motor_system.motor_only_step = True
 
         return self._observation
 
