@@ -921,6 +921,24 @@ class SurfacePolicy(InformedPolicy):
         Raises:
             ObjectNotVisible: If the object is not visible.
         """
+        if self.use_goal_state_driven_actions:
+            if self._is_undoing_jump:
+                self._assert_undo_jump_was_successful(state)
+                self._reset_jump_state()
+
+            if self._is_jumping:
+                if self._should_undo_jump(observations):
+                    self._handle_failed_jump()
+                    self._is_undoing_jump = True
+                    return MotorPolicyResult(self._undo_jump_actions)
+                self._handle_successful_jump()
+                self._reset_jump_state()
+
+            if self.driving_goal_state:
+                self._init_jump(state)
+                self._is_jumping = True
+                return MotorPolicyResult(self._jump_actions)
+
         # Check if we have poor visualization of the object
         if (
             self.processed_observations.get_feature_by_name("object_coverage") < 0.1
