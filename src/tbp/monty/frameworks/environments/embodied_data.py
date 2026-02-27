@@ -21,9 +21,6 @@ import quaternion as qt
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.actions.actions import (
     Action,
-    MoveTangentially,
-    SetAgentPose,
-    SetSensorRotation,
 )
 from tbp.monty.frameworks.agents import AgentID
 from tbp.monty.frameworks.environment_utils.transforms import TransformContext
@@ -34,7 +31,6 @@ from tbp.monty.frameworks.environments.environment import (
 )
 from tbp.monty.frameworks.environments.positioning_procedures import (
     GetGoodView,
-    PositioningProcedure,
 )
 from tbp.monty.frameworks.environments.two_d_data import (
     OmniglotEnvironment,
@@ -44,7 +40,6 @@ from tbp.monty.frameworks.environments.two_d_data import (
 from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.abstract_monty_classes import Observations
 from tbp.monty.frameworks.models.motor_policies import (
-    InformedPolicy,
     SurfacePolicy,
 )
 from tbp.monty.frameworks.models.motor_system import MotorSystem
