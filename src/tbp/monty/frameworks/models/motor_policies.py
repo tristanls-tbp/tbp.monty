@@ -456,8 +456,17 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
         logger.debug(
             "Object visible, maintaining new pose for hypothesis-testing action"
         )
+        self._handle_successful_jump()
         self._reset_jump_state()
         return None
+
+    def _handle_successful_jump(self) -> None:
+        """Hook for subclasses to do something after a successful jump.
+
+        Note: only here because SurfacePolicy needs to execute logic at this step
+        in the code.
+        """
+        pass
 
     def fixme_undo_last_action(
         self,
@@ -935,7 +944,6 @@ class SurfacePolicy(InformedPolicy):
             result = self._goal_driven_actions(observations, state)
             if result is not None:
                 return result
-            self._reset_get_next_action_state()
 
         # Check if we have poor visualization of the object
         if (
@@ -1255,7 +1263,7 @@ class SurfacePolicy(InformedPolicy):
         if orienting == "vertical":
             return -np.degrees(np.arctan(y / z)) if z != 0 else -np.sign(y) * 90.0
 
-    def _reset_get_next_action_state(self) -> None:
+    def _handle_successful_jump(self) -> None:
         """Resets the get_next_action state of the surface policy.
 
         For the surface-agent policy, update last action as if we have just moved
