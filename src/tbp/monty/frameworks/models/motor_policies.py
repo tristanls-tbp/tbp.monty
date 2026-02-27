@@ -620,7 +620,7 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
         """
         depth_at_center = PositioningProcedure.depth_at_center(
             agent_id=self.agent_id,
-            observation=observations,
+            observations=observations,
             sensor_id="view_finder",
         )
         should_undo = depth_at_center >= 1.0
