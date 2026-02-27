@@ -932,17 +932,17 @@ class PolicyTest(unittest.TestCase):
 
         lm.matching_step(ctx, observations=[State(**fake_sensation_config)])
 
-        # GSG handles computing the motor goal-state
-        motor_goal_state = lm.gsg._compute_goal_state_for_target_loc(
+        # GSG handles computing the Goal
+        goal = lm.gsg._compute_goal_state_for_target_loc(
             observations=[State(**fake_sensation_config)],
             target_info=target_info,
         )
 
-        # --- Determine Habitat-coordinates from goal-state ---
+        # --- Determine goal pose tuple from a Goal ---
 
-        motor_system._policy.set_driving_goal_state(motor_goal_state)
+        motor_system._policy.set_driving_goal(goal)
 
-        target_loc_hab, target_quat = motor_system._policy.derive_habitat_goal_state()
+        target_loc_hab, target_quat = motor_system._policy.derive_goal_pose()
 
         resulting_rot = Rotation.from_quat(
             numpy_to_scipy_quat(np.array([target_quat.real] + list(target_quat.imag)))
@@ -953,8 +953,8 @@ class PolicyTest(unittest.TestCase):
         agent_direction_hab = resulting_rot.apply(np.array([0, 0, -1]))
 
         return (
-            motor_goal_state.location,
-            motor_goal_state.morphological_features["pose_vectors"][0],
+            goal.location,
+            goal.morphological_features["pose_vectors"][0],
             target_loc_hab,
             agent_direction_hab,
         )
