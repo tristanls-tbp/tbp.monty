@@ -60,7 +60,6 @@ __all__ = [
     "JumpToGoalStateMixin",
     "MotorPolicy",
     "NaiveScanPolicy",
-    "ObjectNotVisible",
     "SurfacePolicy",
     "SurfacePolicyCurvatureInformed",
 ]
@@ -304,10 +303,6 @@ class JumpToGoalStateMixin:
             return target_loc, target_quat
 
         return None, None
-
-
-class ObjectNotVisible(RuntimeError):
-    """Error raised when the object is not visible."""
 
 
 class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
