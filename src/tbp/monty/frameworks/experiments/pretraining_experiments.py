@@ -16,6 +16,7 @@ from omegaconf import DictConfig, OmegaConf
 from scipy.spatial.transform import Rotation
 
 from tbp.monty.context import RuntimeContext
+from tbp.monty.frameworks.actions.actions import Action
 from tbp.monty.frameworks.environments.embodied_data import (
     SaccadeOnImageEnvironmentInterface,
 )
@@ -84,9 +85,12 @@ class MontySupervisedObjectPretrainingExperiment(MontyExperiment):
 
         # Collect data about the object (exploratory steps)
         num_steps = 0
+        actions: list[Action] = []
         while True:
             try:
-                observations, _ = self.env_interface.step(ctx, first=(num_steps == 0))
+                observations, _ = self.env_interface.step(
+                    ctx, actions, first=(num_steps == 0)
+                )
             except StopIteration:
                 # TODO: StopIteration is being thrown by NaiveScanPolicy to signal
                 #       episode termination. This is a holdover from when we used
@@ -108,7 +112,7 @@ class MontySupervisedObjectPretrainingExperiment(MontyExperiment):
                     num_steps,
                     is_saccade_on_image_env_interface,
                 )
-            self.model.step(ctx, observations)
+            actions = self.model.step(ctx, observations)
             if self.model.is_done:
                 break
 
