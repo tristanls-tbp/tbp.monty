@@ -35,16 +35,14 @@ class DataCollectionExperiment(MontyObjectRecognitionExperiment):
     in the Monty framework rather than using offline data.
     """
 
-    def run_episode(self):
+    def run_episode(self) -> None:
         self.pre_episode()
         step = 0
         ctx = RuntimeContext(rng=self.rng)
         actions: list[Action] = []
         while True:
             try:
-                observations, _ = self.env_interface.step(
-                    ctx, actions, first=(step == 0)
-                )
+                observations, _ = self.env_interface.step(actions, first=(step == 0))
             except StopIteration:
                 # TODO: StopIteration is being thrown by NaiveScanPolicy to signal
                 #       episode termination. This is a holdover from when we used

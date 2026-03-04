@@ -63,7 +63,7 @@ class MontySupervisedObjectPretrainingExperiment(MontyExperiment):
         else:
             self.sensor_pos = np.array([0, 0, 0])
 
-    def run_episode(self):
+    def run_episode(self) -> None:
         """Run a supervised episode on one object in one pose.
 
         In a supervised episode we only make exploratory steps (no object recognition
@@ -89,7 +89,7 @@ class MontySupervisedObjectPretrainingExperiment(MontyExperiment):
         while True:
             try:
                 observations, _ = self.env_interface.step(
-                    ctx, actions, first=(num_steps == 0)
+                    actions, first=(num_steps == 0)
                 )
             except StopIteration:
                 # TODO: StopIteration is being thrown by NaiveScanPolicy to signal

@@ -135,7 +135,6 @@ class EnvironmentInterface:
 
     def step(
         self,
-        ctx: RuntimeContext,  # noqa: ARG002
         actions: Sequence[Action] | None = None,
         first: bool = False,
     ) -> tuple[Observations, ProprioceptiveState]:
@@ -462,7 +461,6 @@ class InformedEnvironmentInterface(EnvironmentInterfacePerObject):
 
     def step(
         self,
-        ctx: RuntimeContext,  # noqa: ARG002
         actions: Sequence[Action] | None = None,
         first: bool = False,
     ) -> tuple[Observations, ProprioceptiveState]:

@@ -68,8 +68,7 @@ class GetGoodViewTest(unittest.TestCase):
                 target_perc_on_target_obj = GOOD_VIEW_PERCENTAGE_DEFAULT
                 target_closest_point = GOOD_VIEW_DISTANCE_DEFAULT
 
-                ctx = RuntimeContext(rng=exp.rng)
-                observation, _ = exp.env_interface.step(ctx, first=True)
+                observation, _ = exp.env_interface.step(first=True)
                 view = observation[exp.model.motor_system._policy.agent_id][
                     "view_finder"
                 ]
@@ -118,8 +117,7 @@ class GetGoodViewTest(unittest.TestCase):
                 target_perc_on_target_obj = GOOD_VIEW_PERCENTAGE_DEFAULT
                 target_closest_point = GOOD_VIEW_DISTANCE_DEFAULT
 
-                ctx = RuntimeContext(rng=exp.rng)
-                observation, _ = exp.env_interface.step(ctx, first=True)
+                observation, _ = exp.env_interface.step(first=True)
                 view = observation[exp.model.motor_system._policy.agent_id][
                     "view_finder"
                 ]
