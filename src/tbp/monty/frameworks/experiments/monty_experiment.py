@@ -22,6 +22,7 @@ from omegaconf import DictConfig
 from typing_extensions import Self
 
 from tbp.monty.context import RuntimeContext
+from tbp.monty.frameworks.actions.actions import Action
 from tbp.monty.frameworks.environments.embodied_data import (
     EnvironmentInterface,
     EnvironmentInterfacePerObject,
@@ -484,14 +485,17 @@ class MontyExperiment:
         """Hook for anything you want to do after a step."""
         self.logger_handler.post_step(self.logger_args)
 
-    def run_episode(self):
+    def run_episode(self) -> None:
         """Run one episode until model.is_done."""
         self.pre_episode()
         step = 0
         ctx = RuntimeContext(rng=self.rng)
+        actions: list[Action] = []
         while True:
             try:
-                observations, _ = self.env_interface.step(ctx, first=(step == 0))
+                observations, _ = self.env_interface.step(
+                    ctx, actions, first=(step == 0)
+                )
             except StopIteration:
                 # TODO: StopIteration is being thrown by NaiveScanPolicy to signal
                 #       episode termination. This is a holdover from when we used
@@ -504,7 +508,7 @@ class MontyExperiment:
                 break
 
             self.pre_step(step, observations)
-            self.model.step(ctx, observations)
+            actions = self.model.step(ctx, observations)
             self.post_step(step, observations)
             if self.model.is_done or step >= self.max_steps:
                 break

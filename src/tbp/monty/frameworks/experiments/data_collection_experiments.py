@@ -7,6 +7,7 @@
 # Use of this source code is governed by the MIT
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT.
+from __future__ import annotations
 
 
 import logging
@@ -14,10 +15,12 @@ import logging
 import torch
 
 from tbp.monty.context import RuntimeContext
+from tbp.monty.frameworks.actions.actions import Action
 from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.experiments.object_recognition_experiments import (
     MontyObjectRecognitionExperiment,
 )
+from tbp.monty.frameworks.models.abstract_monty_classes import Observations
 
 logger = logging.getLogger(__name__)
 
@@ -37,9 +40,12 @@ class DataCollectionExperiment(MontyObjectRecognitionExperiment):
         self.pre_episode()
         step = 0
         ctx = RuntimeContext(rng=self.rng)
+        actions: list[Action] = []
         while True:
             try:
-                observations, _ = self.env_interface.step(ctx, first=(step == 0))
+                observations, _ = self.env_interface.step(
+                    ctx, actions, first=(step == 0)
+                )
             except StopIteration:
                 # TODO: StopIteration is being thrown by NaiveScanPolicy to signal
                 #       episode termination. This is a holdover from when we used
@@ -58,13 +64,15 @@ class DataCollectionExperiment(MontyObjectRecognitionExperiment):
                     *self.live_plotter.hardcoded_assumptions(observations, self.model),
                     step,
                 )
-            self.pass_features_to_motor_system(ctx, observations, step)
+            actions = self.step_sensors_and_motor_system_only(ctx, observations, step)
             step += 1
 
         self.post_episode()
 
-    def pass_features_to_motor_system(self, ctx: RuntimeContext, observation, step):
-        self.model.aggregate_sensory_inputs(ctx, observation)
+    def step_sensors_and_motor_system_only(
+        self, ctx: RuntimeContext, observations: Observations, step: int
+    ) -> list[Action]:
+        self.model.aggregate_sensory_inputs(ctx, observations)
         self.model.motor_system._policy.processed_observations = (
             self.model.sensor_module_outputs[0]
         )
@@ -82,6 +90,11 @@ class DataCollectionExperiment(MontyObjectRecognitionExperiment):
         # Only include observations coming right before a move_tangentially action
         if step > 0 and (not action_strings or actions_0_not_move_tangentially):
             del self.model.sensor_modules[0].processed_obs[-2]
+
+        # TODO: This is hacky and should be refactored. See if we can just call
+        #       `self.model.step_sensors_and_motor_system_only` directly.
+        self.model._step_motor_system(ctx, observations)
+        return self.model._actions
 
     def pre_episode(self):
         if self.experiment_mode is ExperimentMode.TRAIN:
