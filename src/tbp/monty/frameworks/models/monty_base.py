@@ -169,7 +169,7 @@ class MontyBase(Monty):
         # TODO: Maybe combine the two?
         self.learning_module_outputs = learning_module_outputs
 
-    def step_sensors_and_motor_system_only(
+    def motor_only_step(
         self, ctx: RuntimeContext, observations: Observations
     ) -> list[Action]:
         self.aggregate_sensory_inputs(ctx, observations)

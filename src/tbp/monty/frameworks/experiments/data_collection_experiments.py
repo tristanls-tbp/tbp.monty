@@ -61,12 +61,12 @@ class DataCollectionExperiment(MontyObjectRecognitionExperiment):
                     *self.live_plotter.hardcoded_assumptions(observations, self.model),
                     step,
                 )
-            actions = self.step_sensors_and_motor_system_only(ctx, observations, step)
+            actions = self.motor_only_step(ctx, observations, step)
             step += 1
 
         self.post_episode()
 
-    def step_sensors_and_motor_system_only(
+    def motor_only_step(
         self, ctx: RuntimeContext, observations: Observations, step: int
     ) -> list[Action]:
         self.model.aggregate_sensory_inputs(ctx, observations)
@@ -89,7 +89,7 @@ class DataCollectionExperiment(MontyObjectRecognitionExperiment):
             del self.model.sensor_modules[0].processed_obs[-2]
 
         # TODO: This is hacky and should be refactored. See if we can just call
-        #       `self.model.step_sensors_and_motor_system_only` directly.
+        #       `self.model.motor_only_step` directly.
         self.model._step_motor_system(ctx, observations)
         return self.model._actions
 

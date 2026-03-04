@@ -109,7 +109,7 @@ class Monty(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def step_sensors_and_motor_system_only(
+    def motor_only_step(
         self, ctx: RuntimeContext, observations: Observations
     ) -> list[Action]:
         """Take a step of the sensors and motor system only.
