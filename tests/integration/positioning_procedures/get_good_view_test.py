@@ -14,7 +14,6 @@ import hydra
 import numpy as np
 from omegaconf import DictConfig
 
-from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.environments.environment import SemanticID
 from tbp.monty.frameworks.environments.positioning_procedures import (
     get_perc_on_obj_semantic,
