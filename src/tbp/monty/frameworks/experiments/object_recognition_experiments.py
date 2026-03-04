@@ -130,9 +130,7 @@ class MontyObjectRecognitionExperiment(MontyExperiment):
 
             try:
                 if self.model.is_motor_only_step:
-                    logger.debug(
-                        "Performing a motor-only step, so passing info straight to motor"
-                    )
+                    logger.debug("Performing a motor-only step")
                     actions = self.model.motor_only_step(ctx, observations)
                 else:
                     actions = self.model.step(ctx, observations)
