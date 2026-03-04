@@ -41,8 +41,18 @@ class DataCollectionExperiment(MontyObjectRecognitionExperiment):
         ctx = RuntimeContext(rng=self.rng)
         actions: list[Action] = []
         while True:
+            observations, _ = self.env_interface.step(actions, first=(step == 0))
+
+            if step > self.max_steps:
+                break
+            if self.show_sensor_output:
+                self.live_plotter.show_observations(
+                    *self.live_plotter.hardcoded_assumptions(observations, self.model),
+                    step,
+                )
+
             try:
-                observations, _ = self.env_interface.step(actions, first=(step == 0))
+                actions = self.motor_only_step(ctx, observations, step)
             except StopIteration:
                 # TODO: StopIteration is being thrown by NaiveScanPolicy to signal
                 #       episode termination. This is a holdover from when we used
@@ -54,14 +64,6 @@ class DataCollectionExperiment(MontyObjectRecognitionExperiment):
                 #       alone.
                 break
 
-            if step > self.max_steps:
-                break
-            if self.show_sensor_output:
-                self.live_plotter.show_observations(
-                    *self.live_plotter.hardcoded_assumptions(observations, self.model),
-                    step,
-                )
-            actions = self.motor_only_step(ctx, observations, step)
             step += 1
 
         self.post_episode()

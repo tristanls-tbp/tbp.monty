@@ -492,8 +492,11 @@ class MontyExperiment:
         ctx = RuntimeContext(rng=self.rng)
         actions: list[Action] = []
         while True:
+            observations, _ = self.env_interface.step(actions, first=(step == 0))
+
+            self.pre_step(step, observations)
             try:
-                observations, _ = self.env_interface.step(actions, first=(step == 0))
+                actions = self.model.step(ctx, observations)
             except StopIteration:
                 # TODO: StopIteration is being thrown by NaiveScanPolicy to signal
                 #       episode termination. This is a holdover from when we used
@@ -504,10 +507,8 @@ class MontyExperiment:
                 #       so the experiment can set max steps based on that knowledge
                 #       alone.
                 break
-
-            self.pre_step(step, observations)
-            actions = self.model.step(ctx, observations)
-            self.post_step(step, observations)
+            finally:
+                self.post_step(step, observations)
             if self.model.is_done or step >= self.max_steps:
                 break
             step += 1
