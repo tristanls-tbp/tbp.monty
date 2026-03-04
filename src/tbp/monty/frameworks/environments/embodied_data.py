@@ -18,7 +18,6 @@ from typing import Iterable, Mapping, Sequence
 import numpy as np
 import quaternion as qt
 
-from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.actions.actions import (
     Action,
 )
