@@ -9,7 +9,6 @@
 # https://opensource.org/licenses/MIT.
 from __future__ import annotations
 
-
 import logging
 
 import torch
