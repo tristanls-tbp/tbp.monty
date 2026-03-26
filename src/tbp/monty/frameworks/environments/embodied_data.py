@@ -37,9 +37,6 @@ from tbp.monty.frameworks.environments.two_d_data import (
 )
 from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.abstract_monty_classes import Observations
-from tbp.monty.frameworks.models.motor_policies import (
-    SurfacePolicy,
-)
 from tbp.monty.frameworks.models.motor_system import MotorSystem
 from tbp.monty.frameworks.models.motor_system_state import (
     MotorSystemState,
@@ -280,8 +277,6 @@ class EnvironmentInterfacePerObject(EnvironmentInterface):
     def pre_episode(self, rng: np.random.RandomState):
         super().pre_episode(rng)
 
-        self.motor_system.motor_only_step = False
-
         if self._positioning_procedures is None:
             return
 
@@ -483,29 +478,10 @@ class InformedEnvironmentInterface(EnvironmentInterfacePerObject):
         actions = [] if actions is None else actions
 
         if first:
-            return self.first_step()
+            return self._observations, self._proprioceptive_state
 
         self._observations, self._proprioceptive_state = self._step(actions)
         self.motor_system._state = MotorSystemState(self._proprioceptive_state)
-        return self._observations, self._proprioceptive_state
-
-    def first_step(self) -> tuple[Observations, ProprioceptiveState]:
-        """Carry out particular motor-system state updates required on the first step.
-
-        TODO: can get rid of this by appropriately initializing motor_only_step
-
-        Returns:
-            The observations and proprioceptive state from the first step.
-        """
-        # Return first observations after 'reset' before any action is applied
-
-        # For first step of surface-agent policy, always bypass LM processing
-        # For distant-agent policy, we still process the first sensation if it is
-        # on the object
-        self.motor_system.motor_only_step = isinstance(
-            self.motor_system._policy, SurfacePolicy
-        )
-
         return self._observations, self._proprioceptive_state
 
 
