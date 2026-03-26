@@ -310,7 +310,8 @@ class HabitatDataTest(unittest.TestCase):
             experiment_mode=ExperimentMode.EVAL,
         )
 
-        i = 0
+        # Start at 1 because the initial call to reset consumes the zeroth state.
+        i = 1
         while True:
             obs, _ = env_interface_dist.step()
             camera_obs_dist = obs[AGENT_ID][SENSOR_ID]
@@ -358,7 +359,8 @@ class HabitatDataTest(unittest.TestCase):
             seed=seed,
             experiment_mode=ExperimentMode.EVAL,
         )
-        i = 0
+        # Start at 1 because the initial call to reset consumes the zeroth state.
+        i = 1
         while True:
             obs, _ = env_interface_abs.step()
             camera_obs_abs = obs[AGENT_ID][SENSOR_ID]
@@ -409,7 +411,8 @@ class HabitatDataTest(unittest.TestCase):
             seed=seed,
             experiment_mode=ExperimentMode.EVAL,
         )
-        i = 0
+        # Start at 1 because the initial call to reset consumes the zeroth state.
+        i = 1
         while True:
             obs, _ = env_interface_surf.step()
             camera_obs_surf = obs[AGENT_ID][SENSOR_ID]
