@@ -309,7 +309,7 @@ class EmbodiedDataTest(unittest.TestCase):
 
         i = 0
         while True:
-            obs, _ = env_interface_dist.step(first=(i == 0))
+            obs, _ = env_interface_dist.step()
             self.assertTrue(
                 np.all(obs[AGENT_ID][SENSOR_ID]["raw"] == EXPECTED_STATES[i])
             )
@@ -338,7 +338,7 @@ class EmbodiedDataTest(unittest.TestCase):
 
         i = 0
         while True:
-            obs, _ = env_interface_abs.step(first=(i == 0))
+            obs, _ = env_interface_abs.step()
             self.assertTrue(
                 np.all(obs[AGENT_ID][SENSOR_ID]["raw"] == EXPECTED_STATES[i])
             )
