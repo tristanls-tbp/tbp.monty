@@ -21,7 +21,6 @@ import quaternion as qt
 from tbp.monty.frameworks.actions.actions import (
     Action,
 )
-from tbp.monty.frameworks.agents import AgentID
 from tbp.monty.frameworks.environment_utils.transforms import TransformContext
 from tbp.monty.frameworks.environments.environment import (
     ObjectID,
@@ -29,7 +28,6 @@ from tbp.monty.frameworks.environments.environment import (
     SimulatedObjectEnvironment,
 )
 from tbp.monty.frameworks.environments.positioning_procedures import (
-    GetGoodView,
     PositioningProcedureFactory,
 )
 from tbp.monty.frameworks.environments.two_d_data import (
@@ -47,7 +45,6 @@ from tbp.monty.frameworks.models.motor_system_state import (
     MotorSystemState,
     ProprioceptiveState,
 )
-from tbp.monty.frameworks.sensors import SensorID
 
 __all__ = [
     "EnvironmentInterface",
