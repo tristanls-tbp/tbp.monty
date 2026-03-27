@@ -104,8 +104,8 @@ class EnvironmentInterface:
         self.rng = rng
         self.seed = seed
         self.transform = transform
-        self._observations, self._proprioceptive_state = self.reset(self.rng)
-        self.motor_system._state = MotorSystemState(self._proprioceptive_state)
+        _, proprioceptive_state = self.reset(self.rng)
+        self.motor_system._state = MotorSystemState(proprioceptive_state)
         self.experiment_mode = experiment_mode
 
     def reset(self, rng: np.random.RandomState):
@@ -130,36 +130,20 @@ class EnvironmentInterface:
     def step(
         self,
         actions: Sequence[Action] | None = None,
-        first: bool = False,
     ) -> tuple[Observations, ProprioceptiveState]:
         """Request actions from the motor system and step the environment.
 
         Args:
             ctx: The runtime context.
             actions: The actions to take in the environment.
-            first: Whether this is the first step of the episode. If True, then
-                return the initial observations and proprioceptive state without
-                requesting actions from the motor system or stepping the environment.
-                TODO: This is a hack to preserve the behavior that the first call
-                      to the environment interface returns the observations and
-                      proprioceptive state that are returned by the environment's
-                      reset method. Once the EnvironmentInterface stops invoking
-                      motor_system(ctx), this can be removed as the runtime/experiment
-                      will initialize the runtime loop by calling step(ctx, actions=[])
-                      instead.
 
         Returns:
             The observations and proprioceptive state.
         """
         actions = [] if actions is None else actions
-
-        if first:
-            # Return first observations after 'reset' before any action is applied
-            return self._observations, self._proprioceptive_state
-
-        self._observations, self._proprioceptive_state = self._step(actions)
-        self.motor_system._state = MotorSystemState(self._proprioceptive_state)
-        return self._observations, self._proprioceptive_state
+        observations, proprioceptive_state = self._step(actions)
+        self.motor_system._state = MotorSystemState(proprioceptive_state)
+        return observations, proprioceptive_state
 
     def _step(
         self, actions: Sequence[Action]
@@ -179,8 +163,8 @@ class EnvironmentInterface:
 
     def pre_episode(self, rng: np.random.RandomState):
         # Reset the environment interface state.
-        self._observations, self._proprioceptive_state = self.reset(rng)
-        self.motor_system._state = MotorSystemState(self._proprioceptive_state)
+        _, proprioceptive_state = self.reset(rng)
+        self.motor_system._state = MotorSystemState(proprioceptive_state)
 
     def post_episode(self):
         pass
@@ -286,17 +270,15 @@ class EnvironmentInterfacePerObject(EnvironmentInterface):
         success = False
         for factory in self._positioning_procedures:
             positioning_procedure = factory.create(target_semantic_id)
-            self._observations, self._proprioceptive_state = self._step([])
+            observations, proprioceptive_state = self._step([])
             result = positioning_procedure(
-                self._observations, MotorSystemState(self._proprioceptive_state)
+                observations, MotorSystemState(proprioceptive_state)
             )
             while not result.terminated and not result.truncated:
-                self._observations, self._proprioceptive_state = self._step(
-                    result.actions
-                )
-                self.motor_system._state = MotorSystemState(self._proprioceptive_state)
+                observations, proprioceptive_state = self._step(result.actions)
+                self.motor_system._state = MotorSystemState(proprioceptive_state)
                 result = positioning_procedure(
-                    self._observations, MotorSystemState(self._proprioceptive_state)
+                    observations, MotorSystemState(proprioceptive_state)
                 )
 
             # We only care about the last result.
@@ -447,42 +429,7 @@ class EnvironmentInterfacePerObject(EnvironmentInterface):
 
 
 class InformedEnvironmentInterface(EnvironmentInterfacePerObject):
-    """Env interface that supports a policy which makes use of previous observations.
-
-    Extension of the EnvironmentInterface where the actions can be informed by the
-    observations. It passes the observations to the InformedPolicy class (which is an
-    extension of the BasePolicy). This policy can then make use of the observations
-    to decide on the next action.
-
-    Also has the following, additional functionality; TODO refactor/separate these
-    out as appropriate
-
-    i) this environment interface allows for early stopping by adding the set_done
-    method which can for example be called when the object is recognized.
-
-    ii) the motor_only_step can be set such that the sensory module can
-    later determine whether perceptual data should be sent to the learning module,
-    or just fed back to the motor policy.
-
-    iii) Handles different environment interface updates depending on whether the policy
-    is based on the surface-agent or touch-agent
-
-    iv) Supports hypothesis-testing "jump" policy
-    """
-
-    def step(
-        self,
-        actions: Sequence[Action] | None = None,
-        first: bool = False,
-    ) -> tuple[Observations, ProprioceptiveState]:
-        actions = [] if actions is None else actions
-
-        if first:
-            return self._observations, self._proprioceptive_state
-
-        self._observations, self._proprioceptive_state = self._step(actions)
-        self.motor_system._state = MotorSystemState(self._proprioceptive_state)
-        return self._observations, self._proprioceptive_state
+    """TODO: Remove empty shell."""
 
 
 class OmniglotEnvironmentInterface(EnvironmentInterfacePerObject):
@@ -531,8 +478,8 @@ class OmniglotEnvironmentInterface(EnvironmentInterfacePerObject):
         self.rng = rng
         self.motor_system = motor_system
         self.transform = transform
-        self._observations, self._proprioceptive_state = self.reset(self.rng)
-        self.motor_system._state = MotorSystemState(self._proprioceptive_state)
+        _, proprioceptive_state = self.reset(self.rng)
+        self.motor_system._state = MotorSystemState(proprioceptive_state)
 
         self.alphabets = alphabets
         self.characters = characters
@@ -633,8 +580,8 @@ class SaccadeOnImageEnvironmentInterface(EnvironmentInterfacePerObject):
         self.rng = rng
         self.motor_system = motor_system
         self.transform = transform
-        self._observations, self._proprioceptive_state = self.reset(self.rng)
-        self.motor_system._state = MotorSystemState(self._proprioceptive_state)
+        _, proprioceptive_state = self.reset(self.rng)
+        self.motor_system._state = MotorSystemState(proprioceptive_state)
 
         self.scenes = scenes
         self.versions = versions
@@ -731,8 +678,8 @@ class SaccadeOnImageFromStreamEnvironmentInterface(SaccadeOnImageEnvironmentInte
         self.rng = rng
         self.motor_system = motor_system
         self.transform = transform
-        self._observations, self._proprioceptive_state = self.reset(self.rng)
-        self.motor_system._state = MotorSystemState(self._proprioceptive_state)
+        _, proprioceptive_state = self.reset(self.rng)
+        self.motor_system._state = MotorSystemState(proprioceptive_state)
         self.current_scene = 0
         self.episodes = 0
         self.epochs = 0

@@ -310,9 +310,10 @@ class HabitatDataTest(unittest.TestCase):
             experiment_mode=ExperimentMode.EVAL,
         )
 
-        i = 0
+        # Start at 1 because the initial call to reset consumes the zeroth state.
+        i = 1
         while True:
-            obs, _ = env_interface_dist.step(first=(i == 0))
+            obs, _ = env_interface_dist.step()
             camera_obs_dist = obs[AGENT_ID][SENSOR_ID]
             self.assertTrue(np.all(camera_obs_dist[MODALITY] == EXPECTED_STATES[i]))
             if i >= NUM_STEPS - 1:
@@ -358,9 +359,10 @@ class HabitatDataTest(unittest.TestCase):
             seed=seed,
             experiment_mode=ExperimentMode.EVAL,
         )
-        i = 0
+        # Start at 1 because the initial call to reset consumes the zeroth state.
+        i = 1
         while True:
-            obs, _ = env_interface_abs.step(first=(i == 0))
+            obs, _ = env_interface_abs.step()
             camera_obs_abs = obs[AGENT_ID][SENSOR_ID]
             self.assertTrue(np.all(camera_obs_abs[MODALITY] == EXPECTED_STATES[i]))
             if i >= NUM_STEPS - 1:
@@ -409,9 +411,10 @@ class HabitatDataTest(unittest.TestCase):
             seed=seed,
             experiment_mode=ExperimentMode.EVAL,
         )
-        i = 0
+        # Start at 1 because the initial call to reset consumes the zeroth state.
+        i = 1
         while True:
-            obs, _ = env_interface_surf.step(first=(i == 0))
+            obs, _ = env_interface_surf.step()
             camera_obs_surf = obs[AGENT_ID][SENSOR_ID]
             self.assertTrue(np.all(camera_obs_surf[MODALITY] == EXPECTED_STATES[i]))
             if i >= NUM_STEPS - 1:

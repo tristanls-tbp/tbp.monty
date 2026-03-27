@@ -477,7 +477,7 @@ class MontyExperiment:
         ctx = RuntimeContext(rng=self.rng)
         actions: list[Action] = []
         while True:
-            observations, _ = self.env_interface.step(actions, first=(step == 0))
+            observations, _ = self.env_interface.step(actions)
 
             self.pre_step(step, observations)
             try:

@@ -103,7 +103,7 @@ class MontyObjectRecognitionExperiment(MontyExperiment):
         ctx = RuntimeContext(rng=self.rng)
         actions: list[Action] = []
         while True:
-            observations, _ = self.env_interface.step(actions, first=(step == 0))
+            observations, _ = self.env_interface.step(actions)
 
             if self.show_sensor_output:
                 is_saccade_on_image_data_loader = isinstance(

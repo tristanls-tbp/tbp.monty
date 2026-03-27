@@ -87,7 +87,7 @@ class MontySupervisedObjectPretrainingExperiment(MontyExperiment):
         num_steps = 0
         actions: list[Action] = []
         while True:
-            observations, _ = self.env_interface.step(actions, first=(num_steps == 0))
+            observations, _ = self.env_interface.step(actions)
 
             num_steps += 1
             if self.show_sensor_output:

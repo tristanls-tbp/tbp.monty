@@ -307,9 +307,10 @@ class EmbodiedDataTest(unittest.TestCase):
             experiment_mode=ExperimentMode.EVAL,
         )
 
-        i = 0
+        # Start at 1 because the initial call to reset consumes the zeroth state.
+        i = 1
         while True:
-            obs, _ = env_interface_dist.step(first=(i == 0))
+            obs, _ = env_interface_dist.step()
             self.assertTrue(
                 np.all(obs[AGENT_ID][SENSOR_ID]["raw"] == EXPECTED_STATES[i])
             )
@@ -336,9 +337,10 @@ class EmbodiedDataTest(unittest.TestCase):
             experiment_mode=ExperimentMode.EVAL,
         )
 
-        i = 0
+        # Start at 1 because the initial call to reset consumes the zeroth state.
+        i = 1
         while True:
-            obs, _ = env_interface_abs.step(first=(i == 0))
+            obs, _ = env_interface_abs.step()
             self.assertTrue(
                 np.all(obs[AGENT_ID][SENSOR_ID]["raw"] == EXPECTED_STATES[i])
             )
