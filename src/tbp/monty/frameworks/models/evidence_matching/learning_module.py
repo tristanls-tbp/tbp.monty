@@ -19,6 +19,7 @@ import numpy.typing as npt
 from scipy.spatial import KDTree
 from scipy.spatial.transform import Rotation
 
+from tbp.monty.cmp import Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.evidence_matching.graph_memory import (
@@ -35,7 +36,6 @@ from tbp.monty.frameworks.models.evidence_matching.hypotheses_updater import (
 )
 from tbp.monty.frameworks.models.goal_state_generation import EvidenceGoalStateGenerator
 from tbp.monty.frameworks.models.graph_matching import GraphLM
-from tbp.monty.frameworks.models.states import State
 from tbp.monty.frameworks.utils.evidence_matching import (
     ChannelMapper,
     evidence_update_threshold,
@@ -384,7 +384,7 @@ class EvidenceGraphLM(GraphLM):
                 if len(interesting_hyp[0]) > 0:
                     possible_states[graph_id] = []
                     for hyp_id in interesting_hyp[0]:
-                        vote = State(
+                        vote = Message(
                             location=self.possible_locations[graph_id][
                                 hyp_id
                             ],  # location rel. body
@@ -448,7 +448,7 @@ class EvidenceGraphLM(GraphLM):
         # object_loc_rel_body = (
         #     self.buffer.get_current_location(input_channel="first") - mlh["location"]
         # )
-        return State(
+        return Message(
             # Same as input location from patch (rel body)
             # NOTE: Just for common format at the moment, movement information will be
             # taken from the sensor. For higher level LMs, we may want to transmit the

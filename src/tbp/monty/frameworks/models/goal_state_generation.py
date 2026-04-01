@@ -14,11 +14,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from tbp.monty.cmp import Goal
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.models.abstract_monty_classes import (
     GoalStateGenerator,
 )
-from tbp.monty.frameworks.models.states import GoalState
 from tbp.monty.frameworks.utils.communication_utils import get_state_from_channel
 
 if TYPE_CHECKING:
@@ -105,8 +105,8 @@ class GraphGoalStateGenerator(GoalStateGenerator):
 
     def reset(self):
         """Reset any stored attributes of the GSG."""
-        self.set_driving_goal_state(self._generate_none_goal_state())
-        self._set_output_goal_state(self._generate_none_goal_state())
+        self.set_driving_goal(self._generate_none_goal())
+        self._set_output_goal(self._generate_none_goal())
         self.parent_lm.buffer.update_stats(
             dict(
                 goal_states=[],
@@ -118,7 +118,7 @@ class GraphGoalStateGenerator(GoalStateGenerator):
             init_list=False,
         )
 
-    def set_driving_goal_state(self, received_goal_state):
+    def set_driving_goal(self, received_goal_state):
         """Receive a new high-level Goal to drive this Goal State Generator (GSG).
 
         If none is provided, the GSG should default to pursuing a high confidence
@@ -158,7 +158,7 @@ class GraphGoalStateGenerator(GoalStateGenerator):
 
         self.driving_goal_state = received_goal_state
 
-    def output_goal_states(self) -> list[GoalState]:
+    def output_goals(self) -> list[Goal]:
         """Retrieve the output Goals of the GSG.
 
         This is the Goal projected to other LMs' GSGs and/or motor actuators.
@@ -166,7 +166,7 @@ class GraphGoalStateGenerator(GoalStateGenerator):
         Returns:
             Output Goals of the GSG if it exists, otherwise empty list.
         """
-        return [self.output_goal_state] if self.output_goal_state else []
+        return [self.output_goal] if self.output_goal else []
 
     # ------------------- Main Algorithm -----------------------
 
@@ -192,19 +192,17 @@ class GraphGoalStateGenerator(GoalStateGenerator):
         #     # Below code block
 
         if self._check_need_new_output_goal(ctx, output_goal_achieved):
-            self._set_output_goal_state(
-                new_goal_state=self._generate_goal_state(observations)
-            )
+            self._set_output_goal(new_goal=self._generate_goal(observations))
         elif self._check_keep_current_output_goal():
             pass
         else:
-            self._set_output_goal_state(new_goal_state=self._generate_none_goal_state())
+            self._set_output_goal(new_goal=self._generate_none_goal())
 
     # ======================= Private ==========================
 
     # ------------------- Main Algorithm -----------------------
 
-    def _generate_none_goal_state(self):
+    def _generate_none_goal(self):
         """Return a None-type Goal.
 
         A None-type Goal specifies nothing other than high confidence.
@@ -215,7 +213,7 @@ class GraphGoalStateGenerator(GoalStateGenerator):
         """
         return
 
-    def _generate_goal_state(self, _observations):
+    def _generate_goal(self, _observations):
         """Generate a new Goal to send out to other LMs and/or motor actuators.
 
         Given the driving Goal, and information from the parent LM of the GSG
@@ -231,7 +229,7 @@ class GraphGoalStateGenerator(GoalStateGenerator):
         Returns:
             A None Goal.
         """
-        return self._generate_none_goal_state()
+        return self._generate_none_goal()
 
     def _check_states_different(
         self,
@@ -345,7 +343,7 @@ class GraphGoalStateGenerator(GoalStateGenerator):
         Returns:
             Whether the output Goal was achieved.
         """
-        if self.output_goal_state is not None:
+        if self.output_goal is not None:
             return self._check_input_matches_sensory_prediction(observations)
 
         return False
@@ -451,9 +449,9 @@ class GraphGoalStateGenerator(GoalStateGenerator):
 
     # ------------------ Getters, Setters & Logging ---------------------
 
-    def _set_output_goal_state(self, new_goal_state):
+    def _set_output_goal(self, new_goal):
         """Set the output Goal of the GSG."""
-        self.output_goal_state = new_goal_state
+        self.output_goal = new_goal
 
     def _update_gsg_logging(self, output_goal_achieved: bool):
         """Update any logging information (stored in the parent LM's buffer).
@@ -463,18 +461,16 @@ class GraphGoalStateGenerator(GoalStateGenerator):
         """
         # Only consider output-state achieved for the purpose of logging when the
         # output Goal is meaningful (i.e. not None)
-        if self.output_goal_state is not None:
+        if self.output_goal is not None:
             # Subtract 1 as the Goal was actually set (and potentially achieved)
             # on the previous step, we are simply first checking it now
 
             match_step = self.parent_lm.buffer.get_num_matching_steps() - 1
-            self.output_goal_state.info["achieved"] = output_goal_achieved
-            self.output_goal_state.info["matching_step_when_output_goal_set"] = (
-                match_step
-            )
+            self.output_goal.info["achieved"] = output_goal_achieved
+            self.output_goal.info["matching_step_when_output_goal_set"] = match_step
             self.parent_lm.buffer.update_stats(
                 dict(
-                    goal_states=self.output_goal_state,
+                    goal_states=self.output_goal,
                     matching_step_when_output_goal_set=match_step,
                     goal_state_achieved=output_goal_achieved,
                 ),
@@ -582,7 +578,7 @@ class EvidenceGoalStateGenerator(GraphGoalStateGenerator):
 
     # ------------------- Main Algorithm -----------------------
 
-    def _generate_goal_state(self, observations) -> list:
+    def _generate_goal(self, observations) -> Goal:
         """Use the hypothesis-testing policy to generate a Goal.
 
         The Goal will rapidly disambiguate the pose and/or ID of the object the
@@ -602,7 +598,7 @@ class EvidenceGoalStateGenerator(GraphGoalStateGenerator):
         goal_confidence = self.parent_lm.get_output().confidence
 
         # Compute the Goal (for the motor-actuator)
-        return self._compute_goal_state_for_target_loc(
+        return self._compute_goal_for_target_loc(
             observations,
             target_info,
             goal_confidence=goal_confidence,
@@ -762,9 +758,9 @@ class EvidenceGoalStateGenerator(GraphGoalStateGenerator):
             "target_surface_normal": target_surface_normal,
         }
 
-    def _compute_goal_state_for_target_loc(
+    def _compute_goal_for_target_loc(
         self, observations, target_info, goal_confidence=1.0
-    ) -> GoalState:
+    ) -> Goal:
         """Specify a Goal for the motor-actuator.
 
         Based on a target location (in object-centric coordinates) and the associated
@@ -837,34 +833,7 @@ class EvidenceGoalStateGenerator(GraphGoalStateGenerator):
             "matching_step_when_output_goal_set": None,
         }
 
-        # TODO M consider also using the below sensor-predicted state as an additional
-        # evalaution of how much we have achieved our goal, i.e. consistent with the
-        # object we thought we were on; could have more detailed information using the
-        # internal object model
-        # sensor_predicted_state = GoalState(
-        #     location=np.array(proposed_surface_loc),
-        #     morphological_features={
-        #         # Note the hypothesis-testing policy does not specify the roll of the
-        #         # agent, because this is not relevant to the task
-        #         "pose_vectors": np.array(
-        #             [
-        #                 target_surface_normal_rotated,
-        #                 [np.nan, np.nan, np.nan],
-        #                 [np.nan, np.nan, np.nan],
-        #             ]
-        #         ),
-        #         "pose_fully_defined": None,
-        #         "on_object": 1,
-        #     },
-        #     non_morphological_features=None,
-        #     confidence=goal_confidence,
-        #     use_state=True,
-        #     sender_id=self.parent_lm.learning_module_id,
-        #     sender_type="GSG",
-        #     goal_tolerances=None,
-        # )
-
-        return GoalState(
+        return Goal(
             location=np.array(target_loc),
             morphological_features={
                 # Note the hypothesis-testing policy does not specify the roll of the

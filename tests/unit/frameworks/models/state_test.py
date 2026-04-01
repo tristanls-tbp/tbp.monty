@@ -12,13 +12,13 @@ import unittest
 import numpy as np
 from scipy.spatial.transform import Rotation
 
+from tbp.monty.cmp import Goal, encode_goal_state
 from tbp.monty.frameworks.models.buffer import BufferEncoder
-from tbp.monty.frameworks.models.states import GoalState, encode_goal_state
 
 
 class EncodeGoalStateTest(unittest.TestCase):
     def setUp(self):
-        self.goal_state_dict = {
+        self.goal_dict = {
             "location": np.array([0, 1.5, 0]),
             "morphological_features": {
                 "pose_vectors": np.array(
@@ -50,16 +50,16 @@ class EncodeGoalStateTest(unittest.TestCase):
                 "matching_step_when_output_goal_set": None,
             },
         }
-        self.goal_state = GoalState(**self.goal_state_dict)
+        self.goal = Goal(**self.goal_dict)
 
     def test_encode(self):
-        dct = encode_goal_state(self.goal_state)
-        self.assertDictEqual(dct, self.goal_state_dict)
+        dct = encode_goal_state(self.goal)
+        self.assertDictEqual(dct, self.goal_dict)
 
     def test_json_serialization(self):
         self.assertDictEqual(
-            json.loads(json.dumps(self.goal_state, cls=BufferEncoder)),
-            json.loads(json.dumps(self.goal_state_dict, cls=BufferEncoder)),
+            json.loads(json.dumps(self.goal, cls=BufferEncoder)),
+            json.loads(json.dumps(self.goal_dict, cls=BufferEncoder)),
         )
 
 

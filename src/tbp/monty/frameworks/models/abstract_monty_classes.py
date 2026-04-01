@@ -15,6 +15,7 @@ from typing import Dict, TypedDict
 import numpy as np
 import numpy.typing as npt
 
+from tbp.monty.cmp import Goal
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.actions.actions import Action
 from tbp.monty.frameworks.agents import AgentID
@@ -23,7 +24,6 @@ from tbp.monty.frameworks.models.motor_system_state import (
     AgentState,
     ProprioceptiveState,
 )
-from tbp.monty.frameworks.models.states import GoalState
 from tbp.monty.frameworks.sensors import SensorID
 
 __all__ = [
@@ -330,8 +330,8 @@ class LearningModule(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def propose_goal_states(self) -> list[GoalState]:
-        """Return the goal-states proposed by this LM's GSG if they exist."""
+    def propose_goals(self) -> list[Goal]:
+        """Return the goals proposed by this LM's GSG if they exist."""
         pass
 
     @abc.abstractmethod
@@ -400,24 +400,24 @@ class ObjectModel(metaclass=abc.ABCMeta):
 
 
 class GoalStateGenerator(metaclass=abc.ABCMeta):
-    """Generate goal-states that other learning modules and motor-systems will attempt.
+    """Generate goals that other learning modules and motor-systems will attempt.
 
-    Generate goal-states potentially (in the case of LMs) by outputting their own
-    sub-goal-states. Provides a mechanism for implementing hierarchical action policies
+    Generate goals potentially (in the case of LMs) by outputting their own
+    sub-goals. Provides a mechanism for implementing hierarchical action policies
     that are informed by world models/hypotheses.
     """
 
     @abc.abstractmethod
-    def set_driving_goal_state(self):
-        """Set the driving goal state.
+    def set_driving_goal(self):
+        """Set the driving goal.
 
         e.g., from a human operator or a high-level LM.
         """
         pass
 
     @abc.abstractmethod
-    def output_goal_states(self) -> list[GoalState]:
-        """Return output goal-states."""
+    def output_goals(self) -> list[Goal]:
+        """Return output goals."""
         pass
 
     @abc.abstractmethod
@@ -460,6 +460,6 @@ class SensorModule(metaclass=abc.ABCMeta):
         """This method is called before each episode."""
         pass
 
-    def propose_goal_states(self) -> list[GoalState]:
-        """Return the goal-states proposed by this Sensor Module."""
+    def propose_goals(self) -> list[Goal]:
+        """Return the goals proposed by this Sensor Module."""
         return []

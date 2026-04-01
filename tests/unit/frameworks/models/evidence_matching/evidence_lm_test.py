@@ -474,7 +474,7 @@ class EvidenceLMTest(BaseGraphTest):
         that the policy still proposes the correct location in object-centric
         coordinates.
         """
-        fake_obs_test = copy.deepcopy(self.fake_obs_house_trans)
+        fake_obs_test = copy.deepcopy(self.fake_percept_house_trans)
 
         graph_lm = self.get_elm_with_two_fake_objects(
             self.fake_obs_square,
@@ -525,7 +525,7 @@ class EvidenceLMTest(BaseGraphTest):
         (translated and rotated), and we confirm that the object-centric target
         point is still correct.
         """
-        fake_obs_test = copy.deepcopy(self.fake_obs_house_trans)
+        fake_obs_test = copy.deepcopy(self.fake_percept_house_trans)
 
         # Only trained on one object
         graph_lm = self.get_elm_with_fake_object(

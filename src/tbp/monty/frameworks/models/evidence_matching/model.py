@@ -44,7 +44,7 @@ class MontyForEvidenceGraphMatching(MontyForGraphMatching):
         super()._pass_infos_to_motor_system()
 
         # Check that the motor system can receive goal states
-        if self.motor_system._policy.use_goal_state_driven_actions:
+        if self.motor_system._policy.use_goal_driven_actions:
             best_goal_state = None
             best_goal_confidence = -np.inf
             for current_goal_state in self.gsg_outputs:

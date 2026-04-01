@@ -33,6 +33,7 @@ import quaternion as qt
 from omegaconf import DictConfig
 from scipy.spatial.transform import Rotation
 
+from tbp.monty.cmp import Message
 from tbp.monty.frameworks.actions.actions import (
     Action,
     LookDown,
@@ -56,7 +57,6 @@ from tbp.monty.frameworks.models.motor_system_state import (
     AgentState,
     ProprioceptiveState,
 )
-from tbp.monty.frameworks.models.states import State
 from tbp.monty.frameworks.utils.transform_utils import numpy_to_scipy_quat
 
 
@@ -95,7 +95,7 @@ class PolicyTest(unittest.TestCase):
 
         # ==== Setup fake observations for testing principal-curvature policies ====
         fake_sender_id = "patch"
-        default_obs_args = dict(
+        default_percept_args = dict(
             location=np.array([0, 0, 0]),
             morphological_features={
                 "pose_vectors": np.array([[0, 0, -1], [1, 0, 0], [0, 1, 0]]),
@@ -111,33 +111,33 @@ class PolicyTest(unittest.TestCase):
             sender_id=fake_sender_id,
             sender_type="SM",
         )
-        fo_1 = copy.deepcopy(default_obs_args)
-        fo_1["location"] = np.array([0.01, 0, 0])
-        fo_2 = copy.deepcopy(default_obs_args)
-        fo_2["location"] = np.array([0.02, 0, 0])
-        fo_3 = copy.deepcopy(default_obs_args)
-        fo_3["location"] = np.array([0.02, 0.01, 0])
+        fp_1 = copy.deepcopy(default_percept_args)
+        fp_1["location"] = np.array([0.01, 0, 0])
+        fp_2 = copy.deepcopy(default_percept_args)
+        fp_2["location"] = np.array([0.02, 0, 0])
+        fp_3 = copy.deepcopy(default_percept_args)
+        fp_3["location"] = np.array([0.02, 0.01, 0])
 
         # No well-defined PC directions
-        fo_4 = copy.deepcopy(default_obs_args)
-        fo_4["location"] = np.array([0.02, 0.02, 0])
-        fo_4["morphological_features"]["pose_fully_defined"] = False
+        fp_4 = copy.deepcopy(default_percept_args)
+        fp_4["location"] = np.array([0.02, 0.02, 0])
+        fp_4["morphological_features"]["pose_fully_defined"] = False
 
-        fo_5 = copy.deepcopy(default_obs_args)
-        fo_5["location"] = np.array([0.03, 0.03, 0])
+        fp_5 = copy.deepcopy(default_percept_args)
+        fp_5["location"] = np.array([0.03, 0.03, 0])
 
-        self.fake_obs_pc = [
-            State(**default_obs_args),
-            State(**fo_1),
-            State(**fo_2),
-            State(**fo_3),
-            State(**fo_4),
-            State(**fo_5),
+        self.fake_percept_pc = [
+            Message(**default_percept_args),
+            Message(**fp_1),
+            Message(**fp_2),
+            Message(**fp_3),
+            Message(**fp_4),
+            Message(**fp_5),
         ]
 
         # PC direction "flipped", pointing back to a location we've already been at
-        fo_1_backtrack_pc = copy.deepcopy(fo_1)
-        fo_1_backtrack_pc["morphological_features"]["pose_vectors"] = np.array(
+        fp_1_backtrack_pc = copy.deepcopy(fp_1)
+        fp_1_backtrack_pc["morphological_features"]["pose_vectors"] = np.array(
             [[0, 0, -1], [-1, 0, 0], [0, 1, 0]]
         )
 
@@ -146,15 +146,15 @@ class PolicyTest(unittest.TestCase):
         # orthogonal to it; in experiments, PC vectors pointing towards +z in the
         # reference frame of the sensor/agent can happen if the surface agent has failed
         # to orient such that it is looking down at the surface normal
-        fo_2_corrupt_z = copy.deepcopy(fo_2)
-        fo_2_corrupt_z["morphological_features"]["pose_vectors"] = np.array(
+        fp_2_corrupt_z = copy.deepcopy(fp_2)
+        fp_2_corrupt_z["morphological_features"]["pose_vectors"] = np.array(
             [[0, 1, 0], [0, 0, 1], [1, 0, 0]]
         )
 
-        self.fake_obs_advanced_pc = [
-            State(**default_obs_args),
-            State(**fo_1_backtrack_pc),
-            State(**fo_2_corrupt_z),
+        self.fake_percept_advanced_pc = [
+            Message(**default_percept_args),
+            Message(**fp_1_backtrack_pc),
+            Message(**fp_2_corrupt_z),
         ]
 
     def tearDown(self):
@@ -654,7 +654,7 @@ class PolicyTest(unittest.TestCase):
         # also in environmental coordinates, so we compare these
         # Note that the movement is a unit vector because it is a direction, the amount
         # (i.e. size) of the translation is represented separately.
-        policy.processed_observations = self.fake_obs_pc[0]
+        policy.processed_observations = self.fake_percept_pc[0]
         direction = policy.tangential_direction(ctx, proprioceptive_state)
         assert np.all(np.isclose(direction, [1, 0, 0])), (
             "Not following correct PC direction"
@@ -667,7 +667,7 @@ class PolicyTest(unittest.TestCase):
         )
 
         # Step 2
-        policy.processed_observations = self.fake_obs_pc[1]
+        policy.processed_observations = self.fake_percept_pc[1]
         direction = policy.tangential_direction(ctx, proprioceptive_state)
         assert np.all(np.isclose(direction, [1, 0, 0])), (
             "Not following correct PC direction"
@@ -681,7 +681,7 @@ class PolicyTest(unittest.TestCase):
 
         # Step 3: Our bias should change from following minimal to maximal
         # PC
-        policy.processed_observations = self.fake_obs_pc[2]
+        policy.processed_observations = self.fake_percept_pc[2]
         direction = policy.tangential_direction(ctx, proprioceptive_state)
         assert np.all(np.isclose(direction, [0, 1, 0])), (
             "Not following correct PC direction"
@@ -694,7 +694,7 @@ class PolicyTest(unittest.TestCase):
         )
 
         # Step 4
-        policy.processed_observations = self.fake_obs_pc[3]
+        policy.processed_observations = self.fake_percept_pc[3]
         direction = policy.tangential_direction(ctx, proprioceptive_state)
         assert np.all(np.isclose(direction, [0, 1, 0])), (
             "Not following correct PC direction"
@@ -707,10 +707,10 @@ class PolicyTest(unittest.TestCase):
         )
 
         # Step 5: Pass observation *without* a well-defined PC direction
-        policy.processed_observations = self.fake_obs_pc[4]
+        policy.processed_observations = self.fake_percept_pc[4]
         direction = policy.tangential_direction(ctx, proprioceptive_state)
         assert np.isclose(
-            np.dot(self.fake_obs_pc[4].get_surface_normal(), direction), 0
+            np.dot(self.fake_percept_pc[4].get_surface_normal(), direction), 0
         ), "Direction should be orthogonal to tangent (surface) plane"
         assert policy.ignoring_pc_counter == 1, (
             "Should have reset ignoring_pc_counter, and then incremented"
@@ -731,7 +731,7 @@ class PolicyTest(unittest.TestCase):
         policy.ignoring_pc_counter = self.policy_cfg_fragment.min_general_steps
         proprioceptive_state[AgentID("agent_id_0")].rotation = qt.quaternion(0, 0, 1, 0)
 
-        policy.processed_observations = self.fake_obs_pc[5]
+        policy.processed_observations = self.fake_percept_pc[5]
         direction = policy.tangential_direction(ctx, proprioceptive_state)
         assert np.all(np.isclose(direction, [1.0, 0.0, 0])), (
             "Not following correct PC direction"
@@ -772,14 +772,14 @@ class PolicyTest(unittest.TestCase):
         # Step 1 : PC-guided information, but we haven't taken the minimum number of
         # non-PC steps, so take random step
         policy.ignoring_pc_counter = 0  # Set to 0 so we skip PC
-        policy.processed_observations = self.fake_obs_advanced_pc[0]
+        policy.processed_observations = self.fake_percept_advanced_pc[0]
         # TODO M clean up how we set this when doing the refactor; currently this is
         # done in graph_matching.py normally
-        policy.tangent_locs.append(self.fake_obs_advanced_pc[0].location)
+        policy.tangent_locs.append(self.fake_percept_advanced_pc[0].location)
         policy.tangent_norms.append([0, 0, 1])
         direction = policy.tangential_direction(ctx, proprioceptive_state)
         assert np.isclose(
-            np.dot(self.fake_obs_advanced_pc[0].get_surface_normal(), direction), 0
+            np.dot(self.fake_percept_advanced_pc[0].get_surface_normal(), direction), 0
         ), "Direction should be orthogonal to tangent (surface) plane"
         assert policy.following_pc_counter == 0, (
             "Should not have followed PC and incremented counter"
@@ -790,10 +790,10 @@ class PolicyTest(unittest.TestCase):
 
         # Step 2 : Given the same observation, but now have taken sufficient non-PC
         # steps, so should follow PC direction
-        policy.processed_observations = self.fake_obs_advanced_pc[0]
+        policy.processed_observations = self.fake_percept_advanced_pc[0]
         # TODO M clean up how we set this when doing the refactor; currently this is
         # done in graph_matching.py normally
-        policy.tangent_locs.append(self.fake_obs_pc[0].location)
+        policy.tangent_locs.append(self.fake_percept_pc[0].location)
         policy.tangent_norms.append([0, 0, 1])
         direction = policy.tangential_direction(ctx, proprioceptive_state)
         assert np.all(np.isclose(direction, [1, 0, 0])), (
@@ -808,8 +808,8 @@ class PolicyTest(unittest.TestCase):
 
         # Step 3 : Following PC direction would cause us to double back on ourself;
         # PC has been arbitrarily flipped vs. previous step, so can just flip it back
-        policy.processed_observations = self.fake_obs_advanced_pc[1]
-        policy.tangent_locs.append(self.fake_obs_advanced_pc[1].location)
+        policy.processed_observations = self.fake_percept_advanced_pc[1]
+        policy.tangent_locs.append(self.fake_percept_advanced_pc[1].location)
         policy.tangent_norms.append([0, 0, 1])
         direction = policy.tangential_direction(ctx, proprioceptive_state)
         assert np.all(np.isclose(direction, [1, 0, 0])), (
@@ -823,8 +823,8 @@ class PolicyTest(unittest.TestCase):
         )
 
         # Step 4 : PC is defined in z-direction, so policy should take a random step
-        policy.processed_observations = self.fake_obs_advanced_pc[2]
-        policy.tangent_locs.append(self.fake_obs_advanced_pc[2].location)
+        policy.processed_observations = self.fake_percept_advanced_pc[2]
+        policy.tangent_locs.append(self.fake_percept_advanced_pc[2].location)
         policy.tangent_norms.append([0, 0, 1])
         direction = policy.tangential_direction(ctx, proprioceptive_state)
         assert np.isclose(np.linalg.norm(direction), 1), (
@@ -843,9 +843,9 @@ class PolicyTest(unittest.TestCase):
 
         # Step 5 : Following PC direction would cause us to double back on ourself; PC
         # has not been arbitrarily flipped, so policy selects a new heading
-        policy.processed_observations = self.fake_obs_advanced_pc[0]
+        policy.processed_observations = self.fake_percept_advanced_pc[0]
         policy.tangent_locs.append(
-            self.fake_obs_advanced_pc[0].location
+            self.fake_percept_advanced_pc[0].location
         )  # Synthetically
         # "teleport" the agent back to the first observation and location, such that
         # following PC would cause it to visit the observation 1 again (which it is
@@ -855,7 +855,7 @@ class PolicyTest(unittest.TestCase):
         # Note the following movement is a random direction deterministically set by the
         # random seed
         assert np.isclose(
-            np.dot(self.fake_obs_advanced_pc[0].get_surface_normal(), direction), 0
+            np.dot(self.fake_percept_advanced_pc[0].get_surface_normal(), direction), 0
         ), "Direction should be orthogonal to tangent (surface) plane"
         assert policy.ignoring_pc_counter == 0, (
             "Should have reset ignoring_pc_counter, and not incremented"
@@ -912,7 +912,7 @@ class PolicyTest(unittest.TestCase):
             },
         }
 
-        fake_sensation_config = dict(
+        fake_percept_config = dict(
             location=np.array([0, 1.5, 0.1]),
             morphological_features={
                 "pose_vectors": np.array([[0, 0, -1], [1, 0, 0], [0, 1, 0]]),
@@ -936,11 +936,11 @@ class PolicyTest(unittest.TestCase):
             ),
         )
 
-        lm.matching_step(ctx, observations=[State(**fake_sensation_config)])
+        lm.matching_step(ctx, observations=[Message(**fake_percept_config)])
 
         # GSG handles computing the motor goal-state
         motor_goal_state = lm.gsg._compute_goal_state_for_target_loc(
-            observations=[State(**fake_sensation_config)],
+            observations=[Message(**fake_percept_config)],
             target_info=target_info,
         )
 

@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 import numpy.testing as nptest
 
+from tbp.monty.cmp import Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.actions.action_samplers import UniformlyDistributedSampler
 from tbp.monty.frameworks.actions.actions import (
@@ -33,7 +34,6 @@ from tbp.monty.frameworks.models.motor_policies import (
     PredefinedPolicy,
     SurfacePolicyCurvatureInformed,
 )
-from tbp.monty.frameworks.models.states import State
 
 
 class SurfacePolicyCurvatureInformedTest(unittest.TestCase):
@@ -51,7 +51,7 @@ class SurfacePolicyCurvatureInformedTest(unittest.TestCase):
         )
         self.location = np.array([1.0, 2.0, 3.0])
         self.tangent_norm = np.array([0, 1, 0])
-        self.state = State(
+        self.percept = Message(
             location=self.location,
             morphological_features={
                 "pose_vectors": np.array(
@@ -80,7 +80,7 @@ class SurfacePolicyCurvatureInformedTest(unittest.TestCase):
             forward_distance=1,
         )
 
-        self.policy.processed_observations = self.state
+        self.policy.processed_observations = self.percept
 
         self.assertEqual(len(self.policy.tangent_locs), 1)
         nptest.assert_array_equal(self.policy.tangent_locs[0], self.location)
@@ -90,7 +90,7 @@ class SurfacePolicyCurvatureInformedTest(unittest.TestCase):
     def test_assign_to_processed_observations_appends_none_to_tangent_norms_if_last_action_is_orient_vertical_but_no_pose_vectors_in_state(  # noqa: E501
         self,
     ):
-        del self.state.morphological_features["pose_vectors"]
+        del self.percept.morphological_features["pose_vectors"]
         self.policy.last_surface_policy_action = OrientVertical(
             agent_id=self.agent_id,
             rotation_degrees=90,
@@ -98,7 +98,7 @@ class SurfacePolicyCurvatureInformedTest(unittest.TestCase):
             forward_distance=1,
         )
 
-        self.policy.processed_observations = self.state
+        self.policy.processed_observations = self.percept
 
         self.assertEqual(len(self.policy.tangent_locs), 1)
         nptest.assert_array_equal(self.policy.tangent_locs[0], self.location)
@@ -111,7 +111,7 @@ class SurfacePolicyCurvatureInformedTest(unittest.TestCase):
             agent_id=self.agent_id, rotation_degrees=0
         )
 
-        self.policy.processed_observations = self.state
+        self.policy.processed_observations = self.percept
 
         self.assertEqual(self.policy.tangent_locs, [])
         self.assertEqual(self.policy.tangent_norms, [])

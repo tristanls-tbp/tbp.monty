@@ -16,6 +16,7 @@ import numpy as np
 import torch
 from scipy.spatial.transform import Rotation
 
+from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.environments.environment import SemanticID
 from tbp.monty.frameworks.experiments.mode import ExperimentMode
@@ -33,7 +34,6 @@ from tbp.monty.frameworks.models.buffer import FeatureAtLocationBuffer
 from tbp.monty.frameworks.models.goal_state_generation import GraphGoalStateGenerator
 from tbp.monty.frameworks.models.monty_base import MontyBase
 from tbp.monty.frameworks.models.object_model import GraphObjectModel
-from tbp.monty.frameworks.models.states import GoalState, State
 
 __all__ = ["GraphLM", "GraphMemory", "MontyForGraphMatching"]
 
@@ -476,7 +476,7 @@ class MontyForGraphMatching(MontyBase):
                 # a void without any objects), ensuring that we eventually time-out
                 # according to max_total_steps
 
-    def _pass_input_obs_to_motor_system(self, percept: State):
+    def _pass_input_obs_to_motor_system(self, percept: Message):
         """Pass processed observations to motor system.
 
         Give the motor system all information it needs for its policy to decide the
@@ -704,13 +704,13 @@ class GraphLM(LearningModule):
         """
         pass
 
-    def propose_goal_states(self) -> list[GoalState]:
-        """Return the goal-states proposed by this LM's GSG.
+    def propose_goals(self) -> list[Goal]:
+        """Return the goals proposed by this LM's GSG.
 
         Only returned if the LM/GSG was stepped, otherwise returns empty list.
         """
         if self.buffer.get_last_obs_processed() and self.gsg is not None:
-            return self.gsg.output_goal_states()
+            return self.gsg.output_goals()
 
         return []
 

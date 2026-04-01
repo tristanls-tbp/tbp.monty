@@ -16,7 +16,7 @@ import numpy as np
 from tbp.monty.frameworks.models.buffer import BufferEncoder
 
 
-class State:
+class Message:
     """State class used as message packages passed in Monty using CMP.
 
     The cortical messaging protocol (CMP) is used to pass messages between Monty
@@ -211,7 +211,7 @@ class State:
         )
 
 
-class GoalState(State):
+class Goal(Message):
     """Specialization of :class:`State` for goal states with null (None) values allowed.
 
     Specialized form of state that still adheres to the cortical messaging protocol,
@@ -331,7 +331,7 @@ class GoalState(State):
         assert isinstance(self.info, dict), "info must be a dictionary"
 
 
-def encode_goal_state(goal_state: GoalState) -> dict[str, Any]:
+def encode_goal_state(goal_state: Goal) -> dict[str, Any]:
     """Encode a goal state into a dictionary.
 
     Args:
@@ -353,4 +353,4 @@ def encode_goal_state(goal_state: GoalState) -> dict[str, Any]:
     }
 
 
-BufferEncoder.register(GoalState, encode_goal_state)
+BufferEncoder.register(Goal, encode_goal_state)
