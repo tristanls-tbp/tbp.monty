@@ -331,26 +331,26 @@ class Goal(Message):
         assert isinstance(self.info, dict), "info must be a dictionary"
 
 
-def encode_goal_state(goal_state: Goal) -> dict[str, Any]:
-    """Encode a goal state into a dictionary.
+def encode_goal(goal: Goal) -> dict[str, Any]:
+    """Encode a goal into a dictionary.
 
     Args:
-        goal_state: The goal state to encode.
+        goal: The goal to encode.
 
     Returns:
-        A dictionary containing the goal state's attributes.
+        A dictionary containing the goal's attributes.
     """
     return {
-        "location": goal_state.location,
-        "morphological_features": goal_state.morphological_features,
-        "non_morphological_features": goal_state.non_morphological_features,
-        "confidence": goal_state.confidence,
-        "use_state": goal_state.use_state,
-        "sender_id": goal_state.sender_id,
-        "sender_type": goal_state.sender_type,
-        "goal_tolerances": goal_state.goal_tolerances,
-        "info": goal_state.info,
+        "location": goal.location,
+        "morphological_features": goal.morphological_features,
+        "non_morphological_features": goal.non_morphological_features,
+        "confidence": goal.confidence,
+        "use_state": goal.use_state,
+        "sender_id": goal.sender_id,
+        "sender_type": goal.sender_type,
+        "goal_tolerances": goal.goal_tolerances,
+        "info": goal.info,
     }
 
 
-BufferEncoder.register(Goal, encode_goal_state)
+BufferEncoder.register(Goal, encode_goal)

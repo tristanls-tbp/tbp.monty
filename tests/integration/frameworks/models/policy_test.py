@@ -868,7 +868,7 @@ class PolicyTest(unittest.TestCase):
         assert policy.prev_angle is None, "Should have reset prev_angle"
         assert policy.pc_is_z_defined is False, "Should have reset z-defind flag"
 
-    def core_evaluate_compute_goal_state_for_target_loc(
+    def core_evaluate_compute_goal_for_target_loc(
         self,
         ctx: RuntimeContext,
         lm,
@@ -891,8 +891,8 @@ class PolicyTest(unittest.TestCase):
                 which the agent should move to
 
         Returns:
-            motor_goal_state_location: Motor goal-state location
-            motor_goal_state_pose: Motor goal-state 0th pose vector
+            motor_goal_location: Motor goal location
+            motor_goal_pose: Motor goal 0th pose vector
             target_loc_hab: Habitat target location
             agent_direction_hab: Habitat agent direction
         """
@@ -939,16 +939,16 @@ class PolicyTest(unittest.TestCase):
         lm.matching_step(ctx, observations=[Message(**fake_percept_config)])
 
         # GSG handles computing the motor goal-state
-        motor_goal_state = lm.gsg._compute_goal_state_for_target_loc(
+        motor_goal = lm.gsg._compute_goal_for_target_loc(
             observations=[Message(**fake_percept_config)],
             target_info=target_info,
         )
 
         # --- Determine Habitat-coordinates from goal-state ---
 
-        policy.set_driving_goal_state(motor_goal_state)
+        policy.set_driving_goal(motor_goal)
 
-        target_loc_hab, target_quat = policy.derive_habitat_goal_state()
+        target_loc_hab, target_quat = policy.derive_habitat_goal()
 
         resulting_rot = Rotation.from_quat(
             numpy_to_scipy_quat(np.array([target_quat.real] + list(target_quat.imag)))
@@ -959,14 +959,14 @@ class PolicyTest(unittest.TestCase):
         agent_direction_hab = resulting_rot.apply(np.array([0, 0, -1]))
 
         return (
-            motor_goal_state.location,
-            motor_goal_state.morphological_features["pose_vectors"][0],
+            motor_goal.location,
+            motor_goal.morphological_features["pose_vectors"][0],
             target_loc_hab,
             agent_direction_hab,
         )
 
-    def test_multi_param_compute_goal_state_for_target_loc(self):
-        """Perform core_evaluate_compute_goal_state_for_target_loc.
+    def test_multi_param_compute_goal_for_target_loc(self):
+        """Perform core_evaluate_compute_goal_for_target_loc.
 
         Should work across a variety of parameter settings.
         """
@@ -988,7 +988,7 @@ class PolicyTest(unittest.TestCase):
             motor_goal_direction,
             target_loc_hab,
             agent_direction_hab,
-        ) = self.core_evaluate_compute_goal_state_for_target_loc(
+        ) = self.core_evaluate_compute_goal_for_target_loc(
             ctx,
             lm,
             policy,
@@ -1021,7 +1021,7 @@ class PolicyTest(unittest.TestCase):
             motor_goal_direction_2,
             target_loc_hab_2,
             agent_direction_hab_2,
-        ) = self.core_evaluate_compute_goal_state_for_target_loc(
+        ) = self.core_evaluate_compute_goal_for_target_loc(
             ctx,
             lm,
             policy,
@@ -1057,7 +1057,7 @@ class PolicyTest(unittest.TestCase):
             motor_goal_direction_3,
             target_loc_hab_3,
             agent_direction_hab_3,
-        ) = self.core_evaluate_compute_goal_state_for_target_loc(
+        ) = self.core_evaluate_compute_goal_for_target_loc(
             ctx,
             lm,
             policy,

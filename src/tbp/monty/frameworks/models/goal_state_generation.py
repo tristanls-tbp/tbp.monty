@@ -118,7 +118,7 @@ class GraphGoalStateGenerator(GoalStateGenerator):
             init_list=False,
         )
 
-    def set_driving_goal(self, received_goal_state):
+    def set_driving_goal(self, goal):
         """Receive a new high-level Goal to drive this Goal State Generator (GSG).
 
         If none is provided, the GSG should default to pursuing a high confidence
@@ -136,11 +136,11 @@ class GraphGoalStateGenerator(GoalStateGenerator):
         LM, such that achieving the driving Goal can be used as a test for Monty
         convergence. This might be something like the below.
         """
-        # if received_goal_state is None:
+        # if goal is None:
         #     # The current default Goal, which is to reduce uncertainty; this is
         #     # defined by having a high-confidence in the Goal, and an arbitrary
         #     # single object ID.
-        #     self.driving_goal_state = GoalState(
+        #     self.driving_goal = Goal(
         #         location=None,
         #         morphological_features=None,
         #         non_morphological_features={
@@ -156,7 +156,7 @@ class GraphGoalStateGenerator(GoalStateGenerator):
         #     )
         # else:
 
-        self.driving_goal_state = received_goal_state
+        self.driving_goal = goal
 
     def output_goals(self) -> list[Goal]:
         """Retrieve the output Goals of the GSG.
@@ -176,20 +176,9 @@ class GraphGoalStateGenerator(GoalStateGenerator):
         Check whether the GSG's output and driving Goals are achieved, and
         generate a new output Goal if necessary.
         """
-        output_goal_achieved = self._check_output_goal_state_achieved(observations)
+        output_goal_achieved = self._check_output_goal_achieved(observations)
 
         self._update_gsg_logging(output_goal_achieved)
-
-        # If driving Goal achieved, from this LM's perspective, other LMs/GSGs
-        # need not do anything
-        # TODO M re-introduce when replacing the current check for convergence with
-        # achievement of the driving Goal
-        # if self._check_driving_goal_state_achieved():
-        #     self._set_output_goal_state(
-        #         new_goal_state=self._generate_none_goal_state()
-        #     )
-        # else:
-        #     # Below code block
 
         if self._check_need_new_output_goal(ctx, output_goal_achieved):
             self._set_output_goal(new_goal=self._generate_goal(observations))
@@ -301,7 +290,7 @@ class GraphGoalStateGenerator(GoalStateGenerator):
 
         return states_different
 
-    def _check_driving_goal_state_achieved(self) -> bool:
+    def _check_driving_goal_achieved(self) -> bool:
         """Check if parent LM's output state is close enough to driving Goal.
 
         TODO M Move some of the checks for convergence here
@@ -309,16 +298,16 @@ class GraphGoalStateGenerator(GoalStateGenerator):
         Returns:
             Whether the parent LM's output state is close enough to the driving Goal.
         """
-        if self.driving_goal_state.goal_tolerances is None:
+        if self.driving_goal.goal_tolerances is None:
             # When not specified by the incoming driving Goal, use the GSG's own
             # default matching tolerances
             diff_tolerances = self.goal_tolerances
 
         return self._check_states_different(
-            self.parent_lm.get_output(), self.driving_goal_state, diff_tolerances
+            self.parent_lm.get_output(), self.driving_goal, diff_tolerances
         )
 
-    def _check_output_goal_state_achieved(self, observations) -> bool:
+    def _check_output_goal_achieved(self, observations) -> bool:
         """Check if the output Goal was achieved.
 
         Check whether the information entering the LM suggests that the output Goal

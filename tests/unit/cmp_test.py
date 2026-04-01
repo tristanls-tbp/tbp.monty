@@ -12,7 +12,7 @@ import unittest
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from tbp.monty.cmp import Goal, encode_goal_state
+from tbp.monty.cmp import Goal, encode_goal
 from tbp.monty.frameworks.models.buffer import BufferEncoder
 
 
@@ -53,7 +53,7 @@ class EncodeGoalTest(unittest.TestCase):
         self.goal = Goal(**self.goal_dict)
 
     def test_encode(self):
-        dct = encode_goal_state(self.goal)
+        dct = encode_goal(self.goal)
         self.assertDictEqual(dct, self.goal_dict)
 
     def test_json_serialization(self):
