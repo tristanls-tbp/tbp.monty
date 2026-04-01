@@ -46,10 +46,10 @@ __all__ = [
     "MessageNoise",
     "NoMessageNoise",
     "ObservationProcessor",
-    "PassthroughStateFilter",
+    "PassthroughPerceptFilter",
     "Probe",
     "SnapshotTelemetry",
-    "StateFilter",
+    "PerceptFilter",
     "SurfaceNormalMethod",
 ]
 
@@ -600,23 +600,23 @@ class CameraSM(SensorModule):
         else:
             self._message_noise = NoMessageNoise()
         if delta_thresholds:
-            self._state_filter: StateFilter = FeatureChangeFilter(
+            self._percept_filter: PerceptFilter = FeatureChangeFilter(
                 delta_thresholds=delta_thresholds
             )
         else:
-            self._state_filter = PassthroughStateFilter()
+            self._percept_filter = PassthroughPerceptFilter()
         self._snapshot_telemetry = SnapshotTelemetry()
         # Tests check sm.features, not sure if this should be exposed
         self.features = features
-        self.processed_obs = []
-        self.states = []
+        self.processed_obs: list[dict[str, Any]] = []
+        self.states: list[SensorState] = []
         # TODO: give more descriptive & distinct names
         self.sensor_module_id = sensor_module_id
         self.save_raw_obs = save_raw_obs
 
     def pre_episode(self) -> None:
         self._snapshot_telemetry.reset()
-        self._state_filter.reset()
+        self._percept_filter.reset()
         self.is_exploring = False
         self.processed_obs = []
         self.states = []
@@ -665,7 +665,7 @@ class CameraSM(SensorModule):
         if motor_only_step:
             percept.use_state = False
 
-        percept = self._state_filter(percept)
+        percept = self._percept_filter(percept)
 
         if not self.is_exploring:
             self.processed_obs.append(percept.__dict__)
@@ -674,14 +674,14 @@ class CameraSM(SensorModule):
         return percept
 
 
-class StateFilter(Protocol):
+class PerceptFilter(Protocol):
     def __call__(self, percept: Message) -> Message: ...
     def reset(self) -> None: ...
 
 
-class PassthroughStateFilter(StateFilter):
+class PassthroughPerceptFilter(PerceptFilter):
     def __call__(self, percept: Message) -> Message:
-        """Passthrough state filter. Never sets `percept.use_state` to False.
+        """Passthrough percept filter. Never sets `percept.use_state` to False.
 
         Returns:
             Percept unchanged.
@@ -692,26 +692,26 @@ class PassthroughStateFilter(StateFilter):
         pass
 
 
-class FeatureChangeFilter(StateFilter):
+class FeatureChangeFilter(PerceptFilter):
     def __init__(self, delta_thresholds: dict[str, Any]):
         self._delta_thresholds = delta_thresholds
-        self._last_state = None
+        self._last_percept = None
         self._last_sent_n_steps_ago = 0
 
     def reset(self):
         """Reset buffer and is_exploring flag."""
-        self._last_state = None
+        self._last_percept = None
 
-    def _check_feature_change(self, state: Message) -> bool:
+    def _check_feature_change(self, percept: Message) -> bool:
         """Check feature change between last transmitted observation.
 
         Args:
-            state: State to check for feature change.
+            percept: Percept to check for feature change.
 
         Returns:
             True if the features have changed significantly.
         """
-        if not state.get_on_object():
+        if not percept.get_on_object():
             # Even for the surface-agent sensor, do not return a feature for LM
             # processing that is not on the object
             logger.debug("No new point because not on object")
@@ -719,8 +719,8 @@ class FeatureChangeFilter(StateFilter):
 
         for feature in self._delta_thresholds:
             if feature not in ["n_steps", "distance"]:
-                last_feat = self._last_state.get_feature_by_name(feature)
-                current_feat = state.get_feature_by_name(feature)
+                last_feat = self._last_percept.get_feature_by_name(feature)
+                current_feat = percept.get_feature_by_name(feature)
 
             if feature == "n_steps":
                 if self._last_sent_n_steps_ago >= self._delta_thresholds[feature]:
@@ -728,7 +728,7 @@ class FeatureChangeFilter(StateFilter):
                     return True
             elif feature == "distance":
                 distance = np.linalg.norm(
-                    np.array(self._last_state.location) - np.array(state.location)
+                    np.array(self._last_percept.location) - np.array(percept.location)
                 )
 
                 if distance > self._delta_thresholds[feature]:
@@ -788,8 +788,8 @@ class FeatureChangeFilter(StateFilter):
             # don't bother with the below
             return percept
 
-        if not self._last_state:  # first step
-            self._last_state = percept
+        if not self._last_percept:  # first step
+            self._last_percept = percept  # type: ignore[assignment]
             self._last_sent_n_steps_ago = 0
             return percept
 
@@ -801,7 +801,7 @@ class FeatureChangeFilter(StateFilter):
         if significant_feature_change:
             # As per original implementation : only update the "last feature" when a
             # significant change has taken place
-            self._last_state = percept
+            self._last_percept = percept
             self._last_sent_n_steps_ago = 0
         else:
             self._last_sent_n_steps_ago += 1
