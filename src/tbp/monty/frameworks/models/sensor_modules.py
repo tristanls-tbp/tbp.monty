@@ -47,9 +47,9 @@ __all__ = [
     "NoMessageNoise",
     "ObservationProcessor",
     "PassthroughPerceptFilter",
+    "PerceptFilter",
     "Probe",
     "SnapshotTelemetry",
-    "PerceptFilter",
     "SurfaceNormalMethod",
 ]
 
