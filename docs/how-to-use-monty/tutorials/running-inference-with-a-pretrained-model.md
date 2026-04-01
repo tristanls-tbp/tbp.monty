@@ -124,7 +124,7 @@ config:
           # Config for goal state generator of LM which is used for model-based action
           # suggestions, such as hypothesis-testing actions.
           gsg:
-            _target_: tbp.monty.frameworks.models.goal_state_generation.EvidenceGoalStateGenerator
+            _target_: tbp.monty.frameworks.models.goal_generation.EvidenceGoalStateGenerator
             # Tolerance(s) when determining goal-state success
             goal_tolerances:
               location: 0.015 # distance in meters
@@ -237,7 +237,7 @@ config:
           # Config for goal state generator of LM which is used for model-based action
           # suggestions, such as hypothesis-testing actions.
           gsg:
-            _target_: tbp.monty.frameworks.models.goal_state_generation.EvidenceGoalStateGenerator
+            _target_: tbp.monty.frameworks.models.goal_generation.EvidenceGoalStateGenerator
             # Tolerance(s) when determining goal-state success
             goal_tolerances:
               location: 0.015 # distance in meters

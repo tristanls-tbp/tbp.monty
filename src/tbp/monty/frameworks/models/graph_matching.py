@@ -31,7 +31,7 @@ from tbp.monty.frameworks.models.abstract_monty_classes import (
     LMMemory,
 )
 from tbp.monty.frameworks.models.buffer import FeatureAtLocationBuffer
-from tbp.monty.frameworks.models.goal_state_generation import GraphGoalStateGenerator
+from tbp.monty.frameworks.models.goal_generation import GraphGoalStateGenerator
 from tbp.monty.frameworks.models.monty_base import MontyBase
 from tbp.monty.frameworks.models.object_model import GraphObjectModel
 

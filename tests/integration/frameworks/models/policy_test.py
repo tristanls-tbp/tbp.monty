@@ -50,7 +50,7 @@ from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.evidence_matching.learning_module import (
     EvidenceGraphLM,
 )
-from tbp.monty.frameworks.models.goal_state_generation import (
+from tbp.monty.frameworks.models.goal_generation import (
     EvidenceGoalStateGenerator,
 )
 from tbp.monty.frameworks.models.motor_system_state import (

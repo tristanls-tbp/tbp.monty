@@ -19,7 +19,7 @@ from tbp.monty.cmp import Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.evidence_sdr_matching import EvidenceSDRGraphLM
-from tbp.monty.frameworks.models.goal_state_generation import EvidenceGoalStateGenerator
+from tbp.monty.frameworks.models.goal_generation import EvidenceGoalStateGenerator
 from tests.unit.resources.unit_test_utils import BaseGraphTest
 
 
