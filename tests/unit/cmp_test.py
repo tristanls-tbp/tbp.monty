@@ -1,4 +1,4 @@
-# Copyright 2025 Thousand Brains Project
+# Copyright 2025-2026 Thousand Brains Project
 #
 # Copyright may exist in Contributors' modifications
 # and/or contributions to the work.
@@ -16,7 +16,7 @@ from tbp.monty.cmp import Goal, encode_goal_state
 from tbp.monty.frameworks.models.buffer import BufferEncoder
 
 
-class EncodeGoalStateTest(unittest.TestCase):
+class EncodeGoalTest(unittest.TestCase):
     def setUp(self):
         self.goal_dict = {
             "location": np.array([0, 1.5, 0]),
