@@ -34,7 +34,7 @@ from tbp.monty.frameworks.models.evidence_matching.hypotheses_updater import (
     HypothesesUpdater,
     HypothesesUpdaterTelemetry,
 )
-from tbp.monty.frameworks.models.goal_generation import EvidenceGoalStateGenerator
+from tbp.monty.frameworks.models.goal_generation import EvidenceGoalGenerator
 from tbp.monty.frameworks.models.graph_matching import GraphLM
 from tbp.monty.frameworks.utils.evidence_matching import (
     ChannelMapper,
@@ -172,7 +172,7 @@ class EvidenceGraphLM(GraphLM):
         max_nodes_per_graph=2000,
         num_model_voxels_per_dim=50,  # -> voxel size = 6mm3 (0.006)
         use_multithreading=True,
-        gsg: EvidenceGoalStateGenerator | None = None,
+        gsg: EvidenceGoalGenerator | None = None,
         hypotheses_updater_class: type[HypothesesUpdater] = DefaultHypothesesUpdater,
         hypotheses_updater_args: dict | None = None,
         *args,

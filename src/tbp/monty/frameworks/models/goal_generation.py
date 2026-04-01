@@ -17,7 +17,7 @@ import numpy as np
 from tbp.monty.cmp import Goal
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.models.abstract_monty_classes import (
-    GoalStateGenerator,
+    GoalGenerator,
 )
 from tbp.monty.frameworks.utils.communication_utils import get_state_from_channel
 
@@ -25,8 +25,8 @@ if TYPE_CHECKING:
     from tbp.monty.frameworks.models.graph_matching import GraphLM
 
 __all__ = [
-    "EvidenceGoalStateGenerator",
-    "GraphGoalStateGenerator",
+    "EvidenceGoalGenerator",
+    "GraphGoalGenerator",
     "ParentLMNotProvided",
 ]
 
@@ -34,14 +34,14 @@ logger = logging.getLogger(__name__)
 
 
 class ParentLMNotProvided(AttributeError):
-    """Parent LM wasn't provided to a GoalStateGenerator.
+    """Parent LM wasn't provided to a GoalGenerator.
 
     Error raised when a parent learning module is accessed before it is provided to
     a goal state generator.
     """
 
 
-class GraphGoalStateGenerator(GoalStateGenerator):
+class GraphGoalGenerator(GoalGenerator):
     """Generate sub-Goals until the received Goal is achieved.
 
     A component (embedded in a learning module) that receives a high-level Goal and
@@ -469,7 +469,7 @@ class GraphGoalStateGenerator(GoalStateGenerator):
             )
 
 
-class EvidenceGoalStateGenerator(GraphGoalStateGenerator):
+class EvidenceGoalGenerator(GraphGoalGenerator):
     """Generator of Goals for an evidence-based graph LM.
 
     GSG specifically set up for generating Goals for an evidence-based graph LM,

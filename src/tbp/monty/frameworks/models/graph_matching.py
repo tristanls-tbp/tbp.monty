@@ -31,7 +31,7 @@ from tbp.monty.frameworks.models.abstract_monty_classes import (
     LMMemory,
 )
 from tbp.monty.frameworks.models.buffer import FeatureAtLocationBuffer
-from tbp.monty.frameworks.models.goal_generation import GraphGoalStateGenerator
+from tbp.monty.frameworks.models.goal_generation import GraphGoalGenerator
 from tbp.monty.frameworks.models.monty_base import MontyBase
 from tbp.monty.frameworks.models.object_model import GraphObjectModel
 
@@ -563,7 +563,7 @@ class GraphLM(LearningModule):
 
         if initialize_base_modules:
             self.graph_memory = GraphMemory(k=None, graph_delta_thresholds=None)
-            self.gsg = GraphGoalStateGenerator(self)
+            self.gsg = GraphGoalGenerator(self)
             self.gsg.parent_lm = self
 
         self.mode: ExperimentMode | None = (

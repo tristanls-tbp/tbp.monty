@@ -28,7 +28,7 @@ from tbp.monty.frameworks.sensors import SensorID
 
 __all__ = [
     "AgentObservations",
-    "GoalStateGenerator",
+    "GoalGenerator",
     "LMMemory",
     "LearningModule",
     "Monty",
@@ -399,7 +399,7 @@ class ObjectModel(metaclass=abc.ABCMeta):
         pass
 
 
-class GoalStateGenerator(metaclass=abc.ABCMeta):
+class GoalGenerator(metaclass=abc.ABCMeta):
     """Generate goals that other learning modules and motor-systems will attempt.
 
     Generate goals potentially (in the case of LMs) by outputting their own

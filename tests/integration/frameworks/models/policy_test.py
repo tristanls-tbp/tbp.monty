@@ -51,7 +51,7 @@ from tbp.monty.frameworks.models.evidence_matching.learning_module import (
     EvidenceGraphLM,
 )
 from tbp.monty.frameworks.models.goal_generation import (
-    EvidenceGoalStateGenerator,
+    EvidenceGoalGenerator,
 )
 from tbp.monty.frameworks.models.motor_system_state import (
     AgentState,
@@ -235,7 +235,7 @@ class PolicyTest(unittest.TestCase):
                     "hsv": np.array([1, 0, 0]),
                 }
             },
-            gsg=EvidenceGoalStateGenerator(**gsg_args),
+            gsg=EvidenceGoalGenerator(**gsg_args),
         )
         return graph_lm, gsg_args
 

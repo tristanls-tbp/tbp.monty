@@ -19,7 +19,7 @@ from tbp.monty.cmp import Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.experiments.mode import ExperimentMode
 from tbp.monty.frameworks.models.evidence_sdr_matching import EvidenceSDRGraphLM
-from tbp.monty.frameworks.models.goal_generation import EvidenceGoalStateGenerator
+from tbp.monty.frameworks.models.goal_generation import EvidenceGoalGenerator
 from tests.unit.resources.unit_test_utils import BaseGraphTest
 
 
@@ -166,7 +166,7 @@ class EvidenceSDRIntegrationTest(BaseGraphTest):
             },
             # set graph size larger since fake obs displacements are meters
             max_graph_size=10,
-            gsg=EvidenceGoalStateGenerator(
+            gsg=EvidenceGoalGenerator(
                 elapsed_steps_factor=10,
                 min_post_goal_success_steps=5,
                 x_percent_scale_factor=0.75,
