@@ -14,12 +14,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from tbp.monty.cmp import Goal
+from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.models.abstract_monty_classes import (
     GoalGenerator,
 )
-from tbp.monty.frameworks.utils.communication_utils import get_state_from_channel
+from tbp.monty.frameworks.utils.communication_utils import get_percept_from_channel
 
 if TYPE_CHECKING:
     from tbp.monty.frameworks.models.graph_matching import GraphLM
@@ -37,7 +37,7 @@ class ParentLMNotProvided(AttributeError):
     """Parent LM wasn't provided to a GoalGenerator.
 
     Error raised when a parent learning module is accessed before it is provided to
-    a goal state generator.
+    a goal generator.
     """
 
 
@@ -58,7 +58,7 @@ class GraphGoalGenerator(GoalGenerator):
     conditioned on other information such as the LM's current most-likely hypothesis
     and the structure of known object models (i.e., information local to the LM).
 
-    Note that all Goals conform to the State-class cortical messaging protocol (CMP).
+    Note that all Goals conform to the Cortical Messaging Protocol (CMP).
     """
 
     def __init__(self, goal_tolerances=None, **_kwargs) -> None:
@@ -119,10 +119,10 @@ class GraphGoalGenerator(GoalGenerator):
         )
 
     def set_driving_goal(self, goal):
-        """Receive a new high-level Goal to drive this Goal State Generator (GSG).
+        """Receive a new high-level Goal to drive this Goal Generator (GSG).
 
         If none is provided, the GSG should default to pursuing a high confidence
-        Goal, with no other attributes of the state specified; in
+        Goal, with no other attributes of the message specified; in
         other words, it attempts to reduce uncertainty about the LM's output
         (object ID and pose, whatever these may be).
 
@@ -220,27 +220,27 @@ class GraphGoalGenerator(GoalGenerator):
         """
         return self._generate_none_goal()
 
-    def _check_states_different(
+    def _check_messages_different(
         self,
-        state_a,
-        state_b,
+        msg_a,
+        msg_b,
         diff_tolerances,
     ) -> bool:
-        """Check whether two states are different.
+        """Check whether two messages are different.
 
-        States need to be different only by one feature/dimension to be considered
+        Messages need to be different only by one feature/dimension to be considered
         different.
 
-        When checking whether the states are different, a dictionary must be passed
-        of tolerances; in the GSG-class, this is typically the GSG's own default
+        When checking whether the messages are different, a dictionary of tolerances
+        must be passed; in the GSG-class, this is typically the GSG's own default
         goal-tolerances that are used, but specific tolerances can also be passed
         along with a Goal itself (i.e. achieve this Goal within these tolerance bounds).
 
         Note:
-            If a state is undefined (None), we define a difference as unmeaningful and
-            therefore return False. Similarly, for any feature of a state (or dimension
-            of a feature) that is undefined (None or NaN), we do not return any
-            difference along that dimension.
+            If a message is undefined (None), we define a difference as unmeaningful and
+            therefore return False. Similarly, for any feature of a message (or
+            dimension of a feature) that is undefined (None or NaN), we do not return
+            any difference along that dimension.
 
         TODO M consider making this a utility function, as might be useful in e.g. the
         LM itself as well. However, the significant presence of None/NaN values in
@@ -249,27 +249,27 @@ class GraphGoalGenerator(GoalGenerator):
         Returns:
             Whether the states are different.
         """
-        if state_a is None or state_b is None:
+        if msg_a is None or msg_b is None:
             return False
 
         states_different = False
         for tolerance_key, tolerance_val in diff_tolerances.items():
-            # TODO M implement feature comparisons for other State features (e.g.
+            # TODO M implement feature comparisons for other Message features (e.g.
             # confidence)
             # TODO M consider using the LM's lm.tolerances for the default values of
             # diff_tolerances
 
             if (
                 tolerance_key == "location"
-                and state_a.location is not None
-                and state_b.location is not None
+                and msg_a.location is not None
+                and msg_b.location is not None
             ):
-                distance = np.linalg.norm(state_a.location - state_b.location)
+                distance = np.linalg.norm(msg_a.location - msg_b.location)
 
             elif (
                 tolerance_key == "pose_vectors"
-                and state_a.morphological_features is not None
-                and state_b.morphological_features is not None
+                and msg_a.morphological_features is not None
+                and msg_b.morphological_features is not None
             ):
                 raise NotImplementedError(
                     "TODO M implement pose-vector comparisons that handle "
@@ -280,8 +280,8 @@ class GraphGoalGenerator(GoalGenerator):
                 # this handles symmetry conditions e.g. flipped principal curvature
                 # directions.
                 distance = self._euc_dist_ignoring_nan(
-                    state_a.morphological_features["pose_vectors"],
-                    state_b.morphological_features["pose_vectors"],
+                    msg_a.morphological_features["pose_vectors"],
+                    msg_b.morphological_features["pose_vectors"],
                 )
 
             states_different = distance > tolerance_val
@@ -291,19 +291,19 @@ class GraphGoalGenerator(GoalGenerator):
         return states_different
 
     def _check_driving_goal_achieved(self) -> bool:
-        """Check if parent LM's output state is close enough to driving Goal.
+        """Check if parent LM's output percept is close enough to driving Goal.
 
         TODO M Move some of the checks for convergence here
 
         Returns:
-            Whether the parent LM's output state is close enough to the driving Goal.
+            Whether the parent LM's output percept is close enough to the driving Goal.
         """
         if self.driving_goal.goal_tolerances is None:
             # When not specified by the incoming driving Goal, use the GSG's own
             # default matching tolerances
             diff_tolerances = self.goal_tolerances
 
-        return self._check_states_different(
+        return self._check_messages_different(
             self.parent_lm.get_output(), self.driving_goal, diff_tolerances
         )
 
@@ -317,10 +317,10 @@ class GraphGoalGenerator(GoalGenerator):
         Note:
             In the future we might use feedback from a receiving system that is not
             "sensory input" (i.e. does not inform the graph building of this parent LM);
-            Instead, such feedback could include the state of an LM that controls a
-            motor system (such as a hand model LM), or the state of a motor-actuator
+            Instead, such feedback could include the percept of an LM that controls a
+            motor system (such as a hand model LM), or the percept of a motor-actuator
             (akin to proprioceptive feedback); in this case, we could directly compare
-            the output Goal to the state received by this feedback to determine
+            the output Goal to the percept received by this feedback to determine
             whether the Goal was likely achieved. This input would likely come
             from a separate channel (similar to voting). Finally, note that this
             information could be complementary to feedback from the sensory input and
@@ -337,10 +337,10 @@ class GraphGoalGenerator(GoalGenerator):
 
         return False
 
-    def _check_input_matches_sensory_prediction(self, observations):
+    def _check_input_matches_sensory_prediction(self, percepts: list[Message]) -> bool:
         """Check whether the input matches the sensory prediction.
 
-        Here the sensory prediction is simply that the input state has changed, as
+        Here the sensory prediction is simply that the input percept has changed, as
         when the motor-system attempts to achieve a Goal and fails (e.g. due to
         collision with another object), it moves back to the original position.
 
@@ -352,7 +352,7 @@ class GraphGoalGenerator(GoalGenerator):
         approximate method.
 
         TODO M: Implement also using the target Goal and internal model to predict a
-        specific input state, and then compare to that to determine not just whether
+        specific percept, and then compare to that to determine not just whether
         a movement took place, but whether the agent moved to a particular point on a
         particular object.
 
@@ -361,23 +361,23 @@ class GraphGoalGenerator(GoalGenerator):
         """
         sensor_channel_name = self.parent_lm.buffer.get_first_sensory_input_channel()
 
-        current_sensory_input = get_state_from_channel(
-            states=observations, channel_name=sensor_channel_name
+        current_sensory_input = get_percept_from_channel(
+            percepts=percepts, channel_name=sensor_channel_name
         )
 
-        prev_input_states = self.parent_lm.buffer.get_previous_input_states()
-        if prev_input_states is not None:
-            previous_sensory_input = get_state_from_channel(
-                states=prev_input_states,
+        prev_input_percepts = self.parent_lm.buffer.get_previous_input_percepts()
+        if prev_input_percepts is not None:
+            previous_sensory_input = get_percept_from_channel(
+                percepts=prev_input_percepts,
                 channel_name=sensor_channel_name,
             )
         else:
             previous_sensory_input = None
-        # NB if no history of inputs, get_previous_input_states returns None, in which
+        # NB if no history of inputs, get_previous_input_percepts returns None, in which
         # case _check_states_different will return False, and we return goal_achieved as
         # False, as we cannot meaningfully evaluate whether this occurred
 
-        return self._check_states_different(
+        return self._check_messages_different(
             current_sensory_input,
             previous_sensory_input,
             diff_tolerances=self.goal_tolerances,
@@ -448,7 +448,7 @@ class GraphGoalGenerator(GoalGenerator):
         Update any logging information (stored in the parent LM's buffer), such as
         the matching step on which an output Goal was output.
         """
-        # Only consider output-state achieved for the purpose of logging when the
+        # Only consider output achieved for the purpose of logging when the
         # output Goal is meaningful (i.e. not None)
         if self.output_goal is not None:
             # Subtract 1 as the Goal was actually set (and potentially achieved)
@@ -778,8 +778,8 @@ class EvidenceGoalGenerator(GraphGoalGenerator):
         # Determine the displacement, and therefore the environmental target location,
         # that we will use
         sensor_channel_name = self.parent_lm.buffer.get_first_sensory_input_channel()
-        sensory_input = get_state_from_channel(
-            states=observations, channel_name=sensor_channel_name
+        sensory_input = get_percept_from_channel(
+            percepts=observations, channel_name=sensor_channel_name
         )
         displacement = (
             target_info["target_loc"] - target_info["hypothesis_to_test"]["location"]

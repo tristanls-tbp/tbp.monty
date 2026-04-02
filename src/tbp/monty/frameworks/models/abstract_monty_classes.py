@@ -189,15 +189,15 @@ class Monty(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def _pass_goals(self):
-        """Pass goal states in the network between learning-modules.
+        """Pass goals in the network between learning-modules.
 
-        Aggregate any goal states for sending to the motor-system.
+        Aggregate any goals for sending to the motor-system.
         """
         pass
 
     @abc.abstractmethod
     def _pass_infos_to_motor_system(self):
-        """Pass input observations and goal states to the motor system."""
+        """Pass input observations and goals to the motor system."""
         pass
 
     @abc.abstractmethod

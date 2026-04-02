@@ -238,7 +238,7 @@ class ObservationProcessor:
         if "on_object" in self._features:
             morphological_features["on_object"] = float(on_object)
 
-        # Sensor module returns features at a location in the form of a State class.
+        # Sensor module returns features at a location in the form of a Message class.
         # use_state is a bool indicating whether the input is "interesting",
         # which indicates that it merits processing by the learning module; by default
         # it will always be True so long as the surface normal and principal curvature

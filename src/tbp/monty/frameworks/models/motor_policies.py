@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 __all__ = [
     "BasePolicy",
     "InformedPolicy",
-    "JumpToGoalStateMixin",
+    "JumpToGoalMixin",
     "MotorPolicy",
     "NaiveScanPolicy",
     "SurfacePolicy",
@@ -246,10 +246,10 @@ class PredefinedPolicy(MotorPolicy):
         self.episode_step = state_dict["episode_step"]
 
 
-class JumpToGoalStateMixin:
-    """Convert driving goal state to an action in Habitat-compatible coordinates.
+class JumpToGoalMixin:
+    """Convert driving goal to an action in Habitat-compatible coordinates.
 
-    Motor policy that enables us to take in a driving goal state for the motor agent,
+    Motor policy that enables us to take in a driving goal for the motor agent,
     and specify the action in Habitat-compatible coordinates that must be taken
     to move there.
     """
@@ -267,7 +267,7 @@ class JumpToGoalStateMixin:
     def derive_habitat_goal(self):
         """Derive the Habitat-compatible goal.
 
-        Take the current driving goal state (in CMP format), and derive the
+        Take the current driving goal (in CMP format), and derive the
         corresponding Habitat compatible goal to pass through the Embodied
         Environment Interface.
 
@@ -294,7 +294,7 @@ class JumpToGoalStateMixin:
 
             target_quat = scipy_to_numpy_quat(scipy_combined_orientation.as_quat())
 
-            # Reset driving goal state and await further inputs
+            # Reset driving goal and await further inputs
             self.set_driving_goal(None)
 
             return target_loc, target_quat
@@ -302,7 +302,7 @@ class JumpToGoalStateMixin:
         return None, None
 
 
-class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
+class InformedPolicy(BasePolicy, JumpToGoalMixin):
     """Policy that takes observation as input.
 
     Extension of BasePolicy that allows for taking the observation into account for
@@ -324,14 +324,14 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
 
         Args:
             use_goal_driven_actions: Whether to enable the motor system to make
-                use of the JumpToGoalStateMixin, which attempts to "jump" (i.e.
+                use of the JumpToGoalMixin, which attempts to "jump" (i.e.
                 teleport) the agent to a specified goal.
             **kwargs: Additional keyword arguments.
         """
         super().__init__(**kwargs)
         self.use_goal_driven_actions = use_goal_driven_actions
         if self.use_goal_driven_actions:
-            JumpToGoalStateMixin.__init__(self)
+            JumpToGoalMixin.__init__(self)
 
         self._undo_action: Action | None = None
 
@@ -343,7 +343,7 @@ class InformedPolicy(BasePolicy, JumpToGoalStateMixin):
     def pre_episode(self, motor_system: MotorSystem) -> None:
         self._undo_action = None
         if self.use_goal_driven_actions:
-            JumpToGoalStateMixin.pre_episode(self, motor_system)
+            JumpToGoalMixin.pre_episode(self, motor_system)
         self._reset_jump_state()
         return super().pre_episode(motor_system)
 

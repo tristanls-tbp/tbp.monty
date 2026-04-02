@@ -221,7 +221,7 @@ class EvidenceSDRIntegrationTest(BaseGraphTest):
         first_movement_detected = lm._agent_moved_since_reset()
         buffer_data = lm._add_displacements(percepts)
         lm.buffer.append(buffer_data)
-        lm.buffer.append_input_states(percepts)
+        lm.buffer.append_input_percepts(percepts)
 
         lm._compute_possible_matches(
             self.ctx, percepts, first_movement_detected=first_movement_detected

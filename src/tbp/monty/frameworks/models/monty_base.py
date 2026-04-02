@@ -321,7 +321,7 @@ class MontyBase(Monty):
             self.gsg_outputs.extend(goals)
 
     def _pass_infos_to_motor_system(self):
-        """Pass input observations and goal states to the motor system."""
+        """Pass input observations and goals to the motor system."""
         pass
 
     def _step_motor_system(

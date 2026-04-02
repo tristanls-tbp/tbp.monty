@@ -16,7 +16,7 @@ import numpy as np
 import torch
 from scipy.spatial.transform import Rotation
 
-from tbp.monty.cmp import Goal
+from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.environments.environment import SemanticID
 from tbp.monty.frameworks.experiments.mode import ExperimentMode
@@ -598,7 +598,7 @@ class GraphLM(LearningModule):
         first_movement_detected = self._agent_moved_since_reset()
         buffer_data = self._add_displacements(observations)
         self.buffer.append(buffer_data)
-        self.buffer.append_input_states(observations)
+        self.buffer.append_input_percepts(observations)
 
         if first_movement_detected:
             logger.debug("performing matching step.")
@@ -626,7 +626,7 @@ class GraphLM(LearningModule):
         """Step without trying to recognize object (updating possible matches)."""
         buffer_data = self._add_displacements(observations)
         self.buffer.append(buffer_data)
-        self.buffer.append_input_states(observations)
+        self.buffer.append_input_percepts(observations)
 
     def post_episode(self):
         """If training, update memory after each episode."""
@@ -1016,20 +1016,20 @@ class GraphLM(LearningModule):
             o.set_displacement(displacement)
         return obs
 
-    def _select_features_to_use(self, states):
-        """Extract the features from observations that are specified in tolerances.
+    def _select_features_to_use(self, percepts: list[Message]):
+        """Extract the features from percepts that are specified in tolerances.
 
         TODO: requires self.tolerances
-        TODO S: if keeping the dict format, move this function to State class
+        TODO S: if keeping the dict format, move this function to Message class
 
         Returns:
             Features to use.
         """
         features_to_use = {}
-        for state in states:
-            input_channel = state.sender_id
+        for percept in percepts:
+            input_channel = percept.sender_id
             features_to_use[input_channel] = {}
-            for feature in state.morphological_features:
+            for feature in percept.morphological_features:
                 # in evidence matching pose_vectors are always added to tolerances
                 # since they are requires for matching.
                 if (
@@ -1037,12 +1037,12 @@ class GraphLM(LearningModule):
                     or feature == "pose_fully_defined"
                 ):
                     features_to_use[input_channel][feature] = (
-                        state.morphological_features[feature]
+                        percept.morphological_features[feature]
                     )
-            for feature in state.non_morphological_features:
+            for feature in percept.non_morphological_features:
                 if feature in self.tolerances[input_channel]:
                     features_to_use[input_channel][feature] = (
-                        state.non_morphological_features[feature]
+                        percept.non_morphological_features[feature]
                     )
 
         return features_to_use
@@ -1466,7 +1466,7 @@ class GraphMemory(LMMemory):
             Features and locations with missing features removed.
         """
         # NOTE: Could use any feature here but using pose_fully_defined since it
-        # is one dimensional and a required feature in each State.
+        # is one dimensional and a required feature in each Message.
         missing_features = np.isnan(features["pose_fully_defined"]).flatten()
         # Remove missing features (contain nan values)
         locations = locations[~missing_features]

@@ -209,11 +209,11 @@ class PolicyTest(unittest.TestCase):
     # ==== MORE INVOLVED TESTS OF ACTION POLICIES ====
 
     def initialize_lm_with_gsg(self):
-        """Setups up an LM with a goal-state generator for testing.
+        """Setups up an LM with a goal generator for testing.
 
         Returns:
             graph_lm: Created evidence graph LM instance
-            gsg_args: Goal-state generator arguments for reference
+            gsg_args: Goal generator arguments for reference
         """
         gsg_args = dict(
             elapsed_steps_factor=10,
@@ -887,9 +887,9 @@ class PolicyTest(unittest.TestCase):
         object_orientation,
         target_location_on_object,
     ):
-        """Test GSGs ability to propose a motor-system goal-state.
+        """Test GSGs ability to propose a motor-system goal.
 
-        Test the GSGs ability to propose a motor-system goal-state, and then for
+        Test the GSGs ability to propose a motor-system goal, and then for
         the motor-system to propose a particular target agent location and
         orientation in Habitat-compatible coordinates.
 
@@ -907,7 +907,7 @@ class PolicyTest(unittest.TestCase):
             target_loc_hab: Habitat target location
             agent_direction_hab: Habitat agent direction
         """
-        # --- Determine the motor-goal state ---
+        # --- Determine the motor-goal ---
 
         target_info = {
             "target_loc": np.array(target_location_on_object),
@@ -949,13 +949,13 @@ class PolicyTest(unittest.TestCase):
 
         lm.matching_step(ctx, observations=[Message(**fake_percept_config)])
 
-        # GSG handles computing the motor goal-state
+        # GSG handles computing the motor goal
         motor_goal = lm.gsg._compute_goal_for_target_loc(
             observations=[Message(**fake_percept_config)],
             target_info=target_info,
         )
 
-        # --- Determine Habitat-coordinates from goal-state ---
+        # --- Determine Habitat-coordinates from goal ---
 
         policy.set_driving_goal(motor_goal)
 
@@ -1009,11 +1009,11 @@ class PolicyTest(unittest.TestCase):
 
         assert np.all(
             np.isclose(motor_goal_location, [0.1, 1.6 + surface_displacement, 0.2])
-        ), "Goal-state location is not as expected"
+        ), "Goal location is not as expected"
 
         # Pointing down
         assert np.all(np.isclose(motor_goal_direction, [0, -1.0, 0])), (
-            "Goal-state pose is not as expected"
+            "Goal pose is not as expected"
         )
 
         assert np.all(
@@ -1044,11 +1044,11 @@ class PolicyTest(unittest.TestCase):
         # Surface displacement is negative, because object is flipped in x-axis
         assert np.all(
             np.isclose(motor_goal_location_2, [0, 1.4 - surface_displacement, 0.1])
-        ), "Goal-state location is not as expected"
+        ), "Goal location is not as expected"
 
         # Pointing up, because object is flipped in y-axis
         assert np.all(np.isclose(motor_goal_direction_2, [0, 1.0, 0])), (
-            "Goal-state pose is not as expected"
+            "Goal pose is not as expected"
         )
 
         # Surface displacement is negative, because object is flipped in x-axis
@@ -1079,11 +1079,11 @@ class PolicyTest(unittest.TestCase):
         # Below results manually verified
         assert np.all(
             np.isclose(motor_goal_location_3, [0.18586463, 1.58288073, -0.04139085])
-        ), "Goal-state location is not as expected"
+        ), "Goal location is not as expected"
 
         assert np.all(
             np.isclose(motor_goal_direction_3, [-0.965738, 0.09413407, -0.24184476])
-        ), "Goal-state pose is not as expected"
+        ), "Goal pose is not as expected"
 
         assert np.all(
             np.isclose(target_loc_hab_3, [0.18586463, 1.58288073, -0.04139085])

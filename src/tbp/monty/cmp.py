@@ -17,7 +17,7 @@ from tbp.monty.frameworks.models.buffer import BufferEncoder
 
 
 class Message:
-    """State class used as message packages passed in Monty using CMP.
+    """Message class used as message packages passed in Monty using CMP.
 
     The cortical messaging protocol (CMP) is used to pass messages between Monty
     components and makes sure we can easily set up arbitrary configurations of them.
@@ -29,16 +29,16 @@ class Message:
     different ways:
        Observed states: states output by sensor modules
        Hypothesized states: states output by learning modules
-       Goal states: motor output of learning modules
+       Goals: motor output of learning modules
 
     Attributes:
-        location: 3D vector representing the location of the state
+        location: 3D vector representing the location
         morphological_features: dictionary of morphological features. Should include
             pose_vectors of shape (3,3) and pose_fully_defined (bool).
         non_morphological_features: dictionary of non-morphological features.
-        confidence: confidence in the state. In range [0,1].
-        use_state: boolean indicating whether the state should be used or not.
-        sender_id: string identifying the sender of the state.
+        confidence: message confidence. In range [0,1].
+        use_state: boolean indicating whether the message should be used or not.
+        sender_id: string identifying the sender of the message.
         sender_type: string identifying the type of sender. Can be "SM" or "LM".
     """
 
@@ -52,7 +52,7 @@ class Message:
         sender_id,
         sender_type,
     ):
-        """Initialize a state."""
+        """Initialize a message."""
         self.location = location
         # QUESTION: Divide into pose_dependent and pose_independent features instead?
         self.morphological_features = morphological_features
@@ -68,7 +68,7 @@ class Message:
     def __repr__(self):
         """Return a string representation of the object."""
         repr_string = (
-            f"State from {self.sender_id}:\n"
+            f"Message from {self.sender_id}:\n"
             f"   Location: {np.round(self.location, 3)}.\n"
             f"   Morphological Features: \n"
         )
@@ -98,7 +98,7 @@ class Message:
         return repr_string
 
     def _set_allowable_sender_types(self):
-        """Set the allowable sender types of this State class."""
+        """Set the allowable sender types of this Message class."""
         self.allowable_sender_types = ("SM", "LM")
 
     def transform_morphological_features(self, translation=None, rotation=None):
@@ -111,9 +111,9 @@ class Message:
             )
 
     def set_displacement(self, displacement, ppf=None):
-        """Add displacement (represented as dict) to state.
+        """Add displacement (represented as dict) to message.
 
-        TODO S: Add this to state or in another place?
+        TODO S: Add this to message or in another place?
         """
         self.displacement = {
             "displacement": displacement,
@@ -127,7 +127,7 @@ class Message:
         elif feature_name in self.non_morphological_features:
             feature_val = self.non_morphological_features[feature_name]
         else:
-            raise ValueError(f"Feature {feature_name} not found in state.")
+            raise ValueError(f"Feature {feature_name} not found in message.")
         return feature_val
 
     def get_nth_pose_vector(self, pose_vector_index):
@@ -212,23 +212,23 @@ class Message:
 
 
 class Goal(Message):
-    """Specialization of :class:`State` for goal states with null (None) values allowed.
+    """Specialization of :class:`Message` for goals with null (None) values allowed.
 
-    Specialized form of state that still adheres to the cortical messaging protocol,
+    Specialized form of message that still adheres to the cortical messaging protocol,
     but can have null (None) values associated with the location and morphological
     features.
 
-    Used by goal-state generators (GSGs) to communicate goal states to other GSGs, and
+    Used by goal generators (GSGs) to communicate goals to other GSGs, and
     to motor actuators.
 
-    The state variables generally have the same meaning as for the base :class:`State`
-    class, and they represent the target values for the receiving system. Thus
-    if a goal-state specifies a particular object ID (non-morphological feature)
+    The message variables generally have the same meaning as for the base
+    :class:`Message` class, and they represent the target values for the receiving
+    system. Thus if a goal specifies a particular object ID (non-morphological feature)
     in a particular pose (location and morphological features), then the receiving
     system should attempt to achieve that state.
 
-    Note however that for the goal-state, the confidence corresponds to the conviction
-    with which a GSG believes that the current goal-state should be acted upon. Float
+    Note however that for the goal, the confidence corresponds to the conviction
+    with which a GSG believes that the current goal should be acted upon. Float
     bound in [0.0, 1.0].
     """
 
@@ -244,11 +244,11 @@ class Goal(Message):
         goal_tolerances: dict[str, Any] | None,
         info: dict[str, Any] | None = None,
     ):
-        """Initialize a goal state.
+        """Initialize a goal.
 
         Args:
             location: the location to move to in global/body-centric coordinates, or
-              `None` if the location is not specified as part of the goal state.
+              `None` if the location is not specified as part of the goal.
               For example, this may be a point on an object's surface or a location
               nearby from which a sensor would have a good view of the target point.
             morphological_features: dictionary of morphological features or `None`.
@@ -256,15 +256,14 @@ class Goal(Message):
               defined, etc.
             non_morphological_features: a dictionary containing non-morphological
               features at the target location or `None`.
-            confidence: a float between 0 and 1 representing the confidence in the goal
-              state.
-            use_state: a boolean indicating whether the goal state should be used.
-            sender_id: the ID of the sender of the goal state (e.g., `"LM_0"`).
-            sender_type: the type of sender of the goal state (e.g., `"GSG"`).
+            confidence: a float between 0 and 1 representing the confidence in the goal.
+            use_state: a boolean indicating whether the goal should be used.
+            sender_id: the ID of the sender of the goal (e.g., `"LM_0"`).
+            sender_type: the type of sender of the goal (e.g., `"GSG"`).
             goal_tolerances: Dictionary of tolerances that GSGs use when determining
-                whether the current state of the LM matches the driving goal-state
-                or `None`. As such, a GSG can send a goal state with more or less
-                strict tolerances if certain elements of the state (e.g. the location
+                whether the current state of the LM matches the driving goal
+                or `None`. As such, a GSG can send a goal with more or less
+                strict tolerances if certain elements of the message (e.g. the location
                 of a mug vs its orientation) are more or less important.
             info: Optional metadata for logging purposes.
         """
@@ -282,7 +281,7 @@ class Goal(Message):
         )
 
     def _set_allowable_sender_types(self):
-        """Set the allowable sender types of this State class."""
+        """Set the allowable sender types of this Message class."""
         self.allowable_sender_types = ("GSG", "SM")
 
     def _check_all_attributes(self):

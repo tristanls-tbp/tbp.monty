@@ -81,7 +81,7 @@ class SalienceSM(SensorModule):
         observation: SensorObservation,
         motor_only_step: bool = False,  # noqa: ARG002
     ) -> Message | None:
-        """Generate goal states for the current step.
+        """Generate goal for the current step.
 
         Args:
             ctx: The runtime context.
