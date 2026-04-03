@@ -43,19 +43,17 @@ class MontyForEvidenceGraphMatching(MontyForGraphMatching):
         """
         super()._pass_infos_to_motor_system()
 
-        # Check that the motor system can receive goals
-        if self.motor_system._policy.use_goal_driven_actions:
-            best_goal = None
-            best_goal_confidence = -np.inf
-            for current_goal in self.gsg_outputs:
-                if (
-                    current_goal is not None
-                    and current_goal.confidence > best_goal_confidence
-                ):
-                    best_goal = current_goal
-                    best_goal_confidence = current_goal.confidence
+        best_goal = None
+        best_goal_confidence = -np.inf
+        for current_goal in self.gsg_outputs:
+            if (
+                current_goal is not None
+                and current_goal.confidence > best_goal_confidence
+            ):
+                best_goal = current_goal
+                best_goal_confidence = current_goal.confidence
 
-            self.motor_system._policy.set_driving_goal(best_goal)
+        self.motor_system.set_driving_goal(best_goal)
 
     def _combine_votes(self, votes_per_lm):
         """Combine evidence from different LMs.

@@ -14,7 +14,7 @@ from typing import Any, Literal
 
 import numpy as np
 
-from tbp.monty.cmp import Message
+from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.actions.actions import Action
 from tbp.monty.frameworks.agents import AgentID
@@ -63,6 +63,10 @@ class MotorSystem:
     @property
     def action_sequence(self) -> list[tuple[list[Action], dict[AgentID, Any] | None]]:
         return self._action_sequence
+
+    def set_driving_goal(self, goal: Goal | None) -> None:
+        """Set the driving goal."""
+        self._policy.set_driving_goal(goal)
 
     def pre_episode(self) -> None:
         """Pre episode hook."""
