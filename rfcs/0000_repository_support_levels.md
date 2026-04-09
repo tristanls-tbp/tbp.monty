@@ -26,6 +26,11 @@ Repositories with limited maintenance SHOULD include the following header at the
 > [!IMPORTANT]
 > This repository receives limited maintenance. It is maintained time-permitting at our own discretion. Issues and pull requests may not receive timely responses, and support or updates are not guaranteed. Community contributions are welcome but may be reviewed infrequently.
 
+```
+> [!IMPORTANT]
+> This repository receives limited maintenance. It is maintained time-permitting at our own discretion. Issues and pull requests may not receive timely responses, and support or updates are not guaranteed. Community contributions are welcome but may be reviewed infrequently.
+```
+
 
 ## Actively Maintained
 
