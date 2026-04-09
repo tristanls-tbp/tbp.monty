@@ -15,13 +15,13 @@ The Maintainers categorize the intended level of maintenance and support to a re
 
 Maintainers have no intent to update the repository any further.
 
-Unmaintained repositories SHOULD be [archived as read-only](https://docs.github.com/en/repositories/archiving-a-github-repository/archiving-repositories).
+Unmaintained repositories SHALL be [archived as read-only](https://docs.github.com/en/repositories/archiving-a-github-repository/archiving-repositories).
 
 ## Limited Maintenance
 
 Maintainers MAY provide some maintenance, time-permitting, at their own discretion.
 
-Repositories with limited maintenance SHOULD include the following header at the top of their README.
+Repositories with limited maintenance SHALL include the following header at the top of their README.
 
 > [!IMPORTANT]
 > This repository receives limited maintenance. It is maintained time-permitting at our own discretion. Issues and pull requests may not receive timely responses, and support or updates are not guaranteed. Community contributions are welcome but may be reviewed infrequently.
