@@ -14,8 +14,13 @@ from typing import TYPE_CHECKING, Any, Protocol
 from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.models.abstract_monty_classes import Observations
-from tbp.monty.frameworks.models.motor_policies import MotorPolicy, MotorPolicyResult
+from tbp.monty.frameworks.models.motor_policies import (
+    JumpToGoal,
+    MotorPolicy,
+    MotorPolicyResult,
+)
 from tbp.monty.frameworks.models.motor_system_state import MotorSystemState
+from tbp.monty.frameworks.models.salience.motor_policy import LookAtGoal
 
 if TYPE_CHECKING:
     from tbp.monty.frameworks.models.motor_system import MotorSystem
@@ -73,3 +78,67 @@ class SinglePolicySelector(MotorPolicySelector):
             goal = None
         self._selected_goals.append(goal)
         return self._policy(ctx, observations, state, percept, goal)
+
+class DistantPolicySelector(MotorPolicySelector):
+    def __init__(
+        self, jump_to_goal: JumpToGoal, look_at_goal: LookAtGoal, default: MotorPolicy
+    ):
+        self._jump_to_goal = jump_to_goal
+        self._look_at_goal = look_at_goal
+        self._default = default
+
+    def pre_episode(self, motor_system: MotorSystem) -> None:
+        self._jump_to_goal.pre_episode(motor_system)
+        self._look_at_goal.pre_episode(motor_system)
+        self._default.pre_episode(motor_system)
+
+    def state_dict(self) -> dict[str, Any]:
+        return {
+            "jump_to_goal": self._jump_to_goal.state_dict(),
+            "look_at_goal": self._look_at_goal.state_dict(),
+            "default": self._default.state_dict(),
+        }
+
+    def __call__(
+        self,
+        ctx: RuntimeContext,
+        observations: Observations,
+        state: MotorSystemState,
+        percept: Message,
+        goals: list[Goal],
+    ) -> MotorPolicyResult:
+        gsg_goals = []
+        sm_goals = []
+        for goal in goals:
+            if goal.sender_type == "GSG":
+                gsg_goals.append(goal)
+            elif goal.sender_type == "SM":
+                sm_goals.append(goal)
+
+        if gsg_goals:
+            if self._is_jumping:
+                # TODO: Reset policy jump state somehow
+                pass
+            sorted_goals = sorted(gsg_goals, key=lambda x: x.confidence, reverse=True)
+            goal = sorted_goals[0]
+            policy = self._jump_to_goal
+            self._is_jumping = True
+        elif self._is_jumping:
+            policy = self._jump_to_goal
+            goal = None
+            self._is_jumping = False
+        elif sm_goals:
+            sorted_goals = sorted(sm_goals, key=lambda x: x.confidence, reverse=True)
+            goal = sorted_goals[0]
+            policy = self._look_at_goal
+        else:
+            goal = None
+            policy = self._default
+
+        return policy(ctx, observations, state, percept, goal)
+
+
+# class SurfacePolicySelector(MotorPolicySelector):
+#     def __init__(self, jump_to_goal: JumpToGoal, default: MotorPolicy):
+#         self._jump_to_goal = jump_to_goal
+#         self._default = default
