@@ -325,8 +325,8 @@ class JumpToGoal(MotorPolicy):
             raise NoGoalProvided("No goal provided")
 
         result = self._goal_driven_actions(observations, state, goal)
-            if result is not None:
-                return result
+        # if result is not None:
+        #     return result
 
         # if percept.get_on_object():
         #     action = self.action_sampler.sample(self._agent_id, ctx.rng)

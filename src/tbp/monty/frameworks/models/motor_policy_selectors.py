@@ -20,16 +20,32 @@ from tbp.monty.frameworks.models.motor_policies import (
     MotorPolicyResult,
 )
 from tbp.monty.frameworks.models.motor_system_state import MotorSystemState
-from tbp.monty.frameworks.models.salience.motor_policy import LookAtGoal
 
 if TYPE_CHECKING:
     from tbp.monty.frameworks.models.motor_system import MotorSystem
+    from tbp.monty.frameworks.models.salience.motor_policy import LookAtGoal
 
 
 __all__ = [
     "MotorPolicySelector",
     "SinglePolicySelector",
+    "highest_confidence_goal",
 ]
+
+
+def highest_confidence_goal(goals: list[Goal]) -> Goal:
+    """Return the goal with the highest confidence.
+
+    If there are multiple goals with the same confidence, returns the first one.
+
+    Args:
+        goals: A list of goals. Must be non-empty.
+
+    Returns:
+        The goal with the highest confidence.
+
+    """
+    return sorted(goals, key=lambda x: x.confidence, reverse=True)[0]
 
 
 class MotorPolicySelector(Protocol):
@@ -71,11 +87,7 @@ class SinglePolicySelector(MotorPolicySelector):
         percept: Message,
         goals: list[Goal],
     ) -> MotorPolicyResult:
-        if goals:
-            sorted_goals = sorted(goals, key=lambda x: x.confidence, reverse=True)
-            goal = sorted_goals[0]
-        else:
-            goal = None
+        goal = highest_confidence_goal(goals) if goals else None
         self._selected_goals.append(goal)
         return self._policy(ctx, observations, state, percept, goal)
 
