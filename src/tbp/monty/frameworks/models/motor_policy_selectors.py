@@ -98,6 +98,7 @@ class DistantPolicySelector(MotorPolicySelector):
         self._jump_to_goal = jump_to_goal
         self._look_at_goal = look_at_goal
         self._default = default
+        self._selected_goals: list[Goal | None] = []
 
     def pre_episode(self, motor_system: MotorSystem) -> None:
         self._jump_to_goal.pre_episode(motor_system)
@@ -131,22 +132,25 @@ class DistantPolicySelector(MotorPolicySelector):
             if self._is_jumping:
                 # TODO: Reset policy jump state somehow
                 pass
-            sorted_goals = sorted(gsg_goals, key=lambda x: x.confidence, reverse=True)
-            goal = sorted_goals[0]
+            goal = highest_confidence_goal(gsg_goals)
             policy = self._jump_to_goal
             self._is_jumping = True
         elif self._is_jumping:
+            # TODO: Add a way to check if we should undo the jump, and reuse
+            # the jump
             policy = self._jump_to_goal
             goal = None
             self._is_jumping = False
         elif sm_goals:
-            sorted_goals = sorted(sm_goals, key=lambda x: x.confidence, reverse=True)
-            goal = sorted_goals[0]
+            goal = highest_confidence_goal(sm_goals)
             policy = self._look_at_goal
+            self._is_jumping = False
         else:
             goal = None
             policy = self._default
+            self._is_jumping = False
 
+        self._selected_goals.append(goal)
         return policy(ctx, observations, state, percept, goal)
 
 

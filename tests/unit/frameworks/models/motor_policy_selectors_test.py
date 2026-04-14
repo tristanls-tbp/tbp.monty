@@ -106,16 +106,61 @@ class DistantPolicySelectorTest(unittest.TestCase):
         self.selector = DistantPolicySelector(
             self.jump_to_goal, self.look_at_goal, self.default_policy
         )
-        # self.ctx = Mock()
-        # self.observations = Mock()
-        # self.state = MotorSystemState()
-        # self.percept = Mock()
+        self.ctx = Mock()
+        self.observations = Mock()
+        self.state = Mock()
+        self.percept = Mock()
         # self.goals = [Mock(confidence=0.9), Mock(confidence=0.8)]
 
-    def test_selects_default_when_no_goals_are_present(self):
-        pass
+    def test_uses_default_policy_when_no_goals_are_present(self):
+        result = self.selector(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            [],
+        )
+        self.default_policy.assert_called_once_with(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            None,
+        )
 
-    def test_selects_jump_to_goal_when_gsg_goal_is_present(self):
-        pass
+    def test_uses_jump_to_goal_when_gsg_goal_is_present(self):
+        gsg_goal = Mock(sender_type="GSG")
+        goals = [
+            Mock(sender_type="SM"),
+            gsg_goal,
+            Mock(sender_type="SM"),
+        ]
+        self.selector(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            goals,
+        )
+        self.jump_to_goal.assert_called_once_with(
+            self.ctx, self.observations, self.state, self.percept, gsg_goal
+        )
 
-    # def test_selects_
+    def test_uses_look_at_goal_when_only_sm_goals_are_present(self):
+        goals = [
+            Mock(sender_type="SM"),
+            Mock(sender_type="SM"),
+        ]
+        self.selector(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            goals,
+        )
+        self.look_at_goal.assert_called_once_with(
+            self.ctx, self.observations, self.state, self.percept, goals[0]
+        )
+
+    def test_checks_jump_to_goal_checked_after_a_jump(self):
+        pass
