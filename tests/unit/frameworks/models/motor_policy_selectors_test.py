@@ -11,6 +11,7 @@ from __future__ import annotations
 import unittest
 from unittest.mock import Mock, patch
 
+from tbp.monty.cmp import Goal
 from tbp.monty.frameworks.models.motor_policy_selectors import (
     DistantPolicySelector,
     SinglePolicySelector,
@@ -180,7 +181,9 @@ class DistantPolicySelectorTest(unittest.TestCase):
             goals,
         )
 
-        highest_confidence_goal_mock.assert_called_once_with([gsg_goal, best_gsg_goal])
+        highest_confidence_goal_mock.assert_called_once_with(
+            Goals([gsg_goal, best_gsg_goal])
+        )
         self.jump_to_goal.assert_called_once_with(
             self.ctx, self.observations, self.state, self.percept, best_gsg_goal
         )
@@ -209,3 +212,11 @@ class DistantPolicySelectorTest(unittest.TestCase):
 
     def test_checks_jump_to_goal_checked_after_a_jump(self):
         pass
+
+
+class Goals:
+    def __init__(self, goals: list[Goal]):
+        self.goals = goals
+
+    def __eq__(self, other: object) -> bool:
+        return set(self.goals) == set(other)
