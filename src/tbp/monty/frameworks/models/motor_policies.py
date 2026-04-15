@@ -125,7 +125,7 @@ class MotorPolicy(abc.ABC):
         state: MotorSystemState,
         percept: Message,
         goal: Goal | None,
-    ) -> MotorPolicyResult:
+    ) -> MotorPolicyResult | None:
         """Invoke motor policy to determine the next actions to take.
 
         Args:
@@ -138,7 +138,8 @@ class MotorPolicy(abc.ABC):
             goal: The (optional) goal to consider.
 
         Returns:
-            The motor policy result.
+            The motor policy result or None if the policy does not or cannot determine
+            next actions to take.
         """
         pass
 
@@ -266,15 +267,13 @@ class JumpToGoal(MotorPolicy):
         self._undo_action: Action | None = None
 
         self._is_jumping: bool = False
-        self._is_undoing_jump: bool = False
         self._pre_jump_state: AgentState | None = None
-        self._undo_jump_actions: list[Action] = []
+        self._undo_actions: list[Action] = []
 
     def load_state_dict(self, state_dict: dict[str, Any]) -> None:
         # Note/TODO: Figure out what to do with (de)-serialized objects.
         self._agent_id = state_dict["agent_id"]
         # self._undo_action = state_dict["undo_action"]
-        self._is_jumping = state_dict["is_jumping"]
         self._is_undoing_jump = state_dict["is_undoing_jump"]
         # self._pre_jump_state = state_dict["pre_jump_state"]
         # self._undo_jump_actions = state_dict["undo_jump_actions"]
@@ -284,14 +283,13 @@ class JumpToGoal(MotorPolicy):
             "agent_id": self._agent_id,
             "undo_action": self._undo_action,
             "is_jumping": self._is_jumping,
-            "is_undoing_jump": self._is_undoing_jump,
             "pre_jump_state": self._pre_jump_state,
-            "undo_jump_actions": self._undo_jump_actions,
+            "undo_jump_actions": self._undo_actions,
         }
 
     def pre_episode(self, motor_system: MotorSystem) -> None:  # noqa: ARG002
         self._undo_action = None
-        self._reset_jump_state()
+        self._reset()
 
     def __call__(
         self,
@@ -300,8 +298,13 @@ class JumpToGoal(MotorPolicy):
         state: MotorSystemState,
         percept: Message,  # noqa: ARG002
         goal: Goal | None,
-    ) -> MotorPolicyResult:
+    ) -> MotorPolicyResult | None:
         """Return a motor policy result containing the next actions to take.
+
+        This policy should always be called twice. The first call will generate actions
+        to jump to the goal. The second call is necessary to check if we should undo the
+        jump. If undo is needed, the second call will return undo actions. Otherwise,
+        the second call will return None.
 
         Args:
             ctx: The runtime context.
@@ -313,7 +316,8 @@ class JumpToGoal(MotorPolicy):
             goal: The goal to jump to. Should not be None.
 
         Returns:
-            A MotorPolicyResult that contains the actions to take.
+            A MotorPolicyResult that contains the actions to take or None if the policy
+            does not need to undo previous jump.
 
         Raises:
             NoGoalProvided: If no goal is provided (i.e., goal is None).
@@ -337,9 +341,7 @@ class JumpToGoal(MotorPolicy):
           - But if goal is None and we didn't just jump, that's an error.
         """
         if self._is_jumping:
-            result = self._jump_outcome(observations, state)
-            if result is not None:
-                return result
+            return self._maybe_undo(observations)
 
         if not goal:
             if ctx.suppress_runtime_errors:
@@ -349,47 +351,42 @@ class JumpToGoal(MotorPolicy):
 
         return MotorPolicyResult(self._jump(state, goal))
 
-    def _jump_outcome(
+    def _maybe_undo(
         self,
         observations: Observations,
-        state: MotorSystemState,
     ) -> MotorPolicyResult | None:
         """Handle the outcome of a jump.
 
         Args:
             observations: The observations from the environment.
-            state: The current state of the motor system.
 
         Returns:
-            Either a `MotorPolicyResult`, which should be immediately returned by
-            the caller, or `None` which allows the caller to continue execution.
+            Either a `MotorPolicyResult` with undo actions, which should be immediately
+            returned by the caller, or `None` which allows the caller to continue
+            execution.
         """
-        if self._is_undoing_jump:
-            # TODO: We can stop storing self._pre_jump_state if we give up on this
-            #       assertion.
-            self._assert_undo_jump_was_successful(state)
-            self._reset_jump_state()
-            return None
-
-        if self._should_undo_jump(observations):
+        if self._should_undo(observations):
             logger.debug("Returning to previous position")
-            self._is_undoing_jump = True
-            return MotorPolicyResult(self._undo_jump_actions)
+            result = MotorPolicyResult(self._undo_actions)
+            self._reset()
+            return result
 
         logger.debug(
             "Object visible, maintaining new pose for hypothesis-testing action"
         )
 
-        self._reset_jump_state()
+        self._reset()
         return None
 
     def _derive_set_agent_pose_from_goal(self, goal: Goal) -> SetAgentPose:
         """Derive the `SetAgentPose` action from the driving goal.
 
+        TODO: The desired_object_distance should be used here to determine SetAgentPose
+        and not in the GoalGenerator.
+
         Returns:
             A `SetAgentPose` action.
         """
-        target_loc = goal.location
         target_agent_vec = goal.morphological_features["pose_vectors"][0]
 
         yaw_angle = math.atan2(-target_agent_vec[0], -target_agent_vec[2])
@@ -407,16 +404,14 @@ class JumpToGoal(MotorPolicy):
 
         return SetAgentPose(
             agent_id=self._agent_id,
-            location=target_loc,
+            location=goal.location,
             rotation_quat=target_quat,
         )
 
-    def _reset_jump_state(self) -> None:
-        """Clear the jump state."""
+    def _reset(self) -> None:
         self._is_jumping = False
-        self._is_undoing_jump = False
         self._pre_jump_state = None
-        self._undo_jump_actions = []
+        self._undo_actions = []
 
     def _jump(self, state: MotorSystemState, goal: Goal) -> list[Action]:
         """Compute the jump and undo jump actions.
@@ -470,7 +465,7 @@ class JumpToGoal(MotorPolicy):
 
         # Precompute undo actions.
         # All sensors are updated globally by actions, and are therefore identical.
-        self._undo_jump_actions = [
+        self._undo_actions = [
             SetAgentPose(
                 agent_id=self._agent_id,
                 location=self._pre_jump_state.position,
@@ -484,7 +479,7 @@ class JumpToGoal(MotorPolicy):
 
         return actions
 
-    def _should_undo_jump(self, observations: Observations) -> bool:
+    def _should_undo(self, observations: Observations) -> bool:
         """Check if the jump should be undone.
 
         Args:
@@ -503,23 +498,6 @@ class JumpToGoal(MotorPolicy):
         if should_undo:
             logger.debug("No object visible from hypothesis jump, or inside object!")
         return should_undo
-
-    def _assert_undo_jump_was_successful(self, state: MotorSystemState) -> None:
-        assert self._pre_jump_state is not None, "Pre-jump state is not set"
-
-        """Check if the undo jump was successful."""
-        assert np.all(
-            state[self._agent_id].position == self._pre_jump_state.position
-        ), "Failed to return agent to location"
-        assert np.all(
-            state[self._agent_id].rotation == self._pre_jump_state.rotation
-        ), "Failed to return agent to orientation"
-
-        for current_sensor in state[self._agent_id].sensors:
-            assert np.all(
-                state[self._agent_id].sensors[current_sensor].rotation
-                == self._pre_jump_state.sensors[current_sensor].rotation
-            ), "Failed to return sensor to orientation"
 
 
 class InformedPolicy(BasePolicy):

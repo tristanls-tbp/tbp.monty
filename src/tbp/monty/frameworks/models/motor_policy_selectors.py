@@ -89,7 +89,10 @@ class SinglePolicySelector(MotorPolicySelector):
     ) -> MotorPolicyResult:
         goal = highest_confidence_goal(goals) if goals else None
         self._selected_goals.append(goal)
-        return self._policy(ctx, observations, state, percept, goal)
+        result = self._policy(ctx, observations, state, percept, goal)
+        if result is None:
+            return MotorPolicyResult([])
+        return result
 
 class DistantPolicySelector(MotorPolicySelector):
     def __init__(
