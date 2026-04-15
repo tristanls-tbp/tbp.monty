@@ -230,32 +230,14 @@ class JumpToGoalTest(unittest.TestCase):
 
     @given(
         goal_location=st.tuples(
-            st.floats(
-                min_value=-1,
-                max_value=1,
-            ),
-            st.floats(
-                min_value=-1,
-                max_value=1,
-            ),
-            st.floats(
-                min_value=-1,
-                max_value=1,
-            ),
+            st.floats(min_value=-1, max_value=1),
+            st.floats(min_value=-1, max_value=1),
+            st.floats(min_value=-1, max_value=1),
         ),
         goal_direction=st.tuples(
-            st.floats(
-                min_value=-1,
-                max_value=1,
-            ),
-            st.floats(
-                min_value=-1,
-                max_value=1,
-            ),
-            st.floats(
-                min_value=-1,
-                max_value=1,
-            ),
+            st.floats(min_value=-1, max_value=1),
+            st.floats(min_value=-1, max_value=1),
+            st.floats(min_value=-1, max_value=1),
         ),
     )
     def test_generates_actions_that_point_agent_at_goal_location_opposite_surface_normal(  # noqa: E501
@@ -330,3 +312,24 @@ class JumpToGoalTest(unittest.TestCase):
             qt.as_float_array(qt.one),
             atol=1e-6,
         )
+
+    def test_returns_undo_actions_if_undo_is_needed(self) -> None:
+        pass
+
+    def test_undo_actions_match_pre_jump_state(self) -> None:
+        pass
+
+    def test_returns_new_jump_actions_if_undo_is_not_needed_after_jump_and_goal_is_provided(
+        self,
+    ) -> None:
+        pass
+
+    def test_raises_error_if_undo_is_not_needed_after_jump_and_goal_is_None_and_not_suppressing_errors(
+        self,
+    ) -> None:
+        pass
+
+    def test_logs_error_if_undo_is_not_needed_after_jump_and_goal_is_None_and_suppressing_errors(
+        self,
+    ) -> None:
+        pass
