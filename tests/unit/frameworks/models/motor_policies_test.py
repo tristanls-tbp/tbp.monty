@@ -12,12 +12,17 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from typing import cast
+from unittest.mock import Mock, patch
 
 import numpy as np
 import numpy.testing as nptest
+import quaternion as qt
+from hypothesis import given
+from hypothesis import strategies as st
+from scipy.spatial.transform import Rotation
 
-from tbp.monty.cmp import Message
+from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.actions.action_samplers import UniformlyDistributedSampler
 from tbp.monty.frameworks.actions.actions import (
@@ -26,16 +31,26 @@ from tbp.monty.frameworks.actions.actions import (
     LookDown,
     LookUp,
     OrientVertical,
+    SetAgentPose,
+    SetSensorRotation,
     TurnLeft,
     TurnRight,
 )
 from tbp.monty.frameworks.agents import AgentID
 from tbp.monty.frameworks.models.abstract_monty_classes import Observations
 from tbp.monty.frameworks.models.motor_policies import (
+    JumpToGoal,
+    MotorPolicyResult,
     PredefinedPolicy,
     SurfacePolicyCurvatureInformed,
 )
-from tbp.monty.frameworks.models.motor_system_state import MotorSystemState
+from tbp.monty.frameworks.models.motor_system_state import (
+    AgentState,
+    MotorSystemState,
+    SensorState,
+)
+from tbp.monty.frameworks.sensors import SensorID
+from tbp.monty.math import VectorXYZ
 from tests.unit.frameworks.models.fakes.cmp import FakeMessage
 
 
@@ -197,4 +212,121 @@ class PredefinedPolicyReadActionFileTest(unittest.TestCase):
 
 class JumpToGoalTest(unittest.TestCase):
     def setUp(self) -> None:
-        pass
+        self.agent_id = AgentID("agent_id_0")
+        self.policy = JumpToGoal(self.agent_id)
+        self.motor_system_state = MotorSystemState(
+            {
+                self.agent_id: AgentState(
+                    sensors={
+                        SensorID("sensor_id_0"): SensorState(
+                            position=cast("VectorXYZ", (0, 0, 0)), rotation=qt.one
+                        )
+                    },
+                    position=cast("VectorXYZ", (0, 0, 0)),
+                    rotation=qt.one,
+                )
+            }
+        )
+
+    @given(
+        goal_location=st.tuples(
+            st.floats(
+                min_value=-1,
+                max_value=1,
+            ),
+            st.floats(
+                min_value=-1,
+                max_value=1,
+            ),
+            st.floats(
+                min_value=-1,
+                max_value=1,
+            ),
+        ),
+        goal_direction=st.tuples(
+            st.floats(
+                min_value=-1,
+                max_value=1,
+            ),
+            st.floats(
+                min_value=-1,
+                max_value=1,
+            ),
+            st.floats(
+                min_value=-1,
+                max_value=1,
+            ),
+        ),
+    )
+    def test_generates_actions_that_point_agent_at_goal_location_opposite_surface_normal(  # noqa: E501
+        self,
+        goal_location,
+        goal_direction,
+    ) -> None:
+        goal_location = np.array(goal_location)
+        goal_direction = np.array(goal_direction)
+        if np.isclose(np.linalg.norm(goal_direction), 0.0):
+            return
+        goal_direction = goal_direction / np.linalg.norm(goal_direction)
+        pose_vectors = np.zeros((3, 3))
+        pose_vectors[0] = goal_direction
+
+        goal = Goal(
+            location=goal_location,
+            morphological_features={
+                "pose_vectors": pose_vectors,
+                "pose_fully_defined": True,
+            },
+            non_morphological_features=None,
+            confidence=1.0,
+            use_state=True,
+            sender_id="test",
+            sender_type="SM",
+            goal_tolerances=None,
+            info=None,
+        )
+
+        # We need a fresh policy for each iteration. setUp() is not called between
+        # hypothesis iterations.
+        policy = JumpToGoal(self.agent_id)
+        policy_result = policy(
+            ctx=Mock(),
+            observations=Mock(),
+            state=self.motor_system_state,
+            percept=Mock(),
+            goal=goal,
+        )
+        assert isinstance(policy_result, MotorPolicyResult)
+
+        self.assertEqual(len(policy_result.actions), 2)
+        set_agent_pose = policy_result.actions[0]
+        assert isinstance(set_agent_pose, SetAgentPose)
+        set_sensor_rotation = policy_result.actions[1]
+        assert isinstance(set_sensor_rotation, SetSensorRotation)
+
+        nptest.assert_array_equal(set_agent_pose.location, goal_location)
+        rotation = Rotation.from_quat(
+            [
+                set_agent_pose.rotation_quat.x,
+                set_agent_pose.rotation_quat.y,
+                set_agent_pose.rotation_quat.z,
+                set_agent_pose.rotation_quat.w,
+            ]
+        )
+        new_forward_axis = -rotation.as_matrix()[:, 2]
+        nptest.assert_allclose(new_forward_axis, goal_direction, atol=1e-6)
+
+        # Note: the above is equivalent to the below code, but I think checking
+        # the z-axis in the rotation matrix is more intuitive.
+        # forward_axis = np.array([0, 0, -1])
+        # new_forward_direction = qt.rotate_vectors(
+        #     set_agent_pose.rotation_quat, forward_axis
+        # )
+        # nptest.assert_allclose(new_forward_direction, goal_direction, atol=1e-6)
+
+        # Sensor rotation must be identity.
+        nptest.assert_allclose(
+            qt.as_float_array(set_sensor_rotation.rotation_quat),
+            qt.as_float_array(qt.one),
+            atol=1e-6,
+        )

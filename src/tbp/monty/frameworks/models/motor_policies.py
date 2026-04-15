@@ -68,6 +68,7 @@ __all__ = [
 
 logger = logging.getLogger(__name__)
 
+
 class NoGoalProvided(RuntimeError):
     """Raised when no goal is provided."""
 
@@ -399,7 +400,7 @@ class JumpToGoal(MotorPolicy):
             [pitch_angle, yaw_angle, 0],
             degrees=False,
         )
-
+        # TODO: should be a QuaternionWXYZ
         target_quat = scipy_to_numpy_quat(scipy_combined_orientation.as_quat())
 
         return SetAgentPose(
@@ -459,6 +460,7 @@ class JumpToGoal(MotorPolicy):
             set_agent_pose,
             SetSensorRotation(
                 agent_id=self._agent_id,
+                # TODO: should be a QuaternionWXYZ
                 rotation_quat=qt.one,
             ),
         ]
@@ -469,10 +471,12 @@ class JumpToGoal(MotorPolicy):
             SetAgentPose(
                 agent_id=self._agent_id,
                 location=self._pre_jump_state.position,
+                # TODO: should be a QuaternionWXYZ
                 rotation_quat=self._pre_jump_state.rotation,
             ),
             SetSensorRotation(
                 agent_id=self._agent_id,
+                # TODO: should be a QuaternionWXYZ
                 rotation_quat=self._pre_jump_state.sensors[first_sensor].rotation,
             ),
         ]

@@ -94,6 +94,7 @@ class SinglePolicySelector(MotorPolicySelector):
             return MotorPolicyResult([])
         return result
 
+
 class DistantPolicySelector(MotorPolicySelector):
     def __init__(
         self, jump_to_goal: JumpToGoal, look_at_goal: LookAtGoal, default: MotorPolicy

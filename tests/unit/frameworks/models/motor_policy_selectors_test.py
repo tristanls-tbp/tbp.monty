@@ -215,8 +215,9 @@ class DistantPolicySelectorTest(unittest.TestCase):
 
 
 class Goals:
+    # TODO: Fix PLW1641 Object does not implement `__hash__` method
     def __init__(self, goals: list[Goal]):
         self.goals = goals
 
-    def __eq__(self, other: object) -> bool:
+    def __eq__(self, other: list[Goal]) -> bool:
         return set(self.goals) == set(other)
