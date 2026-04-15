@@ -112,7 +112,10 @@ class DistantPolicySelectorTest(unittest.TestCase):
         self.percept = Mock()
         # self.goals = [Mock(confidence=0.9), Mock(confidence=0.8)]
 
-    def test_uses_default_policy_when_no_goals_are_present(self):
+    def test_returns_default_policy_result_when_no_goals_are_present(self):
+        default_policy_result = Mock()
+        self.default_policy.return_value = default_policy_result
+
         result = self.selector(
             self.ctx,
             self.observations,
@@ -120,6 +123,7 @@ class DistantPolicySelectorTest(unittest.TestCase):
             self.percept,
             [],
         )
+
         self.default_policy.assert_called_once_with(
             self.ctx,
             self.observations,
@@ -127,40 +131,81 @@ class DistantPolicySelectorTest(unittest.TestCase):
             self.percept,
             None,
         )
+        self.assertIs(result, default_policy_result)
 
-    def test_uses_jump_to_goal_when_gsg_goal_is_present(self):
+    def test_returns_jump_to_goal_result_when_gsg_goal_is_present(self):
         gsg_goal = Mock(sender_type="GSG")
         goals = [
             Mock(sender_type="SM"),
             gsg_goal,
             Mock(sender_type="SM"),
         ]
-        self.selector(
+        jump_to_goal_result = Mock()
+        self.jump_to_goal.return_value = jump_to_goal_result
+
+        result = self.selector(
             self.ctx,
             self.observations,
             self.state,
             self.percept,
             goals,
         )
+
         self.jump_to_goal.assert_called_once_with(
             self.ctx, self.observations, self.state, self.percept, gsg_goal
         )
+        self.assertIs(result, jump_to_goal_result)
 
-    def test_uses_look_at_goal_when_only_sm_goals_are_present(self):
+    @patch("tbp.monty.frameworks.models.motor_policy_selectors.highest_confidence_goal")
+    def test_invokes_jump_to_goal_with_highest_confidence_gsg_goal(
+        self, highest_confidence_goal_mock: Mock
+    ):
+        best_gsg_goal = Mock(sender_type="GSG")
+        gsg_goal = Mock(sender_type="GSG")
+        goals = [
+            Mock(sender_type="SM"),
+            gsg_goal,
+            best_gsg_goal,
+            Mock(sender_type="SM"),
+        ]
+        highest_confidence_goal_mock.return_value = best_gsg_goal
+        jump_to_goal_result = Mock()
+        self.jump_to_goal.return_value = jump_to_goal_result
+
+        result = self.selector(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            goals,
+        )
+
+        highest_confidence_goal_mock.assert_called_once_with([gsg_goal, best_gsg_goal])
+        self.jump_to_goal.assert_called_once_with(
+            self.ctx, self.observations, self.state, self.percept, best_gsg_goal
+        )
+        self.assertIs(result, jump_to_goal_result)
+
+    def test_returns_look_at_goal_result_when_only_sm_goals_are_present(self):
         goals = [
             Mock(sender_type="SM"),
             Mock(sender_type="SM"),
         ]
-        self.selector(
+        look_at_goal_result = Mock()
+        self.look_at_goal.return_value = look_at_goal_result
+
+        result = self.selector(
             self.ctx,
             self.observations,
             self.state,
             self.percept,
             goals,
         )
+
         self.look_at_goal.assert_called_once_with(
             self.ctx, self.observations, self.state, self.percept, goals[0]
         )
+        self.assertIs(result, look_at_goal_result)
 
     def test_checks_jump_to_goal_checked_after_a_jump(self):
         pass

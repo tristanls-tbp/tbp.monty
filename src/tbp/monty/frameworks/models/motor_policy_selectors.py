@@ -95,6 +95,7 @@ class DistantPolicySelector(MotorPolicySelector):
     def __init__(
         self, jump_to_goal: JumpToGoal, look_at_goal: LookAtGoal, default: MotorPolicy
     ):
+        self._is_jumping = False
         self._jump_to_goal = jump_to_goal
         self._look_at_goal = look_at_goal
         self._default = default
