@@ -191,8 +191,8 @@ class DistantPolicySelectorTest(unittest.TestCase):
 
     def test_returns_look_at_goal_result_when_only_sm_goals_are_present(self):
         goals = [
-            Mock(sender_type="SM"),
-            Mock(sender_type="SM"),
+            Mock(sender_type="SM", confidence=0.9),
+            Mock(sender_type="SM", confidence=0.8),
         ]
         look_at_goal_result = Mock()
         self.look_at_goal.return_value = look_at_goal_result
@@ -210,14 +210,45 @@ class DistantPolicySelectorTest(unittest.TestCase):
         )
         self.assertIs(result, look_at_goal_result)
 
+    @patch("tbp.monty.frameworks.models.motor_policy_selectors.highest_confidence_goal")
+    def test_invokes_look_at_goal_with_highest_confidence_gsg_goal(
+        self, highest_confidence_goal_mock: Mock
+    ):
+        best_sm_goal = Mock(sender_type="SM")
+        sm_goal = Mock(sender_type="SM")
+        goals = [
+            sm_goal,
+            best_sm_goal,
+        ]
+        highest_confidence_goal_mock.return_value = best_sm_goal
+        look_at_goal_result = Mock()
+        self.look_at_goal.return_value = look_at_goal_result
+
+        result = self.selector(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            goals,
+        )
+
+        highest_confidence_goal_mock.assert_called_once_with(
+            Goals([sm_goal, best_sm_goal])
+        )
+        self.look_at_goal.assert_called_once_with(
+            self.ctx, self.observations, self.state, self.percept, best_sm_goal
+        )
+        self.assertIs(result, look_at_goal_result)
+
     def test_checks_jump_to_goal_checked_after_a_jump(self):
-        pass
+        self.fail("Not implemented")
 
 
-class Goals:
-    # TODO: Fix PLW1641 Object does not implement `__hash__` method
+class Goals:  # noqa: PLW1641
     def __init__(self, goals: list[Goal]):
         self.goals = goals
 
-    def __eq__(self, other: list[Goal]) -> bool:
+    def __eq__(self, other: object) -> bool:
+        if not hasattr(other, "__iter__"):
+            return False
         return set(self.goals) == set(other)
