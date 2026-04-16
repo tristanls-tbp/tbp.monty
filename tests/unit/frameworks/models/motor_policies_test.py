@@ -50,8 +50,13 @@ from tbp.monty.frameworks.models.motor_system_state import (
     SensorState,
 )
 from tbp.monty.frameworks.sensors import SensorID
+from tbp.monty.frameworks.utils.spatial_arithmetics import normalize
 from tbp.monty.math import VectorXYZ
 from tests.unit.frameworks.models.fakes.cmp import FakeMessage
+from tests.unit.frameworks.utils.spatial_arithmetics_test import (
+    nonzero_magnitude_vectors,
+    vectors_3d,
+)
 
 
 class SurfacePolicyCurvatureInformedTest(unittest.TestCase):
@@ -229,15 +234,9 @@ class JumpToGoalTest(unittest.TestCase):
         )
 
     @given(
-        goal_location=st.tuples(
-            st.floats(min_value=-1, max_value=1),
-            st.floats(min_value=-1, max_value=1),
-            st.floats(min_value=-1, max_value=1),
-        ),
-        goal_direction=st.tuples(
-            st.floats(min_value=-1, max_value=1),
-            st.floats(min_value=-1, max_value=1),
-            st.floats(min_value=-1, max_value=1),
+        goal_location=vectors_3d(min_value=-1, max_value=1, dtype=np.float64),
+        goal_direction=nonzero_magnitude_vectors(
+            min_value=-1, max_value=1, dtype=np.float64
         ),
     )
     def test_generates_actions_that_point_agent_at_goal_location_opposite_surface_normal(  # noqa: E501
@@ -245,11 +244,7 @@ class JumpToGoalTest(unittest.TestCase):
         goal_location,
         goal_direction,
     ) -> None:
-        goal_location = np.array(goal_location)
-        goal_direction = np.array(goal_direction)
-        if np.isclose(np.linalg.norm(goal_direction), 0.0):
-            return
-        goal_direction = goal_direction / np.linalg.norm(goal_direction)
+        goal_direction = normalize(goal_direction)
         pose_vectors = np.zeros((3, 3))
         pose_vectors[0] = goal_direction
 

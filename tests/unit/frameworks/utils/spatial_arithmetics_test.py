@@ -6,6 +6,7 @@
 # Use of this source code is governed by the MIT
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT.
+from __future__ import annotations
 
 import unittest
 
@@ -13,7 +14,7 @@ import numpy as np
 import numpy.testing as npt
 from hypothesis import assume, example, given
 from hypothesis import strategies as st
-from hypothesis.extra.numpy import arrays
+from hypothesis.extra.numpy import D, arrays
 
 from tbp.monty.frameworks.utils.spatial_arithmetics import (
     TangentFrame,
@@ -24,10 +25,16 @@ from tbp.monty.math import DEFAULT_TOLERANCE
 
 
 @st.composite
-def vectors_3d(draw, min_value=-1e6, max_value=1e6):
+def vectors_3d(
+    draw: st.DrawFn,
+    min_value: float = -1e6,
+    max_value: float = 1e6,
+    dtype: D | st.SearchStrategy[D] = np.float32,
+):
+    # TODO(scottcanoe): Reconsider np.float32 as the default dtype.
     return draw(
         arrays(
-            dtype=np.float32,
+            dtype=dtype,
             shape=3,
             elements=st.floats(min_value=min_value, max_value=max_value, width=32),
         )
@@ -35,9 +42,15 @@ def vectors_3d(draw, min_value=-1e6, max_value=1e6):
 
 
 @st.composite
-def nonzero_magnitude_vectors(draw, min_value=-1e6, max_value=1e6):
+def nonzero_magnitude_vectors(
+    draw: st.DrawFn,
+    min_value: float = -1e6,
+    max_value: float = 1e6,
+    dtype: D | st.SearchStrategy[D] = np.float32,
+):
+    # TODO(scottcanoe): Reconsider np.float32 as the default dtype.
     return draw(
-        vectors_3d(min_value=min_value, max_value=max_value).filter(
+        vectors_3d(min_value=min_value, max_value=max_value, dtype=dtype).filter(
             lambda v: np.linalg.norm(v) > DEFAULT_TOLERANCE
         )
     )
