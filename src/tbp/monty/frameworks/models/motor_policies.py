@@ -255,15 +255,21 @@ class PredefinedPolicy(MotorPolicy):
 
 
 class JumpToGoal(MotorPolicy):
-    """Policy that takes observation as input."""
+    """Policy that takes observation as input.
 
-    def __init__(self, agent_id: AgentID) -> None:
+    TODO(tslominski-tbp): Use percept.on_object to check if we're on the object instead
+    of relying on PositioningProcedure.depth_at_center for undo check.
+    """
+
+    def __init__(self, agent_id: AgentID, sensor_id: SensorID) -> None:
         """Initialize policy.
 
         Args:
             agent_id: The agent ID
+            sensor_id: The sensor ID to use for depth at center calculation.
         """
         self._agent_id = agent_id
+        self._sensor_id = sensor_id
 
         self._undo_action: Action | None = None
 
@@ -496,7 +502,7 @@ class JumpToGoal(MotorPolicy):
         depth_at_center = PositioningProcedure.depth_at_center(
             agent_id=self._agent_id,
             observations=observations,
-            sensor_id=SensorID("view_finder"),
+            sensor_id=self._sensor_id,
         )
         should_undo = depth_at_center >= 1.0
         if should_undo:

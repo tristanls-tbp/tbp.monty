@@ -220,7 +220,7 @@ class PredefinedPolicyReadActionFileTest(unittest.TestCase):
 class JumpToGoalTest(unittest.TestCase):
     def setUp(self) -> None:
         self.agent_id = AGENT_ID
-        self.policy = JumpToGoal(self.agent_id)
+        self.policy = JumpToGoal(self.agent_id, SensorID("view_finder"))
         self.motor_system_state = MotorSystemState(
             {
                 self.agent_id: AgentState(
@@ -240,7 +240,11 @@ class JumpToGoalTest(unittest.TestCase):
         goal_direction=nonzero_magnitude_vectors(
             min_value=-1, max_value=1, dtype=np.float64
         ),
-        policy=st.builds(JumpToGoal, agent_id=st.just(AGENT_ID)),
+        policy=st.builds(
+            JumpToGoal,
+            agent_id=st.just(AGENT_ID),
+            sensor_id=st.just(SensorID("view_finder")),
+        ),
     )
     def test_generates_actions_that_point_agent_at_goal_location_opposite_surface_normal(  # noqa: E501
         self,
