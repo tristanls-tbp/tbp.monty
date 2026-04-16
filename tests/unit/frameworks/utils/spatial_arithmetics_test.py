@@ -61,7 +61,7 @@ unit_vectors = nonzero_magnitude_vectors().map(lambda v: normalize(v))
 
 
 @st.composite
-def nonzero_orthogonal_vectors(draw):
+def nonzero_orthogonal_vectors(draw: st.DrawFn):
     random_base = normalize(draw(nonzero_magnitude_vectors()))
     n = normalize(draw(nonzero_magnitude_vectors()))
     v = np.cross(random_base, n)
