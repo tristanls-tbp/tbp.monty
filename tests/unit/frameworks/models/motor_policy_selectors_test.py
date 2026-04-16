@@ -12,6 +12,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from tbp.monty.cmp import Goal
+from tbp.monty.frameworks.models.motor_policies import MotorPolicyResult
 from tbp.monty.frameworks.models.motor_policy_selectors import (
     DistantPolicySelector,
     SinglePolicySelector,
@@ -114,7 +115,7 @@ class DistantPolicySelectorTest(unittest.TestCase):
         # self.goals = [Mock(confidence=0.9), Mock(confidence=0.8)]
 
     def test_returns_default_policy_result_when_no_goals_are_present(self):
-        default_policy_result = Mock()
+        default_policy_result = Mock(spec=MotorPolicyResult)
         self.default_policy.return_value = default_policy_result
 
         result = self.selector(
@@ -141,7 +142,7 @@ class DistantPolicySelectorTest(unittest.TestCase):
             gsg_goal,
             Mock(sender_type="SM"),
         ]
-        jump_to_goal_result = Mock()
+        jump_to_goal_result = Mock(spec=MotorPolicyResult)
         self.jump_to_goal.return_value = jump_to_goal_result
 
         result = self.selector(
@@ -170,7 +171,7 @@ class DistantPolicySelectorTest(unittest.TestCase):
             Mock(sender_type="SM"),
         ]
         highest_confidence_goal_mock.return_value = best_gsg_goal
-        jump_to_goal_result = Mock()
+        jump_to_goal_result = Mock(spec=MotorPolicyResult)
         self.jump_to_goal.return_value = jump_to_goal_result
 
         result = self.selector(
@@ -194,7 +195,7 @@ class DistantPolicySelectorTest(unittest.TestCase):
             Mock(sender_type="SM", confidence=0.9),
             Mock(sender_type="SM", confidence=0.8),
         ]
-        look_at_goal_result = Mock()
+        look_at_goal_result = Mock(spec=MotorPolicyResult)
         self.look_at_goal.return_value = look_at_goal_result
 
         result = self.selector(
@@ -221,7 +222,7 @@ class DistantPolicySelectorTest(unittest.TestCase):
             best_sm_goal,
         ]
         highest_confidence_goal_mock.return_value = best_sm_goal
-        look_at_goal_result = Mock()
+        look_at_goal_result = Mock(spec=MotorPolicyResult)
         self.look_at_goal.return_value = look_at_goal_result
 
         result = self.selector(
@@ -240,9 +241,47 @@ class DistantPolicySelectorTest(unittest.TestCase):
         )
         self.assertIs(result, look_at_goal_result)
 
-    def test_checks_jump_to_goal_checked_after_a_jump(self):
-        self.fail("Not implemented")
+    def test_jump_to_goal_called_again_after_a_jump(self):
+        goal = Mock(sender_type="GSG", confidence=0.9)
+        first_result_mock = Mock(spec=MotorPolicyResult)
+        self.jump_to_goal.return_value = first_result_mock
 
+        first_result = self.selector(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            [goal],
+        )
+
+        self.jump_to_goal.assert_called_once_with(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            goal,
+        )
+        self.assertIs(first_result, first_result_mock)
+
+        second_result_mock = Mock(spec=MotorPolicyResult)
+        self.jump_to_goal.return_value = second_result_mock
+
+        second_result = self.selector(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            [],
+        )
+
+        self.jump_to_goal.assert_called_with(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            None,
+        )
+        self.assertIs(second_result, second_result_mock)
 
 class Goals:  # noqa: PLW1641
     def __init__(self, goals: list[Goal]):

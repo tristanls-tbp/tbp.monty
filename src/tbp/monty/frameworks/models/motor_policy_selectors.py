@@ -99,16 +99,26 @@ class DistantPolicySelector(MotorPolicySelector):
     def __init__(
         self, jump_to_goal: JumpToGoal, look_at_goal: LookAtGoal, default: MotorPolicy
     ):
-        self._is_jumping = False
+        # policies
         self._jump_to_goal = jump_to_goal
         self._look_at_goal = look_at_goal
         self._default = default
+
+        # state
+        self._is_jumping = False
+
+        # telemetry
+        self._selected_policies: list[MotorPolicy] = []
         self._selected_goals: list[Goal | None] = []
 
     def pre_episode(self, motor_system: MotorSystem) -> None:
         self._jump_to_goal.pre_episode(motor_system)
         self._look_at_goal.pre_episode(motor_system)
         self._default.pre_episode(motor_system)
+
+        self._is_jumping = False
+        self._selected_policies = []
+        self._selected_goals = []
 
     def state_dict(self) -> dict[str, Any]:
         return {
@@ -125,38 +135,83 @@ class DistantPolicySelector(MotorPolicySelector):
         percept: Message,
         goals: list[Goal],
     ) -> MotorPolicyResult:
-        gsg_goals = []
-        sm_goals = []
-        for goal in goals:
-            if goal.sender_type == "GSG":
-                gsg_goals.append(goal)
-            elif goal.sender_type == "SM":
-                sm_goals.append(goal)
+        """Return a motor policy result containing the next actions to take.
 
+        Args:
+            ctx: The runtime context.
+            observations: The observations from the environment.
+            state: The current state of the motor system.
+            percept: The percept from (as of this writing) the first sensor module.
+            goals: The list of goals to consider.
+        """
+        # Handle possibly undoing a jump.
+        if self._is_jumping:
+            # Call without a goal for the undo check.
+            # TODO (scottcanoe): expand on why this is necessary.
+            undo_result: MotorPolicyResult | None = self._jump_to_goal(
+                ctx,
+                observations,
+                state,
+                percept,
+                None,
+            )
+            # This is only not None if we are given jump-undoing actions.
+            if undo_result is not None:
+                self._is_jumping = False
+                self._update_telemetry(policy=self._jump_to_goal, goal=None)
+                return undo_result
+
+        # Handle jumping to an LM GSG's goal.
+        gsg_goals = [g for g in goals if g.sender_type == "GSG"]
         if gsg_goals:
-            if self._is_jumping:
-                # TODO: Reset policy jump state somehow
-                pass
             goal = highest_confidence_goal(gsg_goals)
-            policy = self._jump_to_goal
+            result = self._jump_to_goal(
+                ctx,
+                observations,
+                state,
+                percept,
+                goal,
+            )
+            assert isinstance(result, MotorPolicyResult)
             self._is_jumping = True
-        elif self._is_jumping:
-            # TODO: Add a way to check if we should undo the jump, and reuse
-            # the jump
-            policy = self._jump_to_goal
-            goal = None
-            self._is_jumping = False
-        elif sm_goals:
-            goal = highest_confidence_goal(sm_goals)
-            policy = self._look_at_goal
-            self._is_jumping = False
-        else:
-            goal = None
-            policy = self._default
-            self._is_jumping = False
+            self._update_telemetry(policy=self._jump_to_goal, goal=goal)
+            return result
 
+        # Handle looking at an SM's goal.
+        sm_goals = [g for g in goals if g.sender_type == "SM"]
+        if sm_goals:
+            goal = highest_confidence_goal(sm_goals)
+            result = self._look_at_goal(
+                ctx,
+                observations,
+                state,
+                percept,
+                goal,
+            )
+            self._is_jumping = False
+            self._update_telemetry(policy=self._look_at_goal, goal=goal)
+            return result
+
+        # Fall back to the default policy.
+        result = self._default(
+            ctx,
+            observations,
+            state,
+            percept,
+            None,
+        )
+        assert isinstance(result, MotorPolicyResult)
+        self._is_jumping = False
+        self._update_telemetry(policy=self._default, goal=None)
+        return result
+
+    def _update_telemetry(
+        self,
+        policy: MotorPolicy,
+        goal: Goal | None,
+    ) -> None:
+        self._selected_policies.append(policy)
         self._selected_goals.append(goal)
-        return policy(ctx, observations, state, percept, goal)
 
 
 # class SurfacePolicySelector(MotorPolicySelector):
