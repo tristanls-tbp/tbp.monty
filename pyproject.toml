@@ -149,11 +149,13 @@ filterwarnings = [
 junit_family = 'xunit1'
 
 [tool.autoimport.common_statements]
-"np" = 'import numpy as np'
-"nn" = 'import torch.nn as nn'
-"pd" = 'import panda as pd'
-"qt" = 'import quaternion as qt'
-"mn" = 'import magnum as mn'
+"np" = "import numpy as np"
+"npt" = "import numpy.typing as npt"
+"nptest" = "import numpy.testing as nptest"
+"nn" = "import torch.nn as nn"
+"pd" = "import panda as pd"
+"qt" = "import quaternion as qt"
+"mn" = "import magnum as mn"
 
 [tool.coverage.run]
 branch = true
