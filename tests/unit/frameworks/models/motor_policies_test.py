@@ -51,17 +51,19 @@ from tbp.monty.frameworks.models.motor_system_state import (
 )
 from tbp.monty.frameworks.sensors import SensorID
 from tbp.monty.frameworks.utils.spatial_arithmetics import normalize
-from tbp.monty.math import VectorXYZ
+from tbp.monty.math import DEFAULT_TOLERANCE, VectorXYZ
 from tests.unit.frameworks.models.fakes.cmp import FakeMessage
 from tests.unit.frameworks.utils.spatial_arithmetics_test import (
     nonzero_magnitude_vectors,
     vectors_3d,
 )
 
+AGENT_ID = AgentID("agent_id_0")
+
 
 class SurfacePolicyCurvatureInformedTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.agent_id = AgentID("agent_id_0")
+        self.agent_id = AGENT_ID
         self.policy = SurfacePolicyCurvatureInformed(
             alpha=0.1,
             pc_alpha=0.5,
@@ -163,7 +165,7 @@ class SurfacePolicyCurvatureInformedTest(unittest.TestCase):
 
 class PredefinedPolicyReadActionFileTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.agent_id = AgentID("agent_id_0")
+        self.agent_id = AGENT_ID
         self.actions_file = Path(__file__).parent / "motor_policies_test_actions.jsonl"
 
     def test_read_action_file(self) -> None:
@@ -217,7 +219,7 @@ class PredefinedPolicyReadActionFileTest(unittest.TestCase):
 
 class JumpToGoalTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.agent_id = AgentID("agent_id_0")
+        self.agent_id = AGENT_ID
         self.policy = JumpToGoal(self.agent_id)
         self.motor_system_state = MotorSystemState(
             {
@@ -238,11 +240,13 @@ class JumpToGoalTest(unittest.TestCase):
         goal_direction=nonzero_magnitude_vectors(
             min_value=-1, max_value=1, dtype=np.float64
         ),
+        policy=st.builds(JumpToGoal, agent_id=st.just(AGENT_ID)),
     )
     def test_generates_actions_that_point_agent_at_goal_location_opposite_surface_normal(  # noqa: E501
         self,
         goal_location,
         goal_direction,
+        policy,
     ) -> None:
         goal_direction = normalize(goal_direction)
         pose_vectors = np.zeros((3, 3))
@@ -263,9 +267,6 @@ class JumpToGoalTest(unittest.TestCase):
             info=None,
         )
 
-        # We need a fresh policy for each iteration. setUp() is not called between
-        # hypothesis iterations.
-        policy = JumpToGoal(self.agent_id)
         policy_result = policy(
             ctx=Mock(),
             observations=Mock(),
@@ -284,31 +285,33 @@ class JumpToGoalTest(unittest.TestCase):
         nptest.assert_array_equal(set_agent_pose.location, goal_location)
         rotation = Rotation.from_quat(
             [
-                set_agent_pose.rotation_quat.x,
-                set_agent_pose.rotation_quat.y,
-                set_agent_pose.rotation_quat.z,
-                set_agent_pose.rotation_quat.w,
+                # TODO(tslominski-tbp): Needs update when we use QuaternionWXYZ like
+                # we're supposed to.
+                set_agent_pose.rotation_quat.x,  # type: ignore[attr-defined]
+                set_agent_pose.rotation_quat.y,  # type: ignore[attr-defined]
+                set_agent_pose.rotation_quat.z,  # type: ignore[attr-defined]
+                set_agent_pose.rotation_quat.w,  # type: ignore[attr-defined]
             ]
         )
         new_forward_axis = -rotation.as_matrix()[:, 2]
-        nptest.assert_allclose(new_forward_axis, goal_direction, atol=1e-6)
-
-        # Note: the above is equivalent to the below code, but I think checking
-        # the z-axis in the rotation matrix is more intuitive.
-        # forward_axis = np.array([0, 0, -1])
-        # new_forward_direction = qt.rotate_vectors(
-        #     set_agent_pose.rotation_quat, forward_axis
-        # )
-        # nptest.assert_allclose(new_forward_direction, goal_direction, atol=1e-6)
+        nptest.assert_allclose(new_forward_axis, goal_direction, atol=DEFAULT_TOLERANCE)
 
         # Sensor rotation must be identity.
         nptest.assert_allclose(
             qt.as_float_array(set_sensor_rotation.rotation_quat),
             qt.as_float_array(qt.one),
-            atol=1e-6,
+            atol=DEFAULT_TOLERANCE,
         )
 
-    def test_returns_undo_actions_if_undo_is_needed(self) -> None:
+    def test_returns_undo_actions_if_undo_is_needed_and_no_new_goal_is_provided(
+        self,
+    ) -> None:
+        pass
+
+    def test_returns_undo_actions_if_undo_is_needed_and_new_goal_is_provided(
+        self,
+    ) -> None:
+        """TODO(tslominski-tbp): In future, abandon undo given a new goal."""
         pass
 
     def test_undo_actions_match_pre_jump_state(self) -> None:
