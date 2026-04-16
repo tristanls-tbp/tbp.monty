@@ -42,6 +42,7 @@ from tbp.monty.frameworks.models.abstract_monty_classes import Observations
 from tbp.monty.frameworks.models.motor_policies import (
     JumpToGoal,
     MotorPolicyResult,
+    NoGoalProvided,
     PredefinedPolicy,
     SurfacePolicyCurvatureInformed,
 )
@@ -472,18 +473,176 @@ class JumpToGoalTest(unittest.TestCase):
             sensor_id=SensorID("view_finder"),
         )
 
-
-    def test_returns_new_jump_actions_if_undo_is_not_needed_after_jump_and_goal_is_provided(
+    @given(
+        goal_location=vectors_3d(min_value=-1, max_value=1, dtype=np.float64),
+        goal_direction=nonzero_magnitude_vectors(
+            min_value=-1, max_value=1, dtype=np.float64
+        ),
+        policy=st.builds(
+            JumpToGoal,
+            agent_id=st.just(AGENT_ID),
+            sensor_id=st.just(SensorID("view_finder")),
+        ),
+    )
+    @patch(
+        "tbp.monty.frameworks.models.motor_policies.PositioningProcedure.depth_at_center",
+        return_value=0.99,
+    )
+    def test_returns_new_jump_actions_if_undo_is_not_needed_after_jump_and_goal_is_provided(  # noqa: E501
         self,
+        depth_at_center_mock: Mock,
+        goal_location: np.ndarray,
+        goal_direction: np.ndarray,
+        policy: JumpToGoal,
     ) -> None:
-        pass
+        pose_vectors = np.zeros((3, 3))
+        goal_direction = normalize(goal_direction)
+        pose_vectors[0] = goal_direction
 
-    def test_raises_error_if_undo_is_not_needed_after_jump_and_goal_is_None_and_not_suppressing_errors(
-        self,
-    ) -> None:
-        pass
+        first_goal = Mock(
+            location=np.zeros(3),
+            morphological_features={
+                "pose_vectors": np.eye(3),
+            },
+        )
+        second_goal = Mock(
+            location=goal_location,
+            morphological_features={
+                "pose_vectors": pose_vectors,
+            },
+        )
 
-    def test_logs_error_if_undo_is_not_needed_after_jump_and_goal_is_None_and_suppressing_errors(
+        policy(
+            ctx=Mock(),
+            observations=Mock(),
+            state=self.motor_system_state,
+            percept=Mock(),
+            goal=first_goal,
+        )
+        observations = Mock()
+        policy_result = policy(
+            ctx=Mock(),
+            observations=observations,
+            state=self.motor_system_state,
+            percept=Mock(),
+            goal=second_goal,
+        )
+        assert isinstance(policy_result, MotorPolicyResult)
+
+        self.assertEqual(len(policy_result.actions), 2)
+        set_agent_pose = policy_result.actions[0]
+        assert isinstance(set_agent_pose, SetAgentPose)
+        set_sensor_rotation = policy_result.actions[1]
+        assert isinstance(set_sensor_rotation, SetSensorRotation)
+
+        nptest.assert_array_equal(set_agent_pose.location, goal_location)
+        rotation = Rotation.from_quat(
+            [
+                # TODO(tslominski-tbp): Needs update when we use QuaternionWXYZ like
+                # we're supposed to.
+                set_agent_pose.rotation_quat.x,  # type: ignore[attr-defined]
+                set_agent_pose.rotation_quat.y,  # type: ignore[attr-defined]
+                set_agent_pose.rotation_quat.z,  # type: ignore[attr-defined]
+                set_agent_pose.rotation_quat.w,  # type: ignore[attr-defined]
+            ]
+        )
+        new_forward_axis = -rotation.as_matrix()[:, 2]
+        nptest.assert_allclose(new_forward_axis, goal_direction, atol=DEFAULT_TOLERANCE)
+
+        # Sensor rotation must be identity.
+        nptest.assert_allclose(
+            qt.as_float_array(set_sensor_rotation.rotation_quat),
+            qt.as_float_array(qt.one),
+            atol=DEFAULT_TOLERANCE,
+        )
+
+        depth_at_center_mock.assert_called_once_with(
+            agent_id=self.agent_id,
+            observations=observations,
+            sensor_id=SensorID("view_finder"),
+        )
+
+    @patch(
+        "tbp.monty.frameworks.models.motor_policies.PositioningProcedure.depth_at_center",
+        return_value=0.99,
+    )
+    def test_raises_error_if_undo_is_not_needed_after_jump_and_goal_is_none_and_not_suppressing_errors(  # noqa: E501
         self,
+        depth_at_center_mock: Mock,
     ) -> None:
-        pass
+        goal = Mock(
+            location=np.zeros(3),
+            morphological_features={
+                "pose_vectors": np.eye(3),
+            },
+        )
+
+        policy = JumpToGoal(self.agent_id, SensorID("view_finder"))
+        policy(
+            ctx=Mock(),
+            observations=Mock(),
+            state=self.motor_system_state,
+            percept=Mock(),
+            goal=goal,
+        )
+        observations = Mock()
+        with self.assertRaises(NoGoalProvided):
+            policy(
+                ctx=Mock(suppress_runtime_errors=False),
+                observations=observations,
+                state=self.motor_system_state,
+                percept=Mock(),
+                goal=None,
+            )
+
+        depth_at_center_mock.assert_called_once_with(
+            agent_id=self.agent_id,
+            observations=observations,
+            sensor_id=SensorID("view_finder"),
+        )
+
+    @patch(
+        "tbp.monty.frameworks.models.motor_policies.PositioningProcedure.depth_at_center",
+        return_value=0.99,
+    )
+    def test_logs_warning_and_returns_no_actions_if_undo_is_not_needed_after_jump_and_goal_is_none_and_suppressing_errors(  # noqa: E501
+        self,
+        depth_at_center_mock: Mock,
+    ) -> None:
+        goal = Mock(
+            location=np.zeros(3),
+            morphological_features={
+                "pose_vectors": np.eye(3),
+            },
+        )
+
+        policy = JumpToGoal(self.agent_id, SensorID("view_finder"))
+        policy(
+            ctx=Mock(),
+            observations=Mock(),
+            state=self.motor_system_state,
+            percept=Mock(),
+            goal=goal,
+        )
+        observations = Mock()
+
+        with patch(
+            "tbp.monty.frameworks.models.motor_policies.logger.warning"
+        ) as warning_mock:
+            policy_result = policy(
+                ctx=Mock(suppress_runtime_errors=True),
+                observations=observations,
+                state=self.motor_system_state,
+                percept=Mock(),
+                goal=None,
+            )
+            warning_mock.assert_called_once_with("No goal provided")
+
+        assert isinstance(policy_result, MotorPolicyResult)
+        self.assertEqual(policy_result.actions, [])
+
+        depth_at_center_mock.assert_called_once_with(
+            agent_id=self.agent_id,
+            observations=observations,
+            sensor_id=SensorID("view_finder"),
+        )

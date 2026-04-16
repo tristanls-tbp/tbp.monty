@@ -348,7 +348,9 @@ class JumpToGoal(MotorPolicy):
           - But if goal is None and we didn't just jump, that's an error.
         """
         if self._is_jumping:
-            return self._maybe_undo(observations)
+            result = self._maybe_undo(observations)
+            if result is not None:
+                return result
 
         if not goal:
             if ctx.suppress_runtime_errors:
