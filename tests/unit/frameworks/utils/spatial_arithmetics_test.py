@@ -13,6 +13,7 @@ import unittest
 import numpy as np
 import numpy.testing as nptest
 import numpy.typing as npt
+import quaternion as qt
 from hypothesis import assume, example, given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
@@ -67,6 +68,19 @@ def nonzero_orthogonal_vectors(draw: st.DrawFn):
     v = np.cross(random_base, n)
     assume(np.linalg.norm(v) > DEFAULT_TOLERANCE)
     return v, n
+
+
+@st.composite
+def quaternions(draw: st.DrawFn):
+    wxyz = draw(
+        arrays(
+            dtype=np.float64,
+            shape=4,
+            elements=st.floats(min_value=-1, max_value=1, width=32),
+        ).filter(lambda v: np.linalg.norm(v) > DEFAULT_TOLERANCE)
+    )
+    wxyz = normalize(wxyz)
+    return qt.quaternion(*wxyz)
 
 
 class NormalizeTest(unittest.TestCase):

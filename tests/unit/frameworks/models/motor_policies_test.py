@@ -17,6 +17,7 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import numpy.testing as nptest
+import numpy.typing as npt
 import quaternion as qt
 from hypothesis import given
 from hypothesis import strategies as st
@@ -55,6 +56,7 @@ from tbp.monty.math import DEFAULT_TOLERANCE, VectorXYZ
 from tests.unit.frameworks.models.fakes.cmp import FakeMessage
 from tests.unit.frameworks.utils.spatial_arithmetics_test import (
     nonzero_magnitude_vectors,
+    quaternions,
     vectors_3d,
 )
 
@@ -246,14 +248,14 @@ class JumpToGoalTest(unittest.TestCase):
             sensor_id=st.just(SensorID("view_finder")),
         ),
     )
-    def test_generates_actions_that_point_agent_at_goal_location_opposite_surface_normal(  # noqa: E501
+    def test_generates_actions_that_align_forward_axis_with_goal_direction(
         self,
-        goal_location,
-        goal_direction,
-        policy,
+        goal_location: np.ndarray,
+        goal_direction: np.ndarray,
+        policy: JumpToGoal,
     ) -> None:
-        goal_direction = normalize(goal_direction)
         pose_vectors = np.zeros((3, 3))
+        goal_direction = normalize(goal_direction)
         pose_vectors[0] = goal_direction
 
         goal = Goal(
@@ -307,19 +309,169 @@ class JumpToGoalTest(unittest.TestCase):
             atol=DEFAULT_TOLERANCE,
         )
 
+    @given(
+        agent_position=vectors_3d(min_value=-1, max_value=1, dtype=np.float64),
+        agent_rotation=quaternions(),
+        sensor_rotation=quaternions(),
+    )
+    @patch(
+        "tbp.monty.frameworks.models.motor_policies.PositioningProcedure.depth_at_center",
+        return_value=1.0,
+    )
     def test_returns_undo_actions_if_undo_is_needed_and_no_new_goal_is_provided(
         self,
+        depth_at_center_mock: Mock,
+        agent_position: npt.NDArray[np.float64],
+        agent_rotation: qt.quaternion,
+        sensor_rotation: qt.quaternion,
     ) -> None:
-        pass
+        pre_jump_state = MotorSystemState(
+            {
+                self.agent_id: AgentState(
+                    position=cast("VectorXYZ", tuple(agent_position)),
+                    rotation=agent_rotation,
+                    sensors={
+                        SensorID("sensor_id_0"): SensorState(
+                            position=cast("VectorXYZ", (0, 0, 0)),
+                            rotation=sensor_rotation,
+                        ),
+                    },
+                ),
+            },
+        )
+        goal = Mock(
+            location=np.zeros(3),
+            morphological_features={
+                "pose_vectors": np.eye(3),
+            },
+        )
+        policy = JumpToGoal(self.agent_id, SensorID("view_finder"))
+        policy(
+            ctx=Mock(),
+            observations=Mock(),
+            state=pre_jump_state,
+            percept=Mock(),
+            goal=goal,
+        )
 
+        observations = Mock()
+        policy_result = policy(
+            ctx=Mock(),
+            observations=observations,
+            state=self.motor_system_state,
+            percept=Mock(),
+            goal=None,
+        )
+        assert isinstance(policy_result, MotorPolicyResult)
+        self.assertEqual(len(policy_result.actions), 2)
+        set_agent_pose = policy_result.actions[0]
+        assert isinstance(set_agent_pose, SetAgentPose)
+        set_sensor_rotation = policy_result.actions[1]
+        assert isinstance(set_sensor_rotation, SetSensorRotation)
+
+        agent_state = pre_jump_state[self.agent_id]
+        nptest.assert_array_equal(set_agent_pose.location, agent_state.position)
+        nptest.assert_array_equal(
+            qt.as_float_array(set_agent_pose.rotation_quat),
+            qt.as_float_array(agent_state.rotation),
+        )
+        sensor_state = agent_state.sensors[SensorID("sensor_id_0")]
+        nptest.assert_array_equal(
+            qt.as_float_array(set_sensor_rotation.rotation_quat),
+            qt.as_float_array(sensor_state.rotation),
+        )
+
+        depth_at_center_mock.assert_called_once_with(
+            agent_id=self.agent_id,
+            observations=observations,
+            sensor_id=SensorID("view_finder"),
+        )
+
+    @given(
+        agent_position=vectors_3d(min_value=-1, max_value=1, dtype=np.float64),
+        agent_rotation=quaternions(),
+        sensor_rotation=quaternions(),
+    )
+    @patch(
+        "tbp.monty.frameworks.models.motor_policies.PositioningProcedure.depth_at_center",
+        return_value=1.0,
+    )
     def test_returns_undo_actions_if_undo_is_needed_and_new_goal_is_provided(
         self,
+        depth_at_center_mock: Mock,
+        agent_position: npt.NDArray[np.float64],
+        agent_rotation: qt.quaternion,
+        sensor_rotation: qt.quaternion,
     ) -> None:
         """TODO(tslominski-tbp): In future, abandon undo given a new goal."""
-        pass
+        pre_jump_state = MotorSystemState(
+            {
+                self.agent_id: AgentState(
+                    position=cast("VectorXYZ", tuple(agent_position)),
+                    rotation=agent_rotation,
+                    sensors={
+                        SensorID("sensor_id_0"): SensorState(
+                            position=cast("VectorXYZ", (0, 0, 0)),
+                            rotation=sensor_rotation,
+                        ),
+                    },
+                ),
+            },
+        )
+        goal = Mock(
+            location=np.zeros(3),
+            morphological_features={
+                "pose_vectors": np.eye(3),
+            },
+        )
+        policy = JumpToGoal(self.agent_id, SensorID("view_finder"))
+        policy(
+            ctx=Mock(),
+            observations=Mock(),
+            state=pre_jump_state,
+            percept=Mock(),
+            goal=goal,
+        )
 
-    def test_undo_actions_match_pre_jump_state(self) -> None:
-        pass
+        post_jump_goal = Mock(
+            location=np.zeros(3),
+            morphological_features={
+                "pose_vectors": np.eye(3),
+            },
+        )
+        observations = Mock()
+        policy_result = policy(
+            ctx=Mock(),
+            observations=observations,
+            state=self.motor_system_state,
+            percept=Mock(),
+            goal=post_jump_goal,
+        )
+        assert isinstance(policy_result, MotorPolicyResult)
+        self.assertEqual(len(policy_result.actions), 2)
+        set_agent_pose = policy_result.actions[0]
+        assert isinstance(set_agent_pose, SetAgentPose)
+        set_sensor_rotation = policy_result.actions[1]
+        assert isinstance(set_sensor_rotation, SetSensorRotation)
+
+        agent_state = pre_jump_state[self.agent_id]
+        nptest.assert_array_equal(set_agent_pose.location, agent_state.position)
+        nptest.assert_array_equal(
+            qt.as_float_array(set_agent_pose.rotation_quat),
+            qt.as_float_array(agent_state.rotation),
+        )
+        sensor_state = agent_state.sensors[SensorID("sensor_id_0")]
+        nptest.assert_array_equal(
+            qt.as_float_array(set_sensor_rotation.rotation_quat),
+            qt.as_float_array(sensor_state.rotation),
+        )
+
+        depth_at_center_mock.assert_called_once_with(
+            agent_id=self.agent_id,
+            observations=observations,
+            sensor_id=SensorID("view_finder"),
+        )
+
 
     def test_returns_new_jump_actions_if_undo_is_not_needed_after_jump_and_goal_is_provided(
         self,
