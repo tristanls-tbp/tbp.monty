@@ -43,6 +43,7 @@ from tbp.monty.frameworks.models.motor_policies import (
     JumpToGoal,
     MotorPolicyResult,
     NoGoalProvided,
+    PolicyStatus,
     PredefinedPolicy,
     SurfacePolicyCurvatureInformed,
 )
@@ -319,7 +320,7 @@ class JumpToGoalTest(unittest.TestCase):
         "tbp.monty.frameworks.models.motor_policies.PositioningProcedure.depth_at_center",
         return_value=1.0,
     )
-    def test_returns_undo_actions_if_undo_is_needed_and_no_new_goal_is_provided(
+    def test_returns_undo_actions_status_ready_if_undo_is_needed_and_no_new_goal_is_provided(  # noqa: E501
         self,
         depth_at_center_mock: Mock,
         agent_position: npt.NDArray[np.float64],
@@ -364,6 +365,7 @@ class JumpToGoalTest(unittest.TestCase):
             goal=None,
         )
         assert isinstance(policy_result, MotorPolicyResult)
+        self.assertEqual(policy_result.status, PolicyStatus.READY)
         self.assertEqual(len(policy_result.actions), 2)
         set_agent_pose = policy_result.actions[0]
         assert isinstance(set_agent_pose, SetAgentPose)
@@ -397,7 +399,7 @@ class JumpToGoalTest(unittest.TestCase):
         "tbp.monty.frameworks.models.motor_policies.PositioningProcedure.depth_at_center",
         return_value=1.0,
     )
-    def test_returns_undo_actions_if_undo_is_needed_and_new_goal_is_provided(
+    def test_returns_undo_actions_status_ready_if_undo_is_needed_and_new_goal_is_provided(  # noqa: E501
         self,
         depth_at_center_mock: Mock,
         agent_position: npt.NDArray[np.float64],
@@ -449,6 +451,7 @@ class JumpToGoalTest(unittest.TestCase):
             goal=post_jump_goal,
         )
         assert isinstance(policy_result, MotorPolicyResult)
+        self.assertEqual(policy_result.status, PolicyStatus.READY)
         self.assertEqual(len(policy_result.actions), 2)
         set_agent_pose = policy_result.actions[0]
         assert isinstance(set_agent_pose, SetAgentPose)
@@ -488,7 +491,7 @@ class JumpToGoalTest(unittest.TestCase):
         "tbp.monty.frameworks.models.motor_policies.PositioningProcedure.depth_at_center",
         return_value=0.99,
     )
-    def test_returns_new_jump_actions_if_undo_is_not_needed_after_jump_and_goal_is_provided(  # noqa: E501
+    def test_returns_new_jump_actions_status_in_progress_if_undo_is_not_needed_after_jump_and_goal_is_provided(  # noqa: E501
         self,
         depth_at_center_mock: Mock,
         goal_location: np.ndarray,
@@ -528,6 +531,7 @@ class JumpToGoalTest(unittest.TestCase):
             goal=second_goal,
         )
         assert isinstance(policy_result, MotorPolicyResult)
+        self.assertEqual(policy_result.status, PolicyStatus.IN_PROGRESS)
 
         self.assertEqual(len(policy_result.actions), 2)
         set_agent_pose = policy_result.actions[0]
@@ -566,7 +570,7 @@ class JumpToGoalTest(unittest.TestCase):
         "tbp.monty.frameworks.models.motor_policies.PositioningProcedure.depth_at_center",
         return_value=0.99,
     )
-    def test_raises_error_if_undo_is_not_needed_after_jump_and_goal_is_none_and_not_suppressing_errors(  # noqa: E501
+    def test_returns_no_actions_status_ready_if_undo_is_not_needed_after_jump_and_goal_is_none(  # noqa: E501
         self,
         depth_at_center_mock: Mock,
     ) -> None:
@@ -586,60 +590,17 @@ class JumpToGoalTest(unittest.TestCase):
             goal=goal,
         )
         observations = Mock()
-        with self.assertRaises(NoGoalProvided):
-            policy(
-                ctx=Mock(suppress_runtime_errors=False),
-                observations=observations,
-                state=self.motor_system_state,
-                percept=Mock(),
-                goal=None,
-            )
 
-        depth_at_center_mock.assert_called_once_with(
-            agent_id=self.agent_id,
+        policy_result = policy(
+            ctx=Mock(suppress_runtime_errors=False),
             observations=observations,
-            sensor_id=SensorID("view_finder"),
-        )
-
-    @patch(
-        "tbp.monty.frameworks.models.motor_policies.PositioningProcedure.depth_at_center",
-        return_value=0.99,
-    )
-    def test_logs_warning_and_returns_no_actions_if_undo_is_not_needed_after_jump_and_goal_is_none_and_suppressing_errors(  # noqa: E501
-        self,
-        depth_at_center_mock: Mock,
-    ) -> None:
-        goal = Mock(
-            location=np.zeros(3),
-            morphological_features={
-                "pose_vectors": np.eye(3),
-            },
-        )
-
-        policy = JumpToGoal(self.agent_id, SensorID("view_finder"))
-        policy(
-            ctx=Mock(),
-            observations=Mock(),
             state=self.motor_system_state,
             percept=Mock(),
-            goal=goal,
+            goal=None,
         )
-        observations = Mock()
-
-        with patch(
-            "tbp.monty.frameworks.models.motor_policies.logger.warning"
-        ) as warning_mock:
-            policy_result = policy(
-                ctx=Mock(suppress_runtime_errors=True),
-                observations=observations,
-                state=self.motor_system_state,
-                percept=Mock(),
-                goal=None,
-            )
-            warning_mock.assert_called_once_with("No goal provided")
-
         assert isinstance(policy_result, MotorPolicyResult)
-        self.assertEqual(policy_result.actions, [])
+        self.assertEqual(policy_result.status, PolicyStatus.READY)
+        self.assertEqual(len(policy_result.actions), 0)
 
         depth_at_center_mock.assert_called_once_with(
             agent_id=self.agent_id,

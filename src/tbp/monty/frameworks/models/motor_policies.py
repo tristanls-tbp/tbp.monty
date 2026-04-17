@@ -16,6 +16,7 @@ import json
 import logging
 import math
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
@@ -84,6 +85,13 @@ class SurfacePolicyTelemetry:
     z_defined_pc: tuple[np.ndarray, tuple[np.ndarray, np.ndarray]] | None = None
 
 
+class PolicyStatus(Enum):
+    """Status of a motor policy."""
+
+    READY = "ready"
+    IN_PROGRESS = "in_progress"
+
+
 @dataclass
 class MotorPolicyResult:
     """Result of a motor policy.
@@ -94,6 +102,7 @@ class MotorPolicyResult:
     actions: list[Action] = field(default_factory=list)
     motor_only_step: bool = False
     telemetry: SurfacePolicyTelemetry | None = None
+    status: PolicyStatus = PolicyStatus.READY
 
 
 class MotorPolicy(abc.ABC):
@@ -126,7 +135,7 @@ class MotorPolicy(abc.ABC):
         state: MotorSystemState,
         percept: Message,
         goal: Goal | None,
-    ) -> MotorPolicyResult | None:
+    ) -> MotorPolicyResult:
         """Invoke motor policy to determine the next actions to take.
 
         Args:
@@ -139,8 +148,7 @@ class MotorPolicy(abc.ABC):
             goal: The (optional) goal to consider.
 
         Returns:
-            The motor policy result or None if the policy does not or cannot determine
-            next actions to take.
+            The motor policy result.
         """
         pass
 
@@ -305,7 +313,7 @@ class JumpToGoal(MotorPolicy):
         state: MotorSystemState,
         percept: Message,  # noqa: ARG002
         goal: Goal | None,
-    ) -> MotorPolicyResult | None:
+    ) -> MotorPolicyResult:
         """Return a motor policy result containing the next actions to take.
 
         This policy should always be called twice. The first call will generate actions
@@ -332,10 +340,10 @@ class JumpToGoal(MotorPolicy):
 
         Current Behavior
          - No matter what, if we just jumped, we check if we should undo the jump.
-           - If we need to undo the jump, we return undo actions.
-           - If we don't need to undo the jump, we now consider our input goal.
-         - If goal is not None, return the jump actions.
-         - But if goal is None, possibly raise an error (depending on runtime context).
+           - If we need to undo the jump, we return undoing actions (status READY). -->
+           - If we don't need to undo the jump, we now consider our input goal...
+             - If goal is not None, return new jump actions (status IN_PROGRESS). -->
+             - If goal is None, return no actions (status READY). -->
 
         Desired Future Behavior
          - If goal is not None, return jump actions for it. We don't prioritize undoing
@@ -351,6 +359,8 @@ class JumpToGoal(MotorPolicy):
             result = self._maybe_undo(observations)
             if result is not None:
                 return result
+            if not goal:
+                return MotorPolicyResult([])
 
         if not goal:
             if ctx.suppress_runtime_errors:
@@ -358,7 +368,10 @@ class JumpToGoal(MotorPolicy):
                 return MotorPolicyResult([])
             raise NoGoalProvided
 
-        return MotorPolicyResult(self._jump(state, goal))
+        return MotorPolicyResult(
+            self._jump(state, goal),
+            status=PolicyStatus.IN_PROGRESS,
+        )
 
     def _maybe_undo(
         self,
