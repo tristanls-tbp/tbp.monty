@@ -282,8 +282,10 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
             (True, True, True),
         ],
     )
+    @patch("tbp.monty.frameworks.models.motor_policy_selectors.highest_confidence_goal")
     def test_post_jump_behavior(
         self,
+        highest_confidence_goal_mock: Mock,
         undo: bool,
         new_lm_goal: bool,
         new_sm_goal: bool,
@@ -301,6 +303,7 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
             status=PolicyStatus.IN_PROGRESS,
         )
         self.jump_to_goal.return_value = init_result_mock
+        highest_confidence_goal_mock.return_value = init_goal
 
         init_result = self.selector(
             self.ctx,
@@ -321,6 +324,8 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
 
         # Setup inputs and outputs for the post-jump step.
         lm_goal = Mock(sender_type="GSG", confidence=1.0) if new_lm_goal else None
+        if lm_goal is not None:
+            highest_confidence_goal_mock.return_value = lm_goal
         goals = list(
             filter(
                 lambda g: g is not None,
@@ -382,6 +387,8 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
             self.percept,
             lm_goal,
         )
+        if lm_goal is not None:
+            highest_confidence_goal_mock.assert_called_with(Goals([lm_goal]))
         self.assertIs(result, expected_result)
 
 
