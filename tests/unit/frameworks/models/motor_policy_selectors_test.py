@@ -12,7 +12,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from tbp.monty.cmp import Goal
-from tbp.monty.frameworks.models.motor_policies import MotorPolicyResult
+from tbp.monty.frameworks.models.motor_policies import MotorPolicyResult, PolicyStatus
 from tbp.monty.frameworks.models.motor_policy_selectors import (
     DistantPolicySelector,
     SinglePolicySelector,
@@ -243,7 +243,9 @@ class DistantPolicySelectorTest(unittest.TestCase):
 
     def test_jump_to_goal_called_again_after_a_jump(self):
         goal = Mock(sender_type="GSG", confidence=0.9)
-        first_result_mock = Mock(spec=MotorPolicyResult)
+        first_result_mock = Mock(
+            spec=MotorPolicyResult, status=PolicyStatus.IN_PROGRESS
+        )
         self.jump_to_goal.return_value = first_result_mock
 
         first_result = self.selector(
@@ -263,10 +265,10 @@ class DistantPolicySelectorTest(unittest.TestCase):
         )
         self.assertIs(first_result, first_result_mock)
 
-        second_result_mock = Mock(spec=MotorPolicyResult)
+        second_result_mock = Mock(spec=MotorPolicyResult, actions=[])
         self.jump_to_goal.return_value = second_result_mock
 
-        second_result = self.selector(
+        self.selector(
             self.ctx,
             self.observations,
             self.state,
@@ -281,7 +283,11 @@ class DistantPolicySelectorTest(unittest.TestCase):
             self.percept,
             None,
         )
-        self.assertIs(second_result, second_result_mock)
+
+    def test_todos(self):
+        self.fail(
+            "TODO: undo/no-goal, undo/new-goal, no-undo/no-goal, no-undo/new-goal"
+        )
 
 class Goals:  # noqa: PLW1641
     def __init__(self, goals: list[Goal]):

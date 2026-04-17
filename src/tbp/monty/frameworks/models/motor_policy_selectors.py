@@ -18,6 +18,7 @@ from tbp.monty.frameworks.models.motor_policies import (
     JumpToGoal,
     MotorPolicy,
     MotorPolicyResult,
+    PolicyStatus,
 )
 from tbp.monty.frameworks.models.motor_system_state import MotorSystemState
 
@@ -151,25 +152,23 @@ class DistantPolicySelector(MotorPolicySelector):
         percept: Message,
         goals: list[Goal],
     ) -> MotorPolicyResult:
-        # Handle possibly undoing a jump.
+        gsg_goals = [g for g in goals if g.sender_type == "GSG"]
+        # Handle possibly undoing a jump or jumping to a new LM GSG goal.
         if self._is_jumping:
-            # Call without a goal for the undo check.
-            # TODO (scottcanoe): expand on why this is necessary.
-            undo_result: MotorPolicyResult | None = self._jump_to_goal(
+            goal = highest_confidence_goal(gsg_goals) if gsg_goals else None
+            result = self._jump_to_goal(
                 ctx,
                 observations,
                 state,
                 percept,
-                None,
+                goal,
             )
-            # This is only not None if we are given jump-undoing actions.
-            if undo_result is not None:
-                self._is_jumping = False
-                self._update_telemetry(policy=self._jump_to_goal, goal=None)
-                return undo_result
+            self._is_jumping = result.status == PolicyStatus.IN_PROGRESS
+            if result.actions:
+                self._update_telemetry(policy=self._jump_to_goal, goal=goal)
+                return result
 
         # Handle jumping to an LM GSG's goal.
-        gsg_goals = [g for g in goals if g.sender_type == "GSG"]
         if gsg_goals:
             goal = highest_confidence_goal(gsg_goals)
             result = self._jump_to_goal(
@@ -179,8 +178,8 @@ class DistantPolicySelector(MotorPolicySelector):
                 percept,
                 goal,
             )
-            assert isinstance(result, MotorPolicyResult)
-            self._is_jumping = True
+
+            self._is_jumping = result.status == PolicyStatus.IN_PROGRESS
             self._update_telemetry(policy=self._jump_to_goal, goal=goal)
             return result
 
@@ -207,7 +206,6 @@ class DistantPolicySelector(MotorPolicySelector):
             percept,
             None,
         )
-        assert isinstance(result, MotorPolicyResult)
         self._is_jumping = False
         self._update_telemetry(policy=self._default, goal=None)
         return result
