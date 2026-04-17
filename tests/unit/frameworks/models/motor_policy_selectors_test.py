@@ -291,8 +291,7 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
         """Test post-jump behavior.
 
         We simulate needing to undo by having the jump-to-goal mock
-        return a result with (non-empty) actions and READY status.
-
+        return a result with (non-empty) actions and IN_PROGRESS status.
         """
         # Put the selector into a jumping state.
         init_goal = Mock(sender_type="GSG", confidence=1.0)
