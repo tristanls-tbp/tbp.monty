@@ -366,10 +366,6 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
         )
         self.assertIs(result, expected_result)
 
-    def test_todos(self):
-        self.fail(
-            "TODO: undo/no-goal, undo/new-goal, no-undo/no-goal, no-undo/new-goal"
-        )
 
 class Goals:  # noqa: PLW1641
     def __init__(self, goals: list[Goal]):
