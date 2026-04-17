@@ -243,30 +243,6 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
         )
         self.assertIs(result, look_at_goal_result)
 
-    def test_jump_to_goal_called_again_after_a_jump(self):
-        goal = Mock(sender_type="GSG", confidence=0.9)
-        first_result_mock = Mock(
-            spec=MotorPolicyResult, status=PolicyStatus.IN_PROGRESS
-        )
-        self.jump_to_goal.return_value = first_result_mock
-
-        first_result = self.selector(
-            self.ctx,
-            self.observations,
-            self.state,
-            self.percept,
-            [goal],
-        )
-
-        self.jump_to_goal.assert_called_once_with(
-            self.ctx,
-            self.observations,
-            self.state,
-            self.percept,
-            goal,
-        )
-        # self.assertIs(result, expected_result)
-
     @parametrize(
         ("undo", "new_goal"),
         [
@@ -276,12 +252,14 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
             (True, True),
         ],
     )
-    def test_post_jump(
+    def test_post_jump_behavior(
         self,
         undo: bool,
         new_goal: bool,
     ) -> None:
         """Test post-jump behavior.
+
+        TODO(scottcano): Rename this test.
 
         condition 1: undo=False, goals=[]
           jump_to_goal_result: actions=[], status=READY

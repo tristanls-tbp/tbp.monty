@@ -42,7 +42,6 @@ from tbp.monty.frameworks.models.abstract_monty_classes import Observations
 from tbp.monty.frameworks.models.motor_policies import (
     JumpToGoal,
     MotorPolicyResult,
-    NoGoalProvided,
     PolicyStatus,
     PredefinedPolicy,
     SurfacePolicyCurvatureInformed,
