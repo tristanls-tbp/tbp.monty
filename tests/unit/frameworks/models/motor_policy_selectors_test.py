@@ -11,6 +11,8 @@ from __future__ import annotations
 import unittest
 from unittest.mock import Mock, patch
 
+from unittest_parametrize import ParametrizedTestCase, parametrize
+
 from tbp.monty.cmp import Goal
 from tbp.monty.frameworks.models.motor_policies import MotorPolicyResult, PolicyStatus
 from tbp.monty.frameworks.models.motor_policy_selectors import (
@@ -100,7 +102,7 @@ class SinglePolicySelectorTest(unittest.TestCase):
         self.assertIs(self.selector.state_dict()["policy"], state_dict)
 
 
-class DistantPolicySelectorTest(unittest.TestCase):
+class DistantPolicySelectorTest(ParametrizedTestCase):
     def setUp(self):
         self.jump_to_goal = Mock()
         self.look_at_goal = Mock()
@@ -263,17 +265,96 @@ class DistantPolicySelectorTest(unittest.TestCase):
             self.percept,
             goal,
         )
-        self.assertIs(first_result, first_result_mock)
+        # self.assertIs(result, expected_result)
 
-        second_result_mock = Mock(spec=MotorPolicyResult, actions=[])
-        self.jump_to_goal.return_value = second_result_mock
+    @parametrize(
+        ("undo", "new_goal"),
+        [
+            (False, False),
+            (False, True),
+            (True, False),
+            (True, True),
+        ],
+    )
+    def test_post_jump(
+        self,
+        undo: bool,
+        new_goal: bool,
+    ) -> None:
+        """Test post-jump behavior.
 
-        self.selector(
+        condition 1: undo=False, goals=[]
+          jump_to_goal_result: actions=[], status=READY
+          default_policy_result: actions=[...], status=READY
+          returned: default_policy_result
+
+        condition 2: undo=False, goals=[...]
+          jump_to_goal_result: actions=[...], status=IN_PROGRESS
+          default_policy_result: N/A
+          returned: jump_to_goal_result
+
+        condition 3: undo=True, goals=[]
+          jump_to_goal_result: actions=[..., ...], status=READY
+          default_policy_result: N/A
+          returned: jump_to_goal_result
+
+        condition 4: undo=True, goals=[...]
+          jump_to_goal_result: actions=[..., ...], status=READY
+          default_policy_result: N/A
+          returned: jump_to_goal_result
+
+        We simulate needing to undo by having the jump-to-goal mock
+        return a result with (non-empty) actions and READY status.
+
+        """
+        # Put the selector into a jumping state.
+        init_goal = Mock(sender_type="GSG", confidence=1.0)
+        init_result_mock = Mock(
+            spec=MotorPolicyResult,
+            actions=[Mock(), Mock()],
+            status=PolicyStatus.IN_PROGRESS,
+        )
+        self.jump_to_goal.return_value = init_result_mock
+
+        init_result = self.selector(
             self.ctx,
             self.observations,
             self.state,
             self.percept,
-            [],
+            [init_goal],
+        )
+
+        self.jump_to_goal.assert_called_once_with(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            init_goal,
+        )
+        self.assertIs(init_result, init_result_mock)
+
+        # Setup inputs and outputs for the post-jump step.
+        goal = Mock(sender_type="GSG", confidence=1.0) if new_goal else None
+        default_result = Mock(actions=[Mock()], status=PolicyStatus.READY)
+        if undo:
+            jump_result = Mock(actions=[Mock()], status=PolicyStatus.READY)
+            expected_result = jump_result
+        elif goal is not None:
+            jump_result = Mock(actions=[Mock()], status=PolicyStatus.IN_PROGRESS)
+            expected_result = jump_result
+        else:
+            jump_result = Mock(actions=[], status=PolicyStatus.READY)
+            expected_result = default_result
+
+        self.default_policy.return_value = default_result
+        self.jump_to_goal.return_value = jump_result
+
+        result = self.selector(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            [goal] if goal else [],
         )
 
         self.jump_to_goal.assert_called_with(
@@ -281,8 +362,9 @@ class DistantPolicySelectorTest(unittest.TestCase):
             self.observations,
             self.state,
             self.percept,
-            None,
+            goal,
         )
+        self.assertIs(result, expected_result)
 
     def test_todos(self):
         self.fail(
