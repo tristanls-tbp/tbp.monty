@@ -60,7 +60,20 @@ class MotorPolicySelector(Protocol):
         state: MotorSystemState,
         percept: Message,
         goals: list[Goal],
-    ) -> MotorPolicyResult: ...
+    ) -> MotorPolicyResult:
+        """Return a motor policy result containing the next actions to take.
+
+        Args:
+            ctx: The runtime context.
+            observations: The observations from the environment.
+            state: The current state of the motor system.
+            percept: The percept from (as of this writing) the first sensor module.
+            goals: The list of goals to consider.
+
+        Returns:
+            A MotorPolicyResult that contains the actions to take.
+        """
+        ...
 
 
 class SinglePolicySelector(MotorPolicySelector):
@@ -97,7 +110,10 @@ class SinglePolicySelector(MotorPolicySelector):
 
 class DistantPolicySelector(MotorPolicySelector):
     def __init__(
-        self, jump_to_goal: JumpToGoal, look_at_goal: LookAtGoal, default: MotorPolicy
+        self,
+        jump_to_goal: JumpToGoal,
+        look_at_goal: LookAtGoal,
+        default: MotorPolicy,
     ):
         # policies
         self._jump_to_goal = jump_to_goal
@@ -135,15 +151,6 @@ class DistantPolicySelector(MotorPolicySelector):
         percept: Message,
         goals: list[Goal],
     ) -> MotorPolicyResult:
-        """Return a motor policy result containing the next actions to take.
-
-        Args:
-            ctx: The runtime context.
-            observations: The observations from the environment.
-            state: The current state of the motor system.
-            percept: The percept from (as of this writing) the first sensor module.
-            goals: The list of goals to consider.
-        """
         # Handle possibly undoing a jump.
         if self._is_jumping:
             # Call without a goal for the undo check.
