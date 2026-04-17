@@ -244,42 +244,51 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
         self.assertIs(result, look_at_goal_result)
 
     @parametrize(
-        ("undo", "new_goal"),
+        ("undo", "new_lm_goal", "new_sm_goal"),
         [
-            (False, False),
-            (False, True),
-            (True, False),
-            (True, True),
+            #   undo=False, goals=[]
+            #   jump_to_goal_result: actions=[], status=READY
+            #   default_policy_result: actions=[...], status=READY
+            #   returned: default_policy_result
+            (False, False, False),
+            #   undo=False, goals=[sm_goal, sm_goal, ...]
+            #   jump_to_goal_result: actions=[], status=READY
+            #   look_at_goal_result: actions=[...], status=READY
+            #   returned: look_at_goal_result
+            (False, False, True),
+            #   undo=False, goals=[lm_goal, lm_goal, ...]
+            #   jump_to_goal_result: actions=[...], status=IN_PROGRESS
+            #   returned: jump_to_goal_result
+            (False, True, False),
+            #   undo=False, goals=[lm_goal, lm_goal, sm_goal, sm_goal, ...]
+            #   jump_to_goal_result: actions=[...], status=IN_PROGRESS
+            #   returned: jump_to_goal_result
+            (False, True, True),
+            #   undo=True, goals=[]
+            #   jump_to_goal_result: actions=[...], status=READY
+            #   returned: jump_to_goal_result
+            (True, False, False),
+            #   undo=True, goals=[sm_goal, sm_goal, ...]
+            #   jump_to_goal_result: actions=[...], status=READY
+            #   returned: jump_to_goal_result
+            (True, False, True),
+            #   undo=True, goals=[lm_goal, lm_goal, ...]
+            #   jump_to_goal_result: actions=[...], status=READY
+            #   returned: jump_to_goal_result
+            (True, True, False),
+            #   undo=True, goals=[lm_goal, lm_goal, sm_goal, sm_goal, ...]
+            #   jump_to_goal_result: actions=[...], status=READY
+            #   returned: jump_to_goal_result
+            (True, True, True),
         ],
     )
     def test_post_jump_behavior(
         self,
         undo: bool,
-        new_goal: bool,
+        new_lm_goal: bool,
+        new_sm_goal: bool,
     ) -> None:
         """Test post-jump behavior.
-
-        TODO(scottcano): Rename this test.
-
-        condition 1: undo=False, goals=[]
-          jump_to_goal_result: actions=[], status=READY
-          default_policy_result: actions=[...], status=READY
-          returned: default_policy_result
-
-        condition 2: undo=False, goals=[...]
-          jump_to_goal_result: actions=[...], status=IN_PROGRESS
-          default_policy_result: N/A
-          returned: jump_to_goal_result
-
-        condition 3: undo=True, goals=[]
-          jump_to_goal_result: actions=[..., ...], status=READY
-          default_policy_result: N/A
-          returned: jump_to_goal_result
-
-        condition 4: undo=True, goals=[...]
-          jump_to_goal_result: actions=[..., ...], status=READY
-          default_policy_result: N/A
-          returned: jump_to_goal_result
 
         We simulate needing to undo by having the jump-to-goal mock
         return a result with (non-empty) actions and READY status.
@@ -312,27 +321,59 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
         self.assertIs(init_result, init_result_mock)
 
         # Setup inputs and outputs for the post-jump step.
-        goal = Mock(sender_type="GSG", confidence=1.0) if new_goal else None
-        default_result = Mock(actions=[Mock()], status=PolicyStatus.READY)
+        lm_goal = Mock(sender_type="GSG", confidence=1.0) if new_lm_goal else None
+        goals = list(
+            filter(
+                lambda g: g is not None,
+                [
+                    lm_goal,
+                    Mock(sender_type="SM", confidence=1.0) if new_sm_goal else None,
+                ],
+            )
+        )
+        default_result = Mock(
+            name="default_policy_result", actions=[Mock()], status=PolicyStatus.READY
+        )
+        look_at_goal_result = Mock(
+            name="look_at_goal_result",
+            actions=[Mock(), Mock()],
+            status=PolicyStatus.READY,
+        )
         if undo:
-            jump_result = Mock(actions=[Mock()], status=PolicyStatus.READY)
+            jump_result = Mock(
+                name="jump_to_goal_result",
+                actions=[Mock(), Mock()],
+                status=PolicyStatus.READY,
+            )
             expected_result = jump_result
-        elif goal is not None:
-            jump_result = Mock(actions=[Mock()], status=PolicyStatus.IN_PROGRESS)
+        elif new_lm_goal:
+            jump_result = Mock(
+                name="jump_to_goal_result",
+                actions=[Mock(), Mock()],
+                status=PolicyStatus.IN_PROGRESS,
+            )
             expected_result = jump_result
+        elif new_sm_goal:
+            jump_result = Mock(
+                name="jump_to_goal_result", actions=[], status=PolicyStatus.READY
+            )
+            expected_result = look_at_goal_result
         else:
-            jump_result = Mock(actions=[], status=PolicyStatus.READY)
+            jump_result = Mock(
+                name="jump_to_goal_result", actions=[], status=PolicyStatus.READY
+            )
             expected_result = default_result
 
-        self.default_policy.return_value = default_result
         self.jump_to_goal.return_value = jump_result
+        self.look_at_goal.return_value = look_at_goal_result
+        self.default_policy.return_value = default_result
 
         result = self.selector(
             self.ctx,
             self.observations,
             self.state,
             self.percept,
-            [goal] if goal else [],
+            goals,
         )
 
         self.jump_to_goal.assert_called_with(
@@ -340,7 +381,7 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
             self.observations,
             self.state,
             self.percept,
-            goal,
+            lm_goal,
         )
         self.assertIs(result, expected_result)
 
