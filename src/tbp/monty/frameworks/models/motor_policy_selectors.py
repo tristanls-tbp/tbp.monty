@@ -297,10 +297,12 @@ class DistantPolicyStateMachine(StateMachine):
         percept: Message,
         goals: list[Goal],
     ) -> None:
-        # stash arguments in case we need to call fallthrough
         self._call_args = (ctx, observations, motor_system_state, percept, goals)
 
-    def before_result(self, result: MotorPolicyResult) -> None:
+    def before_result(
+        self, result: MotorPolicyResult, telemetry: tuple[MotorPolicy, Goal | None]
+    ) -> None:
+        self._last_policy, self._last_goal = telemetry
         self._result = result
 
     def on_enter_jump_to_goal(self) -> None:
@@ -308,19 +310,19 @@ class DistantPolicyStateMachine(StateMachine):
         gsg_goals = [g for g in goals if g.sender_type == "GSG"]
         goal = highest_confidence_goal(gsg_goals) if gsg_goals else None
         result = self._jump_to_goal(ctx, observations, state, percept, goal)
-        self.result(result)
+        self.result(result, (self._jump_to_goal, goal))
 
     def on_enter_look_at_goal(self) -> None:
         (ctx, observations, state, percept, goals) = self._call_args
         sm_goals = [g for g in goals if g.sender_type == "SM"]
         goal = highest_confidence_goal(sm_goals)
         result = self._look_at_goal(ctx, observations, state, percept, goal)
-        self.result(result)
+        self.result(result, (self._look_at_goal, goal))
 
     def on_enter_default(self) -> None:
         (ctx, observations, state, percept, _) = self._call_args
         result = self._default(ctx, observations, state, percept, None)
-        self.result(result)
+        self.result(result, (self._default, None))
 
     def on_enter_fallthrough(self) -> None:
         self.fallthrough_call(*self._call_args)
@@ -366,6 +368,8 @@ class DistantPolicyStateMachine(StateMachine):
         goals: list[Goal],
     ) -> MotorPolicyResult:
         self.call(ctx, observations, state, percept, goals)
+        self._selected_policies.append(self._last_policy)
+        self._selected_goals.append(self._last_goal)
         return self._result
 
 
