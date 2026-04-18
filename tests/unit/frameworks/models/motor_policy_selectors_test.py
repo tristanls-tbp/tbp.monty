@@ -17,6 +17,7 @@ from tbp.monty.cmp import Goal
 from tbp.monty.frameworks.models.motor_policies import MotorPolicyResult, PolicyStatus
 from tbp.monty.frameworks.models.motor_policy_selectors import (
     DistantPolicySelector,
+    DistantPolicyStateMachine,
     SinglePolicySelector,
     highest_confidence_goal,
 )
@@ -327,6 +328,157 @@ class DistantPolicySelectorTest(ParametrizedTestCase):
         if lm_goal is not None:
             highest_confidence_goal_mock.return_value = lm_goal
         goals = list(
+            filter(
+                lambda g: g is not None,
+                [
+                    lm_goal,
+                    Mock(sender_type="SM", confidence=1.0) if new_sm_goal else None,
+                ],
+            )
+        )
+        default_result = Mock(
+            name="default_policy_result", actions=[Mock()], status=PolicyStatus.READY
+        )
+        look_at_goal_result = Mock(
+            name="look_at_goal_result",
+            actions=[Mock(), Mock()],
+            status=PolicyStatus.READY,
+        )
+        if undo:
+            jump_result = Mock(
+                name="jump_to_goal_result",
+                actions=[Mock(), Mock()],
+                status=PolicyStatus.READY,
+            )
+            expected_result = jump_result
+        elif new_lm_goal:
+            jump_result = Mock(
+                name="jump_to_goal_result",
+                actions=[Mock(), Mock()],
+                status=PolicyStatus.IN_PROGRESS,
+            )
+            expected_result = jump_result
+        elif new_sm_goal:
+            jump_result = Mock(
+                name="jump_to_goal_result", actions=[], status=PolicyStatus.READY
+            )
+            expected_result = look_at_goal_result
+        else:
+            jump_result = Mock(
+                name="jump_to_goal_result", actions=[], status=PolicyStatus.READY
+            )
+            expected_result = default_result
+
+        self.jump_to_goal.return_value = jump_result
+        self.look_at_goal.return_value = look_at_goal_result
+        self.default_policy.return_value = default_result
+
+        result = self.selector(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            goals,
+        )
+
+        self.jump_to_goal.assert_called_with(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            lm_goal,
+        )
+        if lm_goal is not None:
+            highest_confidence_goal_mock.assert_called_with(Goals([lm_goal]))
+        self.assertIs(result, expected_result)
+
+    @parametrize(
+        ("undo", "new_lm_goal", "new_sm_goal"),
+        [
+            #   undo=False, goals=[]
+            #   jump_to_goal_result: actions=[], status=READY
+            #   default_policy_result: actions=[...], status=READY
+            #   returned: default_policy_result
+            (False, False, False),
+            #   undo=False, goals=[sm_goal, sm_goal, ...]
+            #   jump_to_goal_result: actions=[], status=READY
+            #   look_at_goal_result: actions=[...], status=READY
+            #   returned: look_at_goal_result
+            (False, False, True),
+            #   undo=False, goals=[lm_goal, lm_goal, ...]
+            #   jump_to_goal_result: actions=[...], status=IN_PROGRESS
+            #   returned: jump_to_goal_result
+            (False, True, False),
+            #   undo=False, goals=[lm_goal, lm_goal, sm_goal, sm_goal, ...]
+            #   jump_to_goal_result: actions=[...], status=IN_PROGRESS
+            #   returned: jump_to_goal_result
+            (False, True, True),
+            #   undo=True, goals=[]
+            #   jump_to_goal_result: actions=[...], status=READY
+            #   returned: jump_to_goal_result
+            (True, False, False),
+            #   undo=True, goals=[sm_goal, sm_goal, ...]
+            #   jump_to_goal_result: actions=[...], status=READY
+            #   returned: jump_to_goal_result
+            (True, False, True),
+            #   undo=True, goals=[lm_goal, lm_goal, ...]
+            #   jump_to_goal_result: actions=[...], status=READY
+            #   returned: jump_to_goal_result
+            (True, True, False),
+            #   undo=True, goals=[lm_goal, lm_goal, sm_goal, sm_goal, ...]
+            #   jump_to_goal_result: actions=[...], status=READY
+            #   returned: jump_to_goal_result
+            (True, True, True),
+        ],
+    )
+    @patch("tbp.monty.frameworks.models.motor_policy_selectors.highest_confidence_goal")
+    def test_post_jump_behavior_state_machine(
+        self,
+        highest_confidence_goal_mock: Mock,
+        undo: bool,
+        new_lm_goal: bool,
+        new_sm_goal: bool,
+    ) -> None:
+        """Test post-jump behavior.
+
+        We simulate needing to undo by having the jump-to-goal mock
+        return a result with (non-empty) actions and IN_PROGRESS status.
+        """
+        self.selector = DistantPolicyStateMachine(
+            self.jump_to_goal, self.look_at_goal, self.default_policy
+        )
+        # Put the selector into a jumping state.
+        init_goal = Mock(sender_type="GSG", confidence=1.0)
+        init_result_mock = Mock(
+            spec=MotorPolicyResult,
+            actions=[Mock(), Mock()],
+            status=PolicyStatus.IN_PROGRESS,
+        )
+        self.jump_to_goal.return_value = init_result_mock
+        highest_confidence_goal_mock.return_value = init_goal
+
+        init_result = self.selector(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            [init_goal],
+        )
+
+        self.jump_to_goal.assert_called_once_with(
+            self.ctx,
+            self.observations,
+            self.state,
+            self.percept,
+            init_goal,
+        )
+        self.assertIs(init_result, init_result_mock)
+
+        # Setup inputs and outputs for the post-jump step.
+        lm_goal = Mock(sender_type="GSG", confidence=1.0) if new_lm_goal else None
+        if lm_goal is not None:
+            highest_confidence_goal_mock.return_value = lm_goal
+        goals: list[Goal] = list(
             filter(
                 lambda g: g is not None,
                 [

@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Protocol
 
+from statemachine import State, StateMachine
+
 from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.models.abstract_monty_classes import Observations
@@ -217,6 +219,154 @@ class DistantPolicySelector(MotorPolicySelector):
     ) -> None:
         self._selected_policies.append(policy)
         self._selected_goals.append(goal)
+
+class DistantPolicyStateMachine(StateMachine):
+    # main states
+    ready = State(initial=True)
+    jumping = State()
+
+    # internal control flow states
+    fallthrough = State()
+
+    # policy invocation states
+    jump_to_goal = State()
+    look_at_goal = State()
+    default = State()
+
+    call = (
+        ready.to(jump_to_goal, cond="has_lm_goals")
+        | ready.to(look_at_goal, cond="has_only_sm_goals")
+        | ready.to(default, cond="has_no_goals")
+        | jumping.to(jump_to_goal)
+    )
+    result = (
+        jump_to_goal.to(jumping, cond="has_jump_actions")
+        | jump_to_goal.to(ready, cond="has_undo_actions")
+        | jump_to_goal.to(fallthrough, cond="has_no_actions")
+        | look_at_goal.to(ready)
+        | default.to(ready)
+    )
+    fallthrough_call = fallthrough.to(
+        look_at_goal, cond="has_only_sm_goals"
+    ) | fallthrough.to(default, cond="has_no_goals")
+
+    def has_lm_goals(
+        self,
+        ctx: RuntimeContext,  # noqa: ARG002
+        observations: Observations,  # noqa: ARG002
+        state: MotorSystemState,  # noqa: ARG002
+        percept: Message,  # noqa: ARG002
+        goals: list[Goal],
+    ) -> bool:
+        return any(g.sender_type == "GSG" for g in goals)
+
+    def has_only_sm_goals(
+        self,
+        ctx: RuntimeContext,  # noqa: ARG002
+        observations: Observations,  # noqa: ARG002
+        state: MotorSystemState,  # noqa: ARG002
+        percept: Message,  # noqa: ARG002
+        goals: list[Goal],
+    ) -> bool:
+        return len(goals) > 0 and all(g.sender_type == "SM" for g in goals)
+
+    def has_no_goals(
+        self,
+        ctx: RuntimeContext,  # noqa: ARG002
+        observations: Observations,  # noqa: ARG002
+        state: MotorSystemState,  # noqa: ARG002
+        percept: Message,  # noqa: ARG002
+        goals: list[Goal],
+    ) -> bool:
+        return len(goals) == 0
+
+    def has_jump_actions(self, result: MotorPolicyResult) -> bool:
+        return len(result.actions) > 0 and result.status == PolicyStatus.IN_PROGRESS
+
+    def has_undo_actions(self, result: MotorPolicyResult) -> bool:
+        return len(result.actions) > 0 and result.status == PolicyStatus.READY
+
+    def has_no_actions(self, result: MotorPolicyResult) -> bool:
+        return len(result.actions) == 0
+
+    def before_call(
+        self,
+        ctx: RuntimeContext,
+        observations: Observations,
+        motor_system_state: MotorSystemState,
+        percept: Message,
+        goals: list[Goal],
+    ) -> None:
+        # stash arguments in case we need to call fallthrough
+        self._call_args = (ctx, observations, motor_system_state, percept, goals)
+
+    def before_result(self, result: MotorPolicyResult) -> None:
+        self._result = result
+
+    def on_enter_jump_to_goal(self) -> None:
+        (ctx, observations, state, percept, goals) = self._call_args
+        gsg_goals = [g for g in goals if g.sender_type == "GSG"]
+        goal = highest_confidence_goal(gsg_goals) if gsg_goals else None
+        result = self._jump_to_goal(ctx, observations, state, percept, goal)
+        self.result(result)
+
+    def on_enter_look_at_goal(self) -> None:
+        (ctx, observations, state, percept, goals) = self._call_args
+        sm_goals = [g for g in goals if g.sender_type == "SM"]
+        goal = highest_confidence_goal(sm_goals)
+        result = self._look_at_goal(ctx, observations, state, percept, goal)
+        self.result(result)
+
+    def on_enter_default(self) -> None:
+        (ctx, observations, state, percept, _) = self._call_args
+        result = self._default(ctx, observations, state, percept, None)
+        self.result(result)
+
+    def on_enter_fallthrough(self) -> None:
+        self.fallthrough_call(*self._call_args)
+
+    def __init__(
+        self,
+        jump_to_goal: JumpToGoal,
+        look_at_goal: LookAtGoal,
+        default: MotorPolicy,
+    ):
+        super().__init__()
+        # policies
+        self._jump_to_goal = jump_to_goal
+        self._look_at_goal = look_at_goal
+        self._default = default
+
+        # telemetry
+        self._selected_policies: list[MotorPolicy] = []
+        self._selected_goals: list[Goal | None] = []
+
+    def pre_episode(self, motor_system: MotorSystem) -> None:
+        self._jump_to_goal.pre_episode(motor_system)
+        self._look_at_goal.pre_episode(motor_system)
+        self._default.pre_episode(motor_system)
+
+        self._is_jumping = False
+        self._selected_policies = []
+        self._selected_goals = []
+
+    def state_dict(self) -> dict[str, Any]:
+        return {
+            "jump_to_goal": self._jump_to_goal.state_dict(),
+            "look_at_goal": self._look_at_goal.state_dict(),
+            "default": self._default.state_dict(),
+        }
+
+    def __call__(
+        self,
+        ctx: RuntimeContext,
+        observations: Observations,
+        state: MotorSystemState,
+        percept: Message,
+        goals: list[Goal],
+    ) -> MotorPolicyResult:
+        self.call(ctx, observations, state, percept, goals)
+        return self._result
 
 
 # class SurfacePolicySelector(MotorPolicySelector):
