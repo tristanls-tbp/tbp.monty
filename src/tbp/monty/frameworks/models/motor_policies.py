@@ -205,6 +205,139 @@ class BasePolicy(MotorPolicy):
         pass
 
 
+class RandomWalk(MotorPolicy):
+    """Policy that takes observation as input."""
+
+    def __init__(
+        self,
+        action_sampler: ActionSampler,
+        agent_id: AgentID,
+    ):
+        """Initialize a base policy.
+
+        Args:
+            action_sampler: The ActionSampler to use
+            agent_id: The agent ID
+        """
+        super().__init__()
+        self.agent_id = agent_id
+        self.action_sampler = action_sampler
+        self._undo_action: Action | None = None
+
+    def __call__(
+        self,
+        ctx: RuntimeContext,
+        observations: Observations,  # noqa: ARG002
+        state: MotorSystemState,  # noqa: ARG002
+        percept: Message,  # noqa: ARG002
+        goal: Goal | None,  # noqa: ARG002
+    ) -> MotorPolicyResult:
+        """Return a motor policy result containing a random action.
+
+        The MotorSystemState is ignored.
+
+        Args:
+            ctx: The runtime context.
+            observations: The observations from the environment.
+            state: The current state of the motor system.
+                Defaults to None. Unused.
+            percept: The percept from (as of this writing) the first sensor
+                module.
+            goal: An (ignored) goal.
+
+        Returns:
+            A MotorPolicyResult that contains a random action.
+        """
+        if percept.get_on_object():
+            action = self.action_sampler.sample(self.agent_id, ctx.rng)
+            self._undo_action = fixme_undo_last_action(action)
+            return MotorPolicyResult([action])
+
+        if self._undo_action is not None:
+            action = self._undo_action
+            self._undo_action = fixme_undo_last_action(action)
+            return MotorPolicyResult([action])
+
+        return MotorPolicyResult([])
+
+    def pre_episode(self, motor_system: MotorSystem) -> None:  # noqa: ARG002
+        self._undo_action = None
+
+    def state_dict(self) -> dict[str, Any]:
+        return {"undo_action": self._undo_action}
+
+    def load_state_dict(self, state_dict: dict[str, Any]) -> None:
+        self._undo_action = state_dict["undo_action"]
+
+
+def fixme_undo_last_action(
+    last_action: Action,
+) -> LookDown | LookUp | TurnLeft | TurnRight | MoveForward | MoveTangentially:
+    """Returns an action that undoes last action for supported actions.
+
+    This implementation duplicates the functionality and the implicit
+    assumption in the code and configurations that InformedPolicy is working
+    with one of the following actions:
+    - LookUp
+    - LookDown
+    - TurnLeft
+    - TurnRight
+    - MoveForward
+    - MoveTangentially
+
+    For other actions, raise ValueError explicitly.
+
+    Raises:
+        TypeError: If the last action is not supported
+
+    TODO These instance checks are undesirable and should be removed in the future.
+    I am using these for now to express the implicit assumptions in the code.
+    An Action.undo of some sort would be a better solution, however it is not
+    yet clear to me what to do for actions that do not support undo.
+    """
+    if isinstance(last_action, LookDown):
+        return LookDown(
+            agent_id=last_action.agent_id,
+            rotation_degrees=-last_action.rotation_degrees,
+            constraint_degrees=last_action.constraint_degrees,
+        )
+
+    if isinstance(last_action, LookUp):
+        return LookUp(
+            agent_id=last_action.agent_id,
+            rotation_degrees=-last_action.rotation_degrees,
+            constraint_degrees=last_action.constraint_degrees,
+        )
+
+    if isinstance(last_action, TurnLeft):
+        return TurnLeft(
+            agent_id=last_action.agent_id,
+            rotation_degrees=-last_action.rotation_degrees,
+        )
+
+    if isinstance(last_action, TurnRight):
+        return TurnRight(
+            agent_id=last_action.agent_id,
+            rotation_degrees=-last_action.rotation_degrees,
+        )
+
+    if isinstance(last_action, MoveForward):
+        return MoveForward(
+            agent_id=last_action.agent_id,
+            distance=-last_action.distance,
+        )
+
+    if isinstance(last_action, MoveTangentially):
+        return MoveTangentially(
+            agent_id=last_action.agent_id,
+            distance=-last_action.distance,
+            # Same direction, negative distance
+            direction=last_action.direction,
+        )
+
+    raise TypeError(f"Invalid action: {last_action}")
+
+
 class PredefinedPolicy(MotorPolicy):
     """Policy that follows an action sequence read from file.
 
@@ -589,12 +722,12 @@ class InformedPolicy(BasePolicy):
 
         if percept.get_on_object():
             action = self.action_sampler.sample(self.agent_id, ctx.rng)
-            self._undo_action = self.fixme_undo_last_action(action)
+            self._undo_action = fixme_undo_last_action(action)
             return MotorPolicyResult([action])
 
         if self._undo_action is not None:
             action = self._undo_action
-            self._undo_action = self.fixme_undo_last_action(action)
+            self._undo_action = fixme_undo_last_action(action)
             return MotorPolicyResult([action])
 
         return MotorPolicyResult([])
@@ -668,74 +801,6 @@ class InformedPolicy(BasePolicy):
         in the code.
         """
         pass
-
-    def fixme_undo_last_action(
-        self,
-        last_action: Action,
-    ) -> LookDown | LookUp | TurnLeft | TurnRight | MoveForward | MoveTangentially:
-        """Returns an action that undoes last action for supported actions.
-
-        This implementation duplicates the functionality and the implicit
-        assumption in the code and configurations that InformedPolicy is working
-        with one of the following actions:
-        - LookUp
-        - LookDown
-        - TurnLeft
-        - TurnRight
-        - MoveForward
-        - MoveTangentially
-
-        For other actions, raise ValueError explicitly.
-
-        Raises:
-            TypeError: If the last action is not supported
-
-        TODO These instance checks are undesirable and should be removed in the future.
-        I am using these for now to express the implicit assumptions in the code.
-        An Action.undo of some sort would be a better solution, however it is not
-        yet clear to me what to do for actions that do not support undo.
-        """
-        if isinstance(last_action, LookDown):
-            return LookDown(
-                agent_id=last_action.agent_id,
-                rotation_degrees=-last_action.rotation_degrees,
-                constraint_degrees=last_action.constraint_degrees,
-            )
-
-        if isinstance(last_action, LookUp):
-            return LookUp(
-                agent_id=last_action.agent_id,
-                rotation_degrees=-last_action.rotation_degrees,
-                constraint_degrees=last_action.constraint_degrees,
-            )
-
-        if isinstance(last_action, TurnLeft):
-            return TurnLeft(
-                agent_id=last_action.agent_id,
-                rotation_degrees=-last_action.rotation_degrees,
-            )
-
-        if isinstance(last_action, TurnRight):
-            return TurnRight(
-                agent_id=last_action.agent_id,
-                rotation_degrees=-last_action.rotation_degrees,
-            )
-
-        if isinstance(last_action, MoveForward):
-            return MoveForward(
-                agent_id=last_action.agent_id,
-                distance=-last_action.distance,
-            )
-
-        if isinstance(last_action, MoveTangentially):
-            return MoveTangentially(
-                agent_id=last_action.agent_id,
-                distance=-last_action.distance,
-                # Same direction, negative distance
-                direction=last_action.direction,
-            )
-
-        raise TypeError(f"Invalid action: {last_action}")
 
     def _derive_set_agent_pose_from_goal(self, goal: Goal) -> SetAgentPose:
         """Derive the `SetAgentPose` action from the driving goal.
