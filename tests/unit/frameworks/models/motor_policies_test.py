@@ -41,6 +41,7 @@ from tbp.monty.frameworks.actions.actions import (
 from tbp.monty.frameworks.agents import AgentID
 from tbp.monty.frameworks.models.abstract_monty_classes import Observations
 from tbp.monty.frameworks.models.motor_policies import (
+    InformedPolicyRandomWalk,
     JumpToGoal,
     MotorPolicyResult,
     PolicyStatus,
@@ -534,3 +535,43 @@ class JumpToGoalTest(ParametrizedTestCase):
             observations=observations,
             sensor_id=SensorID("view_finder"),
         )
+
+class InformedPolicyRandomWalkTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.agent_id = AGENT_ID
+
+    def test_returns_no_actions_status_ready_if_never_on_object(self) -> None:
+        policy = InformedPolicyRandomWalk(self.agent_id, Mock())
+        percept = Mock()
+        percept.get_on_object.return_value = False
+        result = policy(
+            ctx=Mock(),
+            observations=Mock(),
+            state=MotorSystemState(),
+            percept=percept,
+            goal=Mock(),
+        )
+        assert isinstance(result, MotorPolicyResult)
+        self.assertEqual(result.actions, [])
+        self.assertIs(result.status, PolicyStatus.READY)
+
+        percept.get_on_object.assert_called_once_with()
+
+        for _ in range(10):
+            result = policy(
+                ctx=Mock(),
+                observations=Mock(),
+                state=MotorSystemState(),
+                percept=percept,
+                goal=Mock(),
+            )
+            assert isinstance(result, MotorPolicyResult)
+            self.assertEqual(result.actions, [])
+            self.assertIs(result.status, PolicyStatus.READY)
+            percept.get_on_object.assert_called_with()
+
+    def test_returns_sampled_action_when_on_object(self) -> None:
+        pass
+
+    def test_returns_undo_when_off_object_after_on_object(self) -> None:
+        pass

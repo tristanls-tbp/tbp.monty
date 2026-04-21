@@ -205,13 +205,18 @@ class BasePolicy(MotorPolicy):
         pass
 
 
-class RandomWalk(MotorPolicy):
-    """Policy that takes observation as input."""
+class InformedPolicyRandomWalk(MotorPolicy):
+    """Random walk but the way InformedPolicy does it.
+
+    InformedPolicy random walk, is not a straightfoward random walk.
+    This policy reproduces the current behavior of what InformedPolicy would do,
+    however, there are likely better random walk policies to use.
+    """
 
     def __init__(
         self,
-        action_sampler: ActionSampler,
         agent_id: AgentID,
+        action_sampler: ActionSampler,
     ):
         """Initialize a base policy.
 
@@ -229,7 +234,7 @@ class RandomWalk(MotorPolicy):
         ctx: RuntimeContext,
         observations: Observations,  # noqa: ARG002
         state: MotorSystemState,  # noqa: ARG002
-        percept: Message,  # noqa: ARG002
+        percept: Message,
         goal: Goal | None,  # noqa: ARG002
     ) -> MotorPolicyResult:
         """Return a motor policy result containing a random action.
