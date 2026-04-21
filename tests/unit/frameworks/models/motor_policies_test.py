@@ -570,8 +570,117 @@ class InformedPolicyRandomWalkTest(unittest.TestCase):
             self.assertIs(result.status, PolicyStatus.READY)
             percept.get_on_object.assert_called_with()
 
-    def test_returns_sampled_action_when_on_object(self) -> None:
-        pass
+    def test_returns_sampled_action_status_ready_when_on_object(self) -> None:
+        action_sampler_mock = Mock()
+        action = LookUp(agent_id=self.agent_id, rotation_degrees=90)
+        action_sampler_mock.sample.return_value = action
+        policy = InformedPolicyRandomWalk(self.agent_id, action_sampler_mock)
+        percept = Mock()
+        percept.get_on_object.return_value = True
+        rng_mock = Mock()
 
-    def test_returns_undo_when_off_object_after_on_object(self) -> None:
-        pass
+        result = policy(
+            ctx=Mock(rng=rng_mock),
+            observations=Mock(),
+            state=MotorSystemState(),
+            percept=percept,
+            goal=Mock(),
+        )
+
+        percept.get_on_object.assert_called_once_with()
+        action_sampler_mock.sample.assert_called_once_with(self.agent_id, rng_mock)
+        assert isinstance(result, MotorPolicyResult)
+        self.assertEqual(result.actions, [action])
+        self.assertIs(result.status, PolicyStatus.READY)
+
+    @patch("tbp.monty.frameworks.models.motor_policies.fixme_undo_last_action")
+    def test_returns_undo_status_ready_when_off_object_after_on_object(
+        self,
+        fixme_undo_last_action_mock: Mock,
+    ) -> None:
+        action_sampler_mock = Mock()
+        action_mock = Mock()
+        undo_action_mock = Mock()
+        fixme_undo_last_action_mock.return_value = undo_action_mock
+        action_sampler_mock.sample.return_value = action_mock
+        policy = InformedPolicyRandomWalk(self.agent_id, action_sampler_mock)
+        percept = Mock()
+        percept.get_on_object.return_value = True
+        rng_mock = Mock()
+
+        policy(
+            ctx=Mock(rng=rng_mock),
+            observations=Mock(),
+            state=MotorSystemState(),
+            percept=percept,
+            goal=Mock(),
+        )
+
+        fixme_undo_last_action_mock.assert_called_once_with(action_mock)
+
+        percept.get_on_object.return_value = False
+        result = policy(
+            ctx=Mock(rng=rng_mock),
+            observations=Mock(),
+            state=MotorSystemState(),
+            percept=percept,
+            goal=Mock(),
+        )
+
+        percept.get_on_object.assert_called_with()
+
+        assert isinstance(result, MotorPolicyResult)
+        self.assertEqual(result.actions, [undo_action_mock])
+        self.assertIs(result.status, PolicyStatus.READY)
+
+    @patch("tbp.monty.frameworks.models.motor_policies.fixme_undo_last_action")
+    def test_returns_undo_of_undo_status_ready_when_off_object_after_off_object_after_on_object(  # noqa: E501
+        self,
+        fixme_undo_last_action_mock: Mock,
+    ) -> None:
+        action_sampler_mock = Mock()
+        action_mock = Mock()
+        undo_action_mock = Mock()
+        undo_of_undo_action_mock = Mock()
+        fixme_undo_last_action_mock.return_value = undo_action_mock
+        action_sampler_mock.sample.return_value = action_mock
+        policy = InformedPolicyRandomWalk(self.agent_id, action_sampler_mock)
+        percept = Mock()
+        percept.get_on_object.return_value = True
+        rng_mock = Mock()
+
+        policy(
+            ctx=Mock(rng=rng_mock),
+            observations=Mock(),
+            state=MotorSystemState(),
+            percept=percept,
+            goal=Mock(),
+        )
+
+        fixme_undo_last_action_mock.assert_called_once_with(action_mock)
+
+        fixme_undo_last_action_mock.return_value = undo_of_undo_action_mock
+        percept.get_on_object.return_value = False
+        policy(
+            ctx=Mock(rng=rng_mock),
+            observations=Mock(),
+            state=MotorSystemState(),
+            percept=percept,
+            goal=Mock(),
+        )
+
+        fixme_undo_last_action_mock.assert_called_with(undo_action_mock)
+        percept.get_on_object.assert_called_with()
+
+        result = policy(
+            ctx=Mock(rng=rng_mock),
+            observations=Mock(),
+            state=MotorSystemState(),
+            percept=percept,
+            goal=Mock(),
+        )
+
+        fixme_undo_last_action_mock.assert_called_with(undo_of_undo_action_mock)
+        assert isinstance(result, MotorPolicyResult)
+        self.assertEqual(result.actions, [undo_of_undo_action_mock])
+        self.assertIs(result.status, PolicyStatus.READY)
