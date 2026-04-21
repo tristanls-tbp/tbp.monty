@@ -52,6 +52,15 @@ def highest_confidence_goal(goals: list[Goal]) -> Goal:
     return sorted(goals, key=lambda x: x.confidence, reverse=True)[0]
 
 
+@dataclass
+class MotorPolicySelectorParams:
+    ctx: RuntimeContext
+    observations: Observations
+    state: MotorSystemState
+    percept: Message
+    goals: list[Goal]
+
+
 class MotorPolicySelector(Protocol):
     def pre_episode(self, motor_system: MotorSystem) -> None: ...
 
@@ -221,14 +230,6 @@ class DistantPolicySelector(MotorPolicySelector):
         self._selected_policies.append(policy)
         self._selected_goals.append(goal)
 
-@dataclass
-class MotorPolicyParams:
-    ctx: RuntimeContext
-    observations: Observations
-    state: MotorSystemState
-    percept: Message
-    goals: list[Goal]
-
 
 class DistantPolicyStateMachine(StateMachine):
     @dataclass
@@ -267,15 +268,15 @@ class DistantPolicyStateMachine(StateMachine):
         look_at_goal, cond="has_only_sm_goals"
     ) | fallthrough.to(default, cond="has_no_goals")
 
-    def has_lm_goals(self, params: MotorPolicyParams) -> bool:
+    def has_lm_goals(self, params: MotorPolicySelectorParams) -> bool:
         return any(g.sender_type == "GSG" for g in params.goals)
 
-    def has_only_sm_goals(self, params: MotorPolicyParams) -> bool:
+    def has_only_sm_goals(self, params: MotorPolicySelectorParams) -> bool:
         return len(params.goals) > 0 and all(
             g.sender_type == "SM" for g in params.goals
         )
 
-    def has_no_goals(self, params: MotorPolicyParams) -> bool:
+    def has_no_goals(self, params: MotorPolicySelectorParams) -> bool:
         return len(params.goals) == 0
 
     def has_jump_actions(self, result: MotorPolicyResult) -> bool:
@@ -287,7 +288,7 @@ class DistantPolicyStateMachine(StateMachine):
     def has_no_actions(self, result: MotorPolicyResult) -> bool:
         return len(result.actions) == 0
 
-    def before_call(self, params: MotorPolicyParams) -> None:
+    def before_call(self, params: MotorPolicySelectorParams) -> None:
         self._params = params
 
     def before_result(
@@ -372,7 +373,7 @@ class DistantPolicyStateMachine(StateMachine):
         percept: Message,
         goals: list[Goal],
     ) -> MotorPolicyResult:
-        self.call(MotorPolicyParams(ctx, observations, state, percept, goals))
+        self.call(MotorPolicySelectorParams(ctx, observations, state, percept, goals))
         self._selected_policies.append(self._result.policy)
         self._selected_goals.append(self._result.goal)
         return self._result.result
