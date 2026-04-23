@@ -19,39 +19,49 @@ Our model will have one surface agent connected to one sensor module connected t
 
 # Config Overview
 
-Monty experiments are defined using a nested dictionary. These dictionaries define the experiment class and associated simulation parameters, logging configs, the Monty model (which includes sensor modules, learning modules, and a motor system), and the environment interface. This is the basic structure of a complete experiment config, along with their expected types:
+Monty experiments are defined and configured using [Hydra](https://hydra.cc/). These configurations define the experiment class and associated simulation parameters, logging configs, the Monty model (which includes sensor modules, learning modules, and a motor system), and the environment interface. This is the basic structure of a complete experiment config, along with their expected types:
 
-- `_target_`: `MontyExperiment` Manages the highest-level calls to the environment and Monty model.
-- `config`: Arguments supplied to the experiment class.
-- `logging`: Specifies which loggers should be used.
-- `monty_config`:
-  - `monty_class`: `Monty` The type of Monty model to use, e.g. for evidence-based graph matching: `MontyForEvidenceGraphMatching`.
-  - `monty_args`: Arguments supplied to the Monty class.
-  - `sensor_module_configs`: `Mapping[str:Mapping]`
-  - `learning_module_configs`: `Mapping[str:Mapping]`
-  - `motor_system_config`: configuration of the motor system and motor policies.
-  - `sm_to_agent_dict`: mapping of which sensors connect to which sensor modules.
-  - `sm_to_lm_matrix`: mapping of which sensor modules connect to which learning modules.
-  - `lm_to_lm_matrix`: hierarchical connectivity between learning modules.
-  - `lm_to_lm_vote_matrix`: lateral connectivity between learning modules.
-- `env_interface_config`: `dataclass` (specifies environment interface-related args incl. the environment that the interface wraps around (`env_init_func`), arguments for initializing this environment, such as the agent and sensor configuration (`env_init_args`), and optional transformations that occur before information reaches a sensor module. For an example, see `SurfaceViewFinderMountHabitatEnvInterfaceConfig`)
-- `train_env_interface_class`: `EnvironmentInterface`
-- `train_env_interface_args`: Specifies how the interface should interact with the environment. For instance, which objects should be shown in what episodes and in which orientations and locations.
-- `eval_env_interface_class`: `EnvironmentInterface`
-- `eval_env_interface_args`: Same purpose as `train_env_interface_args` but allows for presenting Monty with different conditions between training and evaluation.
+- `experiment`:
+  - `_target_`: `MontyExperiment` Manages the highest-level calls to the environment and Monty model.
+  - `config`: The configuration passed to the experiment class.
+    - `logging`: Specifies which loggers should be used.
+    - `monty_config`: Configuration for the Monty model.
+      - `monty_class`: `Monty` The type of Monty model to use, e.g. for evidence-based graph matching: `MontyForEvidenceGraphMatching`.
+      - `monty_args`: Arguments supplied to the Monty class.
+      - `sensor_module_configs`: `Mapping[str:Mapping]` Sensor module configurations.
+      - `learning_module_configs`: `Mapping[str:Mapping]` Learning module configurations.
+      - `motor_system_config`: Configuration of the motor system and motor policies.
+      - `sm_to_agent_dict`: Connectivity mapping of which sensors connect to which sensor modules.
+      - `sm_to_lm_matrix`: Connectivity mapping of which sensor modules connect to which learning modules.
+      - `lm_to_lm_matrix`: Hierarchical connectivity between learning modules.
+      - `lm_to_lm_vote_matrix`: Lateral connectivity between learning modules.
+    - `environment`: Configuration for the environment.
+      - `env_init_func`: The environment class.
+      - `env_init_args`: The arguments for initializing the environment, such as the agent and sensor configuration.
+      - `transform`: Optional transformations that occur before information reaches a sensor module
+    - `train_env_interface_class`: `EnvironmentInterface`
+    - `train_env_interface_args`: Specifies how the interface should interact with the environment. For instance, which objects should be shown in what episodes and in which orientations and locations.
+    - `eval_env_interface_class`: `EnvironmentInterface`
+    - `eval_env_interface_args`: Same purpose as `train_env_interface_args` but allows for presenting Monty with different conditions between training and evaluation.
 
 # Setting up the Experiment Config for Pretraining
 
 To follow along, open the `src/tbp/monty/conf/experiment/tutorial/surf_agent_2obj_train.yaml`. Let's highlight the various aspects of a training experiment configuration.
 
 ```yaml
-# Basic setup
-config:
-  logging:
-    # Specify directory where an output directory will be created.
-    output_dir: ${path.expanduser:"~/tbp/results/monty/projects"}
-    # Specify a name for the training run
-    run_name: surf_agent_1lm_2obj_train
+# @package _global_
+
+defaults:
+  # ...
+  - /logging: silent_warning_train
+
+experiment:
+  _target_: tbp.monty.frameworks.experiments.pretraining_experiments.MontySupervisedObjectPretrainingExperiment
+  config:
+    # ...
+    logging:
+      output_dir: ${path.expanduser:"~/tbp/results/monty/projects"}
+      run_name: surf_agent_1lm_2obj_train
 ```
 
 > [!NOTE]
@@ -59,6 +69,8 @@ config:
 >
 > Loggers have `output_dir` and `run_name` parameters, and since we will use `run.py`, the output will be saved to `OUTPUT_DIR/RUN_NAME`. The `MontySupervisedObjectPretrainingExperiment` suffixes `pretrained`, so the final model will be stored at `OUTPUT_DIR/RUN_NAME/pretrained`, which in our case will be `~/tbp/results/monty/projects/surf_agent_1lm_2obj_train/pretrained`.
 >
+
+# TODO: Resume updates from here...
 
 Next, we specify which objects the model will train on in the dataset, including the rotations in which the objects will be presented. The following code specifies two objects ("mug" and "banana") and 14 unique rotations, which means that both the mug and the banana will be shown 14 times, each time in a different rotation. During each of the overall 28 episodes, the sensors will move over the respective object and collect multiple observations to update the model of the object.
 
