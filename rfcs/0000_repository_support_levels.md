@@ -21,7 +21,7 @@ Unmaintained repositories SHALL be [archived as read-only](https://docs.github.c
 
 Maintainers MAY provide some maintenance, time-permitting, at their own discretion.
 
-Repositories with limited maintenance SHALL include the following header at the top of their README.
+Repositories with limited maintenance SHALL include a `Limited Maintenance` badge at the top of their README that, when clicked, links to the following text:
 
 > [!IMPORTANT]
 > This repository receives limited maintenance. It is maintained time-permitting at our own discretion. Issues and pull requests may not receive timely responses, and support or updates are not guaranteed. Community contributions are welcome but may be reviewed infrequently.
@@ -32,6 +32,9 @@ Markdown version to copy and paste:
 > This repository receives limited maintenance. It is maintained time-permitting at our own discretion. Issues and pull requests may not receive timely responses, and support or updates are not guaranteed. Community contributions are welcome but may be reviewed infrequently.
 ```
 
+As an example, here's a screenshot of a badge, albeit with a different text:
+
+![example_badge_screenshot](./0000_repository_support_levels/example_badge_screenshot.png)
 
 ## Actively Maintained
 
