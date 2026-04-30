@@ -39,9 +39,9 @@ Monty experiments are defined and configured using [Hydra](https://hydra.cc/). T
       - `env_init_func`: The environment class.
       - `env_init_args`: The arguments for initializing the environment, such as the agent and sensor configuration.
       - `transform`: Optional transformations that occur before information reaches a sensor module
-    - `train_env_interface_class`: `EnvironmentInterface`
+    - `train_env_interface_class`: environment `Interface`
     - `train_env_interface_args`: Specifies how the interface should interact with the environment. For instance, which objects should be shown in what episodes and in which orientations and locations.
-    - `eval_env_interface_class`: `EnvironmentInterface`
+    - `eval_env_interface_class`: environment `Interface`
     - `eval_env_interface_args`: Same purpose as `train_env_interface_args` but allows for presenting Monty with different conditions between training and evaluation.
 
 # Setting up the Experiment Config for Pretraining
