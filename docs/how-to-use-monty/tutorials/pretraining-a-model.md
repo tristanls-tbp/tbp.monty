@@ -166,8 +166,6 @@ Briefly, we specified our experiment class and the number of epochs to run. We a
 - `/monty/learning_module: graph_1lm`: Specifies a single `GraphLM` that constructs a graph of the object being explored.
 - `/monty/sensor_module: camera_surf_rgba_raw0`: Specifies two sensor modules. One will be a `CameraSM` with `is_surface_sm=True` (a small sensory patch for a surface agent). The sensor module will extract the given list of features for each patch. We won't save raw observations here since it is memory-intensive and only required for detailed logging/plotting. The other will be a `Probe` which we can use for logging. We could also store raw observations from the viewfinder for later visualization/analysis if needed. This sensor module is not connected to a learning module and, therefore, is not used for learning. It is called `view_finder` since it helps initialize each episode on the object.
 
-# TODO: Continue from here....
-
 To get an idea of what each sensor module sees and the information passed on to the learning module, check out the documentation on [observations, transforms, and sensor modules](../../how-monty-works/observations-transforms-sensor-modules.md). To learn more about how learning modules construct object graphs from sensor output, refer to the [graph building](../../how-monty-works/learning-module/object-models.md#graph-building) documentation.
 
 # Running the Pretraining Experiment
@@ -180,7 +178,6 @@ python run.py experiment=tutorial/surf_agent_2obj_train
 This will take a few minutes to complete and then you can inspect and visualize the learned models. To do so, create a script and paste in the following code. The location and name of the script is unimportant, but we called it `pretraining_tutorial_analysis.py` and placed it outside of the repository at `~/monty_scripts`.
 
 ```python
-import os
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -202,7 +199,7 @@ train_stats, eval_stats, detailed_stats, lm_models = load_stats(
 )
 
 # Visualize the mug graph from the pretrained graphs loaded above from
-# pretrained_dict. Replace 'mug' with 'banana' to plot the banana graph.
+# pretrained_dict. Replace "mug" with "banana" to plot the banana graph.
 plot_graph(lm_models["pretrained"][0]["mug"]["patch"], rotation=120)
 plt.show()
 ```
