@@ -75,7 +75,7 @@ experiment:
             max_nodes_per_graph: 2000
       sensor_modules:
         sensor_module_0:
-          _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.CameraSM}
+          _target_: tbp.monty.frameworks.models.sensor_modules.CameraSM
           sensor_module_id: patch_0
           features:
           - pose_vectors
@@ -100,7 +100,7 @@ experiment:
             distance: 0.01
           save_raw_obs: true
         sensor_module_1:
-          _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.CameraSM}
+          _target_: tbp.monty.frameworks.models.sensor_modules.CameraSM
           sensor_module_id: patch_1
           features:
           - pose_vectors
@@ -123,7 +123,7 @@ experiment:
             distance: 0.05
           save_raw_obs: true
         sensor_module_2:
-          _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.Probe}
+          _target_: tbp.monty.frameworks.models.sensor_modules.Probe
           sensor_module_id: view_finder
           save_raw_obs: true
       sm_to_agent_dict:

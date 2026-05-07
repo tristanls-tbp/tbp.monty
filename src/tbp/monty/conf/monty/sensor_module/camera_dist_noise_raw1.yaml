@@ -1,7 +1,7 @@
 # @package experiment.config.monty_config.sensor_modules
 
 sensor_module_0:
-  _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.CameraSM}
+  _target_: tbp.monty.frameworks.models.sensor_modules.CameraSM
   sensor_module_id: patch
   features:
   - pose_vectors
@@ -21,6 +21,6 @@ sensor_module_0:
       pose_fully_defined: 0.01 # flip bool in 1% of cases
     location: 0.002 # add gaussian noise with 0.002 std
 sensor_module_1:
-  _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.Probe}
+  _target_: tbp.monty.frameworks.models.sensor_modules.Probe
   sensor_module_id: view_finder
   save_raw_obs: true

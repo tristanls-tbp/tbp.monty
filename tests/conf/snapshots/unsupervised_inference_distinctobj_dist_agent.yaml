@@ -63,7 +63,7 @@ experiment:
           learning_module_class: ${monty.class:tbp.monty.frameworks.models.no_reset_evidence_matching.NoResetEvidenceGraphLM}
       sensor_modules:
         sensor_module_0:
-          _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.CameraSM}
+          _target_: tbp.monty.frameworks.models.sensor_modules.CameraSM
           sensor_module_id: patch
           features:
           - pose_vectors
@@ -83,7 +83,7 @@ experiment:
               pose_fully_defined: 0.01
             location: 0.002
         sensor_module_1:
-          _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.Probe}
+          _target_: tbp.monty.frameworks.models.sensor_modules.Probe
           sensor_module_id: view_finder
           save_raw_obs: false
       sm_to_agent_dict:

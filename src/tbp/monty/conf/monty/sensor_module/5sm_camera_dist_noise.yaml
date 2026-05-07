@@ -1,7 +1,7 @@
 # @package experiment.config.monty_config.sensor_modules
 
 sensor_module_0:
-  _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.CameraSM}
+  _target_: tbp.monty.frameworks.models.sensor_modules.CameraSM
   sensor_module_id: patch_0
   features: ${constants.default_sensor_features}
   save_raw_obs: false
@@ -10,7 +10,7 @@ sensor_module_0:
     distance: 0.01
   noise_params: ${constants.default_all_noise_params}
 sensor_module_1:
-  _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.CameraSM}
+  _target_: tbp.monty.frameworks.models.sensor_modules.CameraSM
   sensor_module_id: patch_1
   features: ${constants.default_sensor_features}
   save_raw_obs: false
@@ -19,7 +19,7 @@ sensor_module_1:
     distance: 0.01
   noise_params: ${constants.default_all_noise_params}
 sensor_module_2:
-  _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.CameraSM}
+  _target_: tbp.monty.frameworks.models.sensor_modules.CameraSM
   sensor_module_id: patch_2
   features: ${constants.default_sensor_features}
   save_raw_obs: false
@@ -28,7 +28,7 @@ sensor_module_2:
     distance: 0.01
   noise_params: ${constants.default_all_noise_params}
 sensor_module_3:
-  _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.CameraSM}
+  _target_: tbp.monty.frameworks.models.sensor_modules.CameraSM
   sensor_module_id: patch_3
   features: ${constants.default_sensor_features}
   save_raw_obs: false
@@ -37,7 +37,7 @@ sensor_module_3:
     distance: 0.01
   noise_params: ${constants.default_all_noise_params}
 sensor_module_4:
-  _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.CameraSM}
+  _target_: tbp.monty.frameworks.models.sensor_modules.CameraSM
   sensor_module_id: patch_4
   features: ${constants.default_sensor_features}
   save_raw_obs: false
@@ -46,6 +46,6 @@ sensor_module_4:
     distance: 0.01
   noise_params: ${constants.default_all_noise_params}
 sensor_module_5:
-  _target_: ${monty.class:tbp.monty.frameworks.models.sensor_modules.Probe}
+  _target_: tbp.monty.frameworks.models.sensor_modules.Probe
   sensor_module_id: view_finder
   save_raw_obs: true
