@@ -36,7 +36,6 @@ from tbp.monty.frameworks.loggers.exp_logger import (
     LoggingCallbackHandler,
 )
 from tbp.monty.frameworks.loggers.wandb_handlers import WandbWrapper
-from tbp.monty.frameworks.models.abstract_monty_classes import LearningModule
 from tbp.monty.frameworks.models.monty_base import MontyBase
 from tbp.monty.frameworks.utils.dataclass_utils import (
     get_subset_of_args,
@@ -140,7 +139,6 @@ class MontyExperiment:
         # Make monty_config a dict from a DictConfig, so we can edit it.
         monty_config = dict(copy.deepcopy(monty_config))
 
-        # Create learning modules
         learning_modules = monty_config.pop("learning_modules")
         for lm_id, lm in learning_modules.items():
             lm.learning_module_id = lm_id
