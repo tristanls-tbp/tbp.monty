@@ -60,7 +60,7 @@ Looking into the details of learning module configuration in `src/tbp/monty/conf
 # @package experiment.config.monty_config.learning_modules
 
 learning_module_0:
-  _target_: tbp.monty.frameworks.models.evidence_matching.learning_module.EvidenceGraphLM}
+  _target_: tbp.monty.frameworks.models.evidence_matching.learning_module.EvidenceGraphLM
   max_match_distance: 0.01
   # Tolerances within which features must match stored values in order to add
   # evidence to a hypothesis.

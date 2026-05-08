@@ -28,7 +28,7 @@ experiment:
         _target_: tbp.monty.frameworks.models.motor_system.MotorSystem
       learning_modules:
         learning_module_0:
-          _target_: tbp.monty.frameworks.models.evidence_matching.learning_module.EvidenceGraphLM}
+          _target_: tbp.monty.frameworks.models.evidence_matching.learning_module.EvidenceGraphLM
           max_match_distance: 0.01
           tolerances:
             patch:
