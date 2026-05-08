@@ -10,7 +10,8 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, ContextManager, Dict, Literal, Optional, Protocol
+from dataclasses import dataclass
+from typing import Any, Callable, ContextManager, Dict, Literal, Optional, Protocol
 
 import numpy as np
 import numpy.typing as npt
@@ -34,6 +35,7 @@ from tbp.monty.frameworks.models.evidence_matching.hypotheses import Hypotheses
 from tbp.monty.frameworks.models.evidence_matching.hypotheses_displacer import (
     DefaultHypothesesDisplacer,
 )
+from tbp.monty.frameworks.models.graph_matching import GraphMemory
 from tbp.monty.frameworks.utils.graph_matching_utils import (
     get_initial_possible_poses,
     possible_sensed_directions,
@@ -47,6 +49,55 @@ logger = logging.getLogger(__name__)
 
 HypothesesUpdateTelemetry = Optional[Dict[str, Any]]
 HypothesesUpdaterTelemetry = Dict[str, Any]
+
+@dataclass
+class HypothesesUpdaterConfig:
+    """Common configuration for all hypotheses updaters.
+
+    Attributes:
+        evidence_threshold_config: How to decide which hypotheses
+            should be updated. When this parameter is either '[int]%' or
+            'x_percent_threshold', then this parameter is applied to the evidence
+            for the Most Likely Hypothesis (MLH) to determine a minimum evidence
+            threshold in order for other hypotheses to be updated. Any hypotheses
+            falling below the resulting evidence threshold do not get updated. The
+            other options set a fixed threshold that does not take MLH evidence into
+            account. In [int, float, '[int]%', 'mean', 'median', 'all',
+            'x_percent_threshold'].
+        feature_evidence_increment: Feature evidence (between 0 and 1) is
+            multiplied by this value before being added to the overall evidence of
+            a hypothesis. This factor is only multiplied with the feature evidence
+            (not the pose evidence, unlike the present_weight).
+        feature_weights: How much each feature should be weighted when
+            calculating the evidence update for a hypothesis. Weights are stored
+            in a dictionary with keys corresponding to features (same as keys in
+            tolerances).
+        graph_memory: The graph memory to read graphs from.
+        max_match_distance: Maximum distance of a tested and stored location
+            for them to be matched.
+        past_weight: How much should the evidence accumulated so far be
+            weighted when combined with the evidence from the most recent
+            observation.
+        present_weight: How much should the current evidence be weighted
+            when added to the previous evidence. If past_weight and present_weight
+            add up to 1.0, the evidence is bounded and can't grow infinitely.
+            Note: Right now this doesn't give as good performance as with unbounded
+            evidence since we don't keep a full history of what we saw. With a more
+            efficient policy and better parameters, that may be possible to use and
+            could help when moving from one object to another and generally make
+            setting thresholds more intuitive.
+        tolerances: How much can each observed feature deviate from the
+            stored features while still being considered a match.
+    """
+
+    evidence_threshold_config: float | str
+    feature_evidence_increment: int
+    feature_weights: dict
+    graph_memory: GraphMemory
+    max_match_distance: float
+    past_weight: float
+    present_weight: float
+    tolerances: dict
 
 
 class HypothesesUpdater(ContextManager[Self], Protocol):
@@ -76,15 +127,14 @@ class HypothesesUpdater(ContextManager[Self], Protocol):
         """
         ...
 
+HypothesesUpdaterFactory = Callable[[HypothesesUpdaterConfig], HypothesesUpdater]
 
 class DefaultHypothesesUpdater(HypothesesUpdater):
     def __init__(
         self,
-        feature_weights: dict,
-        graph_memory: EvidenceGraphMemory,
+        config: HypothesesUpdaterConfig,
         max_match_distance: float,
         tolerances: dict,
-        evidence_threshold_config: float | str = "all",  # noqa: ARG002
         feature_evidence_calculator: type[FeatureEvidenceCalculator] = (
             DefaultFeatureEvidenceCalculator
         ),
@@ -98,37 +148,14 @@ class DefaultHypothesesUpdater(HypothesesUpdater):
         past_weight: float = 1,
         present_weight: float = 1,
         umbilical_num_poses: int = 8,
-    ):
+    ) -> None:
         """Initializes the DefaultHypothesesUpdater.
 
         Args:
-            feature_weights: How much each feature should be weighted when
-                calculating the evidence update for a hypothesis. Weights are stored
-                in a dictionary with keys corresponding to features (same as keys in
-                tolerances).
-            graph_memory: The graph memory to read graphs from.
-            max_match_distance: Maximum distance of a tested and stored location
-                for them to be matched.
-            tolerances: How much can each observed feature deviate from the
-                stored features while still being considered a match.
-            evidence_threshold_config: How to decide which hypotheses
-                should be updated. When this parameter is either '[int]%' or
-                'x_percent_threshold', then this parameter is applied to the evidence
-                for the Most Likely Hypothesis (MLH) to determine a minimum evidence
-                threshold in order for other hypotheses to be updated. Any hypotheses
-                falling below the resulting evidence threshold do not get updated. The
-                other options set a fixed threshold that does not take MLH evidence into
-                account. In [int, float, '[int]%', 'mean', 'median', 'all',
-                'x_percent_threshold']. Defaults to 'all'.
-                Ignored by the DefaultHypothesesUpdater. Required for
-                compatibility with the HypothesesUpdater protocol.
+            config: Common configuration for all hypotheses updaters.
             feature_evidence_calculator: Class to
                 calculate feature evidence for all nodes. Defaults to the default
                 calculator.
-            feature_evidence_increment: Feature evidence (between 0 and 1) is
-                multiplied by this value before being added to the overall evidence of
-                a hypothesis. This factor is only multiplied with the feature evidence
-                (not the pose evidence, unlike the present_weight). Defaults to 1.
             features_for_matching_selector: Class to
                 select if features should be used for matching. Defaults to the default
                 selector.
@@ -136,40 +163,27 @@ class DefaultHypothesesUpdater(HypothesesUpdater):
                 possible poses to test. Defaults to "informed".
             max_nneighbors: Maximum number of nearest neighbors to consider in the
                 radius of a hypothesis for calculating the evidence. Defaults to 3.
-            past_weight: How much should the evidence accumulated so far be
-                weighted when combined with the evidence from the most recent
-                observation. Defaults to 1.
-            present_weight: How much should the current evidence be weighted
-                when added to the previous evidence. If past_weight and present_weight
-                add up to 1, the evidence is bounded and can't grow infinitely. Defaults
-                to 1.
-                NOTE: Right now this doesn't give as good performance as with unbounded
-                evidence since we don't keep a full history of what we saw. With a more
-                efficient policy and better parameters, that may be possible to use and
-                could help when moving from one object to another and generally make
-                setting thresholds more intuitive.
             umbilical_num_poses: Number of sampled rotations in the direction of
                 the plane perpendicular to the surface normal. These are sampled at
                 umbilical points (i.e., points where PC directions are undefined).
         """
+        self._config = config
         self.feature_evidence_calculator = feature_evidence_calculator
         self.feature_evidence_increment = feature_evidence_increment
-        self.feature_weights = feature_weights
         self.features_for_matching_selector = features_for_matching_selector
-        self.graph_memory = graph_memory
         self.initial_possible_poses = get_initial_possible_poses(initial_possible_poses)
         self.tolerances = tolerances
         self.umbilical_num_poses = umbilical_num_poses
 
         self.use_features_for_matching = self.features_for_matching_selector.select(
             feature_evidence_increment=self.feature_evidence_increment,
-            feature_weights=self.feature_weights,
+            feature_weights=self._config.feature_weights,
             tolerances=self.tolerances,
         )
         self.hypotheses_displacer = DefaultHypothesesDisplacer(
             feature_evidence_increment=self.feature_evidence_increment,
-            feature_weights=self.feature_weights,
-            graph_memory=self.graph_memory,
+            feature_weights=self._config.feature_weights,
+            graph_memory=self._config.graph_memory,
             max_match_distance=max_match_distance,
             max_nneighbors=max_nneighbors,
             past_weight=past_weight,

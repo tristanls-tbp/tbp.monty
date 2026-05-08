@@ -10,9 +10,11 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 import logging
 import threading
 import time
+from typing import Callable
 
 import numpy as np
 import numpy.typing as npt
@@ -33,7 +35,7 @@ from tbp.monty.frameworks.models.evidence_matching.hypotheses_updater import (
     HypothesesUpdaterTelemetry,
 )
 from tbp.monty.frameworks.models.goal_generation import EvidenceGoalGenerator
-from tbp.monty.frameworks.models.graph_matching import GraphLM
+from tbp.monty.frameworks.models.graph_matching import GraphLM, GraphMemory
 from tbp.monty.frameworks.utils.graph_matching_utils import (
     add_pose_features_to_tolerances,
     get_scaled_evidences,
@@ -245,6 +247,7 @@ class EvidenceGraphLM(GraphLM):
         num_model_voxels_per_dim=50,  # -> voxel size = 6mm3 (0.006)
         use_multithreading=True,
         gsg: EvidenceGoalGenerator | None = None,
+        hypotheses_updater_factory: HypothesesUpdaterFactory = DefaultHypothesesUpdater,
         hypotheses_updater_class: type[HypothesesUpdater] = DefaultHypothesesUpdater,
         hypotheses_updater_args: dict | None = None,
         *args,
