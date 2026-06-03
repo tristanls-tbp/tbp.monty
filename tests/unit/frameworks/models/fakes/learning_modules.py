@@ -28,10 +28,10 @@ class FakeLearningModule(LearningModule):
     def reset(self):
         pass
 
-    def matching_step(self, ctx: RuntimeContext, percepts: list[Message]):
+    def matching_step(self, ctx: RuntimeContext, percepts: list[Message]) -> None:
         pass
 
-    def exploratory_step(self, ctx: RuntimeContext, percepts: list[Message]):
+    def exploratory_step(self, ctx: RuntimeContext, percepts: list[Message]) -> None:
         pass
 
     def receive_votes(self, inputs):

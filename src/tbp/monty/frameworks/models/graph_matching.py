@@ -606,7 +606,7 @@ class GraphLM(LearningModule):
         self,
         ctx: RuntimeContext,
         percepts: list[Message],
-    ):
+    ) -> None:
         """Update the possible matches given an observation."""
         first_movement_detected = self._agent_moved_since_reset()
         buffer_data = self._add_displacements(percepts)
@@ -635,7 +635,7 @@ class GraphLM(LearningModule):
         self,
         ctx: RuntimeContext,  # noqa: ARG002
         percepts: list[Message],
-    ):
+    ) -> None:
         """Step without trying to recognize object (updating possible matches)."""
         buffer_data = self._add_displacements(percepts)
         self.buffer.append(buffer_data)
