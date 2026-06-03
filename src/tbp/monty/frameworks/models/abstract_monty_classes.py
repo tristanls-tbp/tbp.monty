@@ -15,7 +15,7 @@ from typing import Dict, TypedDict
 import numpy as np
 import numpy.typing as npt
 
-from tbp.monty.cmp import Goal
+from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.actions.actions import Action
 from tbp.monty.frameworks.agents import AgentID
@@ -324,13 +324,23 @@ class LearningModule(Snapshotable, metaclass=abc.ABCMeta):
     # Methods that define the algorithm
     ###
     @abc.abstractmethod
-    def matching_step(self, ctx: RuntimeContext):
-        """Matching / inference step called inside of monty._step_learning_modules."""
+    def matching_step(self, ctx: RuntimeContext, percepts: list[Message]):
+        """Matching / inference step called inside of monty._step_learning_modules.
+
+        Args:
+            ctx: The runtime context.
+            percepts: The percepts intended for this learning module.
+        """
         pass
 
     @abc.abstractmethod
-    def exploratory_step(self, ctx: RuntimeContext):
-        """Model building step called inside of monty._step_learning_modules."""
+    def exploratory_step(self, ctx: RuntimeContext, percepts: list[Message]):
+        """Model building step called inside of monty._step_learning_modules.
+
+        Args:
+            ctx: The runtime context.
+            percepts: The percepts intended for this learning module.
+        """
         pass
 
     @abc.abstractmethod
