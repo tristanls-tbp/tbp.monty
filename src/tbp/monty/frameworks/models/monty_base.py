@@ -257,7 +257,7 @@ class MontyBase(Monty):
         return self._combine_inputs(sensory_inputs_from_sms, sensory_inputs_from_lms)
 
     def _combine_inputs(
-        self, inputs_from_sms: list[Message], inputs_from_lms: list[Message]
+        self, inputs_from_sms: Sequence[Message], inputs_from_lms: Sequence[Message]
     ) -> list[Message]:
         """Combine all inputs to an LM into one list of Messages.
 
@@ -271,8 +271,8 @@ class MontyBase(Monty):
         in a good way, combine_input or LM selection may have to become part of LM class
 
         Args:
-            inputs_from_sms: List of Messages from SMs.
-            inputs_from_lms: List of Messages from LMs.
+            inputs_from_sms: Sequence of Messages from SMs.
+            inputs_from_lms: Sequence of Messages from LMs.
 
         Returns:
             Combined list of Messages from all inputs with interesting features.

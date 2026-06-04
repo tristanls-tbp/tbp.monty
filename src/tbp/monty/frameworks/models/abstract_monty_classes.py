@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import abc
-from typing import Dict, TypedDict
+from typing import Dict, Sequence, TypedDict
 
 import numpy as np
 import numpy.typing as npt
@@ -324,7 +324,7 @@ class LearningModule(Snapshotable, metaclass=abc.ABCMeta):
     # Methods that define the algorithm
     ###
     @abc.abstractmethod
-    def matching_step(self, ctx: RuntimeContext, percepts: list[Message]) -> None:
+    def matching_step(self, ctx: RuntimeContext, percepts: Sequence[Message]) -> None:
         """Matching / inference step called inside of monty._step_learning_modules.
 
         Args:
@@ -334,7 +334,9 @@ class LearningModule(Snapshotable, metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def exploratory_step(self, ctx: RuntimeContext, percepts: list[Message]) -> None:
+    def exploratory_step(
+        self, ctx: RuntimeContext, percepts: Sequence[Message]
+    ) -> None:
         """Model building step called inside of monty._step_learning_modules.
 
         Args:

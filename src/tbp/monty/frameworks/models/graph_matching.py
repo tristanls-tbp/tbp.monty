@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 import logging
-from typing import ClassVar
+from typing import ClassVar, Sequence
 
 import numpy as np
 import torch
@@ -605,7 +605,7 @@ class GraphLM(LearningModule):
     def matching_step(
         self,
         ctx: RuntimeContext,
-        percepts: list[Message],
+        percepts: Sequence[Message],
     ) -> None:
         """Update the possible matches given an observation."""
         first_movement_detected = self._agent_moved_since_reset()
@@ -634,7 +634,7 @@ class GraphLM(LearningModule):
     def exploratory_step(
         self,
         ctx: RuntimeContext,  # noqa: ARG002
-        percepts: list[Message],
+        percepts: Sequence[Message],
     ) -> None:
         """Step without trying to recognize object (updating possible matches)."""
         buffer_data = self._add_displacements(percepts)
@@ -1001,7 +1001,7 @@ class GraphLM(LearningModule):
 
     # ------------------------ Helper --------------------------
 
-    def _add_displacements(self, percepts: list[Message]) -> list[Message]:
+    def _add_displacements(self, percepts: Sequence[Message]) -> Sequence[Message]:
         """Compute and add a single displacement vector to all percepts.
 
         Computes one displacement by comparing the current average SM location from

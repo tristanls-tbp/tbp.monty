@@ -14,7 +14,7 @@ import dataclasses
 import json
 import logging
 import time
-from typing import TYPE_CHECKING, Any, Callable, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Literal, Sequence
 
 import numpy as np
 import numpy.typing as npt
@@ -105,7 +105,7 @@ class FeatureAtLocationBuffer:
             return 0
         return np.count_nonzero(~np.isnan(self.locations[input_channel][:, 0]))
 
-    def append(self, percepts: list[Message]) -> None:
+    def append(self, percepts: Sequence[Message]) -> None:
         """Add a list of percepts to the buffer. Must be features at locations.
 
         TODO S: Store messages instead of list of percepts?

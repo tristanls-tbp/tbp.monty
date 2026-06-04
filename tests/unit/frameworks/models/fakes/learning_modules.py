@@ -9,6 +9,8 @@
 # https://opensource.org/licenses/MIT.
 from __future__ import annotations
 
+from typing import Sequence
+
 from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.experiments.mode import ExperimentMode
@@ -28,10 +30,12 @@ class FakeLearningModule(LearningModule):
     def reset(self):
         pass
 
-    def matching_step(self, ctx: RuntimeContext, percepts: list[Message]) -> None:
+    def matching_step(self, ctx: RuntimeContext, percepts: Sequence[Message]) -> None:
         pass
 
-    def exploratory_step(self, ctx: RuntimeContext, percepts: list[Message]) -> None:
+    def exploratory_step(
+        self, ctx: RuntimeContext, percepts: Sequence[Message]
+    ) -> None:
         pass
 
     def receive_votes(self, inputs):
