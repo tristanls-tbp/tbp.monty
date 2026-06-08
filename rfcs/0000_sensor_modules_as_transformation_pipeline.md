@@ -72,6 +72,8 @@ A Sensor Module is a data flow pipeline that begins with a `SensorObservation` a
 
 ![Sensor Module API](./0000_sensor_modules_as_transformation_pipeline/sensor_module_api.png)
 
+## Implementation Details
+
 Internally, the Sensor Module data pipeline is assembled from a series of transforms that implement the `sensor_module.Transform` protocol:
 
 ```python
@@ -93,9 +95,10 @@ Where the `TransformContext` is:
 class TransformContext:
     rng: np.random.RandomState
     state: AgentState | None = None
+    motor_only_step: bool = False
 ```
 
-For convenience, there is an `identity_transform`:
+We define an `identity_transform` needed to "ground out" the transform pipeline:
 
 ```python
 def identity_transform(
@@ -110,17 +113,7 @@ def identity_transform(
 In order to fully assemble a Sensor Module, two additional boilerplate components are needed, the `TransformMiddleware` and the `TransformPipeline`:
 
 ```python
-class TransformMiddleware:
-
-    _kwargs: dict[str, Any]
-    _transform: type[Transform]
-
-    def __init__(self: Self, transform: type[Transform], **kwargs: P.kwargs) -> None:
-        self._transform = transform
-        self._kwargs = kwargs
-
-    def __call__(self: Self, next_transform: Transform) -> Transform:
-        return self._transform(next_transform, **self._kwargs)
+TransformMiddleware = Callable[[Transform], Transform]
 
 
 class TransformPipeline(Transform):
@@ -141,6 +134,137 @@ class TransformPipeline(Transform):
         goals: list[Goal],
     ) -> (observation: SensorObservation, percept: Message | None, goals: list[Goal]):
         return self._transform(ctx, observation, percept, goals)
+```
+
+With the above specifications and boilerplate in place, we can now author a generic `SensorModule`:
+
+```python
+class SensorModule:
+
+    _agent_state: AgentState
+    _goals: list[Goal]
+    _sensor_id: SensorID
+    _sensor_module_id: SensorModuleID
+    _sensor_state: SensorState
+    _transform_pipeline: TransformPipeline
+
+    def __init__(
+        self: Self,
+        sensor_module_id: SensorModuleID,
+        sensor_id: SensorID,
+        transform_pipeline: TransformPipeline | None
+    ) -> None:
+        self._sensor_module_id = sensor_module_id
+        self._sensor_id = sensor_id
+        self._transform_pipeline = (
+            transform_pipeline
+            if transform_pipeline is not None
+            else TransformPipeline([])
+        )
+
+    @property
+    def sensor_module_id(self: Self) -> SensorModuleID:
+        return self._sensor_module_id
+
+    def propose_goals(self: Self) -> list[Goal]:
+        """Return the goals proposed by this Sensor Module."""
+        return self._goals
+
+    def step(
+        self: Self,
+        ctx: RuntimeContext,
+        observation: SensorObservation,
+        motor_only_step: bool = False
+    ) -> Message | None:
+        """Process an observation into a percept and goals.
+
+        Args:
+            ctx: The runtime context.
+            observation: Sensor observation.
+            motor_only_step: Whether the current step is a motor-only step.
+        """
+        transform_ctx = TransformContext(ctx.rng, self._agent_state, motor_only_step)
+        _, percept, goals = self.transform_pipeline(transform_ctx, observation, None, [])
+        self._goals = goals
+        return percept
+
+    def update_state(self: Self, agent: AgentState) -> None:
+        """Update information about the sensor's location and rotation."""
+        self._agent_state = agent
+        sensor = agent.sensors[self._sensor_id]
+        self._sensor_state = SensorState(
+            position=agent.position
+            + qt.rotate_vectors(agent.rotation, sensor.position),
+            rotation=agent.rotation * sensor.rotation,
+        )
+
+```
+
+## Configuration
+
+With the generic `SensorModule` available, all of the business logic is now declared in
+the configuration.
+
+```yaml
+sensor_modules:
+  - _target_: tbp.monty.sensor_modules.SensorModule
+    sensor_module_id: patch
+    sensor_id: patch
+    transform_pipeline:
+      _target: tbp.monty.sensor_modules.TransformPipeline
+      transforms:
+        - _target_: tbp.monty.sensor_modules.transforms.DepthTo3DLocations
+          _partial_: true
+          sensor_id: patch
+          resolutions: [64, 64]
+          world_coord: true
+          zooms: 10.0
+          get_all_points: true
+          use_semantic_sensor: false
+          is_depth_clip_sensors: true
+        - _target_: tbp.monty.sensor_modules.transforms.MissingToMaxDepth
+          _partial_: true
+          max_depth: 1
+        - _target_: tbp.monty.sensor_modules.transforms.GaussianSmoothing
+          _partial_: true
+          sigma: 6
+          kernel_width: 8
+        - _target_: tbp.monty.sensor_modules.transforms.AddNoiseToRawDepthImage
+          _partial_: true
+          sigma: 4
+        - _target_: tbp.monty.sensor_modules.extractors.ObservationProcessor
+          _partial_: true
+          sensor_module_id: patch
+          features:
+            - rgba
+            - hsv
+            - pose_vectors
+            - principal_curvatures
+          pc1_is_pc2_threshold: 10
+        - _target_: tbp.monty.sensor_modules.transforms.MessageNoise
+          _partial_: true
+          noise_params:
+            features:
+              pose_vectors: 2 # rotate by random degrees along xyz
+              hsv: 0.1 # add gaussian noise with 0.1 std
+              principal_curvatures_log: 0.1
+              pose_fully_defined: 0.01 # flip bool in 1% of cases
+            location: 0.002 # add gaussian noise with 0.002 std
+        - _target_: tbp.monty.sensor_modules.filters.FeatureChangeFilter
+          _partial_: true
+          delta_thresholds:
+            on_object: 0
+            n_steps: 20
+            hsv:
+            - 0.1
+            - 0.1
+            - 0.1
+            pose_vectors: ${np.list_eval:[np.pi / 4, np.pi * 2, np.pi * 2]}
+            principal_curvatures_log:
+            - 2
+            - 2
+            distance: 0.01
+
 ```
 
 # Drawbacks
