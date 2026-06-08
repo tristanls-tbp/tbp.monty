@@ -7,10 +7,6 @@ Implementing a new Sensor Module should require only adding necessary and suffic
 
 # Motivation
 
-> Why are we doing this? What use cases does it support? What is the expected outcome? Which metrics will this improve? What capabilities will it add?
->
-> Please focus on explaining the motivation so that if this RFC is not accepted, the motivation could be used to develop alternative solutions. In other words, enumerate the constraints you are trying to solve without coupling them too closely to the solution you have in mind.
-
 ## High-level API
 
 Within a Thousand Brains System, the high-level Sensor Module API is to accept a `SensorObservation` from the environment and return an optional `Percept`, and a (possibly empty) list of `Goal`s.
@@ -33,9 +29,17 @@ The sequence is not exact, as Goal generators can be absent, or they can generat
 
 ## Sensor Module Creation
 
-Historically, in order to create a new Sensor Module, the Contributor needed to implement a new, bespoke Python class that inherited from the abstract `SensorModule` class. All of the functionality of the Sensor Module would then be implemented within the `SensorModule.step()` method. It is very likely that the new Sensor Module would share functionality with already existing Sensor Modules. For example, the [CameraSM](tbd), [TwoDSensorModue](tbd) shared the initial raw environmental observation Transform functionality via the [ObservationProcessor](tbd) component. They both had a configurable `MessageNoise` and `PerceptFilter` components. On the other hand, [SalienceSM](tbd) shared no common functionality with either of them, and [Probe](tbd) only logs the observation contents without processing of any sort.
+Historically, in order to create a new Sensor Module, the Contributor needed to implement a new, bespoke Python class that inherited from the abstract `SensorModule` class. All of the functionality of the Sensor Module would then be implemented within the `SensorModule.step()` method. It is very likely that the new Sensor Module would share functionality with already existing Sensor Modules. For example, the [CameraSM](https://github.com/thousandbrainsproject/tbp.monty/blob/e280beea563d579e4e5418a4abac0ab44bb84207/src/tbp/monty/frameworks/models/sensor_modules.py#L659), [TwoDSensorModue](https://github.com/thousandbrainsproject/tbp.monty/blob/e280beea563d579e4e5418a4abac0ab44bb84207/src/tbp/monty/frameworks/models/two_d_sensor_module.py#L193) shared the initial raw environmental observation Transform functionality via the [ObservationProcessor](https://github.com/thousandbrainsproject/tbp.monty/blob/a664f3935aae3abfef3d2061b573bed972c03992/src/tbp/monty/frameworks/models/sensor_modules.py#L115) component. They both had a configurable `MessageNoise` and `PerceptFilter` components. On the other hand, [SalienceSM](https://github.com/thousandbrainsproject/tbp.monty/blob/a664f3935aae3abfef3d2061b573bed972c03992/src/tbp/monty/frameworks/models/salience/sensor_module.py#L36) shared no common functionality with either of them, and [Probe](https://github.com/thousandbrainsproject/tbp.monty/blob/a664f3935aae3abfef3d2061b573bed972c03992/src/tbp/monty/frameworks/models/sensor_modules.py#L433) only logged the observation contents without any processing.
 
-TODO: continue
+Writing bespoke sensor module implementations was toilsome, especially if functionality was being reused. Even with shared components like the [ObservationProcessor](https://github.com/thousandbrainsproject/tbp.monty/blob/a664f3935aae3abfef3d2061b573bed972c03992/src/tbp/monty/frameworks/models/sensor_modules.py#L115) there was still a lot of repetitive code.
+
+## Reusable Components
+
+Given the high-level API along with the general transform domains, it ought to be possible to design sensor modules as a data flow pipeline of reusable componetns, such that a new sensor module can be created entirely via configuration. Any functionality that does not exist, ought to be written in a generic way that can later be reused by a different sensor module. This way, new functionality is written once, and reused multiple times.
+
+## Faster Research
+
+The faster we can create different kinds of sensor modules with minimal mistakes, the faster the research feedback loop.
 
 # Guide-level explanation
 
@@ -63,6 +67,81 @@ TODO: continue
 > - Corner cases are dissected by example.
 >
 > The section should return to the examples from the previous section and explain more fully how the detailed proposal makes those examples work.
+
+A Sensor Module is a data flow pipeline that begins with a `SensorObservation` and ends with an optional `Percept` and a (possibly empty) list of `Goal`s.
+
+![Sensor Module API](./0000_sensor_modules_as_transformation_pipeline/sensor_module_api.png)
+
+Internally, the Sensor Module data pipeline is assembled from a series of transforms that implement the `sensor_module.Transform` protocol:
+
+```python
+class Transform(Protocol):
+    def __call__(
+        self: Self,
+        ctx: TransformContext,
+        observation: SensorObservation,
+        percept: Message | None,
+        goals: list[Goal],
+    ) -> (observation: SensorObservation, percept: Message | None, goals: list[Goal]):
+        ...
+```
+
+Where the `TransformContext` is:
+
+```python
+@dataclass
+class TransformContext:
+    rng: np.random.RandomState
+    state: AgentState | None = None
+```
+
+For convenience, there is an `identity_transform`:
+
+```python
+def identity_transform(
+    ctx: TransformContext,  # noqa: ARG002
+    observation: SensorObservation,
+    percept: Message | None,
+    goals: list[Goal],
+) -> (observation: SensorObservation, percept: Message | None, goals: list[Goal]):
+    return observation, percept, goals
+```
+
+In order to fully assemble a Sensor Module, two additional boilerplate components are needed, the `TransformMiddleware` and the `TransformPipeline`:
+
+```python
+class TransformMiddleware:
+
+    _kwargs: dict[str, Any]
+    _transform: type[Transform]
+
+    def __init__(self: Self, transform: type[Transform], **kwargs: P.kwargs) -> None:
+        self._transform = transform
+        self._kwargs = kwargs
+
+    def __call__(self: Self, next_transform: Transform) -> Transform:
+        return self._transform(next_transform, **self._kwargs)
+
+
+class TransformPipeline(Transform):
+
+    _transform: Transform
+
+    def __init__(self: Self, transforms: list[TransformMiddleware]) -> None:
+        transform = identity_transform
+        for next_transform in reversed(transforms):
+            transform = next_transform(transform)
+        self._transform = transform
+
+    def __call__(
+        self: Self,
+        ctx: TransformContext,
+        observation: SensorObservation,
+        percept: Message | None,
+        goals: list[Goal],
+    ) -> (observation: SensorObservation, percept: Message | None, goals: list[Goal]):
+        return self._transform(ctx, observation, percept, goals)
+```
 
 # Drawbacks
 
