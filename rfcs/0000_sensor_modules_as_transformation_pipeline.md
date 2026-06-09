@@ -84,7 +84,7 @@ class Transform(Protocol):
         observation: SensorObservation,
         percept: Message | None,
         goals: Sequence[Goal],
-    ) -> (observation: SensorObservation, percept: Message | None, goals: Sequence[Goal]):
+    ) -> tuple[SensorObservation, Message | None, Sequence[Goal]]:
         ...
 ```
 
@@ -106,7 +106,7 @@ def identity_transform(
     observation: SensorObservation,
     percept: Message | None,
     goals: Sequence[Goal],
-) -> (observation: SensorObservation, percept: Message | None, goals: Sequence[Goal]):
+) -> tuple[SensorObservation, Message | None, Sequence[Goal]]:
     return observation, percept, goals
 ```
 
@@ -132,7 +132,7 @@ class TransformPipeline(Transform):
         observation: SensorObservation,
         percept: Message | None,
         goals: Sequence[Goal],
-    ) -> (observation: SensorObservation, percept: Message | None, goals: Sequence[Goal]):
+    ) -> tuple[SensorObservation, Message | None, Sequence[Goal]]:
         return self._transform(ctx, observation, percept, goals)
 ```
 
@@ -265,6 +265,71 @@ sensor_modules:
             - 2
             distance: 0.01
 
+```
+
+## Creating a Transform
+
+New functionality is introduced by creating a new `Transform`.
+
+The general pattern is to accept `next_transform: Transform` in the constructor and to finish the `__call__` implementation by invoking the `next_transform`.
+
+```python
+class MyTransform(Transform):
+
+    _next_transform: Transform
+
+    def __init__(
+        self: Self,
+        next_transform: Transform,
+        # ...
+    ) -> None:
+        self._next_transform = next_transform
+        # ...
+
+    def __call__(
+        self: Self,
+        ctx: TransformContext,
+        observation: SensorObservation,
+        percept: Message | None,
+        goals: Sequence[Goal],
+    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        # ...
+        return self._next_transform(ctx, observation, percept, goals)
+```
+
+Note that it is possible to "early exit" out of the
+
+### Transforms
+
+Raw environmental observation transforms focus on updating the `SensorObservation`. For example, if we were to write a `MissingToMaxDepth` transform:
+
+```python
+class MissingToMaxDepth(Transform):
+
+    _next_transform: Transform
+    _max_depth: float
+    _threshold: float
+
+    def __init__(
+        self: Self,
+        next_transform: Transform,
+        max_depth: float,
+        threshold: float = 0.0
+    ) -> None:
+        self._next_transform = next_transform
+        self._max_depth = max_depth
+        self._threshold = threshold
+
+    def __call__(
+        self: Self,
+        ctx: TransformContext,
+        observation: SensorObservation,
+        percept: Message | None,
+        goals: Sequence[Goal],
+    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        m = np.where(observation["depth"] <= self._threshold)
+        observation["depth"][m] = self._max_depth
+        return self._next_transform(ctx, observation, percept, goals)
 ```
 
 # Drawbacks
