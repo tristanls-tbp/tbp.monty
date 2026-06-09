@@ -9,7 +9,7 @@ Implementing a new Sensor Module should require only adding necessary and suffic
 
 ## High-level API
 
-Within a Thousand Brains System, the high-level Sensor Module API is to accept a `SensorObservation` from the environment and return an optional `Percept`, and a (possibly empty) list of `Goal`s.
+Within a Thousand Brains System, the high-level Sensor Module API is to accept a `SensorObservation` from the environment and return an optional `Percept`, and a (possibly empty) sequence of `Goal`s.
 
 ![Sensor Module API](./0000_sensor_modules_as_transformation_pipeline/sensor_module_api.png)
 
@@ -68,7 +68,7 @@ The faster we can create different kinds of sensor modules with minimal mistakes
 >
 > The section should return to the examples from the previous section and explain more fully how the detailed proposal makes those examples work.
 
-A Sensor Module is a data flow pipeline that begins with a `SensorObservation` and ends with an optional `Percept` and a (possibly empty) list of `Goal`s.
+A Sensor Module is a data flow pipeline that begins with a `SensorObservation` and ends with an optional `Percept` and a (possibly empty) sequence of `Goal`s.
 
 ![Sensor Module API](./0000_sensor_modules_as_transformation_pipeline/sensor_module_api.png)
 
@@ -83,8 +83,8 @@ class Transform(Protocol):
         ctx: TransformContext,
         observation: SensorObservation,
         percept: Message | None,
-        goals: list[Goal],
-    ) -> (observation: SensorObservation, percept: Message | None, goals: list[Goal]):
+        goals: Sequence[Goal],
+    ) -> (observation: SensorObservation, percept: Message | None, goals: Sequence[Goal]):
         ...
 ```
 
@@ -105,8 +105,8 @@ def identity_transform(
     ctx: TransformContext,  # noqa: ARG002
     observation: SensorObservation,
     percept: Message | None,
-    goals: list[Goal],
-) -> (observation: SensorObservation, percept: Message | None, goals: list[Goal]):
+    goals: Sequence[Goal],
+) -> (observation: SensorObservation, percept: Message | None, goals: Sequence[Goal]):
     return observation, percept, goals
 ```
 
@@ -120,7 +120,7 @@ class TransformPipeline(Transform):
 
     _transform: Transform
 
-    def __init__(self: Self, transforms: list[TransformMiddleware]) -> None:
+    def __init__(self: Self, transforms: Sequence[TransformMiddleware]) -> None:
         transform = identity_transform
         for next_transform in reversed(transforms):
             transform = next_transform(transform)
@@ -131,8 +131,8 @@ class TransformPipeline(Transform):
         ctx: TransformContext,
         observation: SensorObservation,
         percept: Message | None,
-        goals: list[Goal],
-    ) -> (observation: SensorObservation, percept: Message | None, goals: list[Goal]):
+        goals: Sequence[Goal],
+    ) -> (observation: SensorObservation, percept: Message | None, goals: Sequence[Goal]):
         return self._transform(ctx, observation, percept, goals)
 ```
 
@@ -166,7 +166,7 @@ class SensorModule:
     def sensor_module_id(self: Self) -> SensorModuleID:
         return self._sensor_module_id
 
-    def propose_goals(self: Self) -> list[Goal]:
+    def propose_goals(self: Self) -> Sequence[Goal]:
         """Return the goals proposed by this Sensor Module."""
         return self._goals
 
@@ -211,7 +211,7 @@ sensor_modules:
     sensor_module_id: patch
     sensor_id: patch
     transform_pipeline:
-      _target: tbp.monty.sensor_modules.TransformPipeline
+      _target_: tbp.monty.sensor_modules.TransformPipeline
       transforms:
         - _target_: tbp.monty.sensor_modules.transforms.DepthTo3DLocations
           _partial_: true
