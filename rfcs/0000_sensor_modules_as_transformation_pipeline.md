@@ -350,7 +350,7 @@ class MissingToMaxDepth(Transform):
 
 ### Feature Extractors
 
-The main feature extractor is the `ObservationProcessor`. Rewriting the current version of it as a `Transform` would result in the example below. Note that the main change is the addition of `_next_transform` instance attribute and ending the `__call__` implementation with `return self._next_transform(ctx, observation, percept, goals)
+The main feature extractor is the `ObservationProcessor`. Rewriting the current version of it as a `Transform` would result in the example below. Note that the main change is the addition of `_next_transform` instance attribute and ending the `__call__` implementation with `return self._next_transform(ctx, observation, percept, goals)`.
 
 ```python
 class PerceptIsNotNone(RuntimeError):
