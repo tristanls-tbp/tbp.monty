@@ -647,13 +647,14 @@ Filter transforms' main purpose is to filter. As an example, implementation of t
 ```python
 class FeatureChangeFilter(Transform):
 
+    _next_transform: Transform
     _delta_thresholds: dict[str, Any]
     _last_percent: Message
     _last_sent_n_steps_ago: int
 
     def __init__(
         self: Self,
-        next_tranform: Transform,
+        next_transform: Transform,
         delta_thresholds: dict[str, Any]
     ) -> None:
         self._next_transform = next_transform
