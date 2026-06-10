@@ -72,14 +72,16 @@ A Sensor Module is a data flow pipeline that begins with a `SensorObservation` a
 
 ![Sensor Module API](./0000_sensor_modules_as_transformation_pipeline/sensor_module_api.png)
 
+We use a generic `SensorModule` to minimize the amount of code and tests required to implement new functionality. The generic `SensorModule` requires a `TransformPipeline`, which is a series of `Transform`s that process and mutate a `(SensorObservation, Percept | None, list[Goal])` tuple. At the end of the transform pipeline, the contents of `(Percept | None, Collection[Goal])` is returned by the sensor module.
+
+A sensor module can thus be assembled via configuration. If new functionality is required, one creates and tests a new `Transform` and assembles it along with the already existing `Transform`s to instantiate a new type of sensor module.
+
 ## Implementation Details
 
-# TODO: Looks like Transforms need .reset() as part of their implementation, see FeatureChangeFilter for example
-
-Internally, the Sensor Module data pipeline is assembled from a series of transforms that implement the `sensor_module.Transform` protocol:
+Internally, the Sensor Module data pipeline is assembled from a series of transforms that implement the `sensor_module.RuntimeTransform` protocol.
 
 ```python
-class Transform(Protocol):
+class RuntimeTransform(Protocol):
     def __call__(
         self: Self,
         ctx: TransformContext,
@@ -99,6 +101,24 @@ class TransformContext:
     state: AgentState | None = None
     motor_only_step: bool = False
 ```
+
+Additionally, we have a `tbp.monty.experiment.sensor_module.ExperimentTransform` to support experimental use case where the experiment wants to reset all Monty internals between episodes and epochs. I think a less intrusive approach would be for the experiment to reconstruct Monty between each episode and epoch instead.
+
+```python
+class ExperimentTransform(Protocol):
+    def reset(self: Self) -> None: ...
+```
+
+Since we typically need to implement both protocols, we have the combined:
+
+```python
+class Transform(RuntimeTransform, ExperimentTransform, Protocol):
+    def reset(self: Self) -> None:
+        pass
+```
+
+The combined `Transform` protocol provides a default `reset()` implementation, as not all transforms can be reset.
+
 
 We define an `identity_transform` needed to "ground out" the transform pipeline:
 
@@ -121,11 +141,15 @@ TransformMiddleware = Callable[[Transform], Transform]
 class TransformPipeline(Transform):
 
     _transform: Transform
+    # _transforms are only retained for reset()
+    _transforms: list[Transform]
 
     def __init__(self: Self, transforms: Sequence[TransformMiddleware]) -> None:
+        self._transforms = []
         transform = identity_transform
         for next_transform in reversed(transforms):
             transform = next_transform(transform)
+            self._transforms.append(transform)
         self._transform = transform
 
     def __call__(
@@ -136,12 +160,16 @@ class TransformPipeline(Transform):
         goals: list[Goal],
     ) -> tuple[SensorObservation, Message | None, list[Goal]]:
         return self._transform(ctx, observation, percept, goals)
+
+    def reset(self: Self) -> None:
+        for transform in self._transforms:
+            transform.reset()
 ```
 
 With the above specifications and boilerplate in place, we can now author a generic `SensorModule`:
 
 ```python
-class SensorModule:
+class SensorModule(RuntimeSensorModule, ExperimentSensorModule):
 
     _agent_state: AgentState
     _goals: list[Goal]
@@ -186,7 +214,7 @@ class SensorModule:
             motor_only_step: Whether the current step is a motor-only step.
         """
         transform_ctx = TransformContext(ctx.rng, self._agent_state, motor_only_step)
-        _, percept, goals = self.transform_pipeline(transform_ctx, observation, None, [])
+        _, percept, goals = self._transform_pipeline(transform_ctx, observation, None, [])
         self._goals = goals
         return percept
 
@@ -199,6 +227,9 @@ class SensorModule:
             + qt.rotate_vectors(agent.rotation, sensor.position),
             rotation=agent.rotation * sensor.rotation,
         )
+
+    def reset(self: Self) -> None:
+        self._transform_pipeline.reset()
 
 ```
 
@@ -232,6 +263,9 @@ class MyTransform(Transform):
     ) -> (SensorObservation, Message | None, list[Goal]):
         # ...
         return self._next_transform(ctx, observation, percept, goals)
+
+    def reset(self: Self) -> None:
+        # override the default no-op reset if needed ...
 ```
 
 Note that it is possible to "early exit" out of the chain of transforms by not calling `self._next_transform`. For example:
@@ -577,7 +611,7 @@ class ObservationProcessor(Transform):
 
 ### Filters
 
-Filter transforms' main purpose is to filter. As an example, implementation of the `FeatureChangeFilter` as a `Transform` would look as follows:
+Filter transforms' main purpose is to filter. As an example, implementation of the `FeatureChangeFilter` as a `Transform` would look as follows. Note that we provide a non-default `reset()` method that resets the filter:
 
 ```python
 class FeatureChangeFilter(Transform):
@@ -598,7 +632,6 @@ class FeatureChangeFilter(Transform):
         self._last_sent_n_steps_ago = 0
 
     def reset(self):
-        """Reset buffer and is_exploring flag."""
         self._last_percept = None
 
     def _check_feature_change(self, percept: Message) -> bool:
@@ -951,3 +984,9 @@ sensor_modules:
 > is not a reason to accept the current or a future RFC; such notes should be
 > in the section on motivation or rationale in this or subsequent RFCs.
 > The section merely provides additional information.
+
+## Experiment could reconstruct Monty between each episode
+
+The generic Sensor Module approach described in this RFC works within the contemporary experimental framework limitations. That is, the contemporary experimental framework relies on much Monty internals having experiment-specific methods to facilitate resets and related experimental activity.
+
+One pervasive use case for experiment-specific methods throughout Monty is to reset all of Monty between each experimental episode and epoch, except for the models learned inside the learning modules. An alternative approach would be to reconstruct all of Monty between each episode and epoch. The only desired persistence between the episodes are the models learned inside the learning modules. If Monty could be instantiated from a snapshot containing only learning module memory, this would allow for removal of experimental code from within Monty.
