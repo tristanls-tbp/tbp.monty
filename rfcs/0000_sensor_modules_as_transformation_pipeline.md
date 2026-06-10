@@ -68,7 +68,7 @@ The faster we can create different kinds of sensor modules with minimal mistakes
 >
 > The section should return to the examples from the previous section and explain more fully how the detailed proposal makes those examples work.
 
-A Sensor Module is a data flow pipeline that begins with a `SensorObservation` and ends with an optional `Percept` and a (possibly empty) sequence of `Goal`s.
+A Sensor Module is a data flow pipeline that begins with a `SensorObservation` and ends with an optional `Percept` and a (possibly empty) collection of `Goal`s.
 
 ![Sensor Module API](./0000_sensor_modules_as_transformation_pipeline/sensor_module_api.png)
 
@@ -85,8 +85,8 @@ class Transform(Protocol):
         ctx: TransformContext,
         observation: SensorObservation,
         percept: Message | None,
-        goals: Sequence[Goal],
-    ) -> tuple[SensorObservation, Message | None, Sequence[Goal]]:
+        goals: list[Goal],
+    ) -> tuple[SensorObservation, Message | None, list[Goal]]:
         ...
 ```
 
@@ -107,8 +107,8 @@ def identity_transform(
     ctx: TransformContext,  # noqa: ARG002
     observation: SensorObservation,
     percept: Message | None,
-    goals: Sequence[Goal],
-) -> tuple[SensorObservation, Message | None, Sequence[Goal]]:
+    goals: list[Goal],
+) -> tuple[SensorObservation, Message | None, list[Goal]]:
     return observation, percept, goals
 ```
 
@@ -133,8 +133,8 @@ class TransformPipeline(Transform):
         ctx: TransformContext,
         observation: SensorObservation,
         percept: Message | None,
-        goals: Sequence[Goal],
-    ) -> tuple[SensorObservation, Message | None, Sequence[Goal]]:
+        goals: list[Goal],
+    ) -> tuple[SensorObservation, Message | None, list[Goal]]:
         return self._transform(ctx, observation, percept, goals)
 ```
 
@@ -168,7 +168,7 @@ class SensorModule:
     def sensor_module_id(self: Self) -> SensorModuleID:
         return self._sensor_module_id
 
-    def propose_goals(self: Self) -> Sequence[Goal]:
+    def propose_goals(self: Self) -> Collection[Goal]:
         """Return the goals proposed by this Sensor Module."""
         return self._goals
 
@@ -202,72 +202,7 @@ class SensorModule:
 
 ```
 
-## Configuration
-
-With the generic `SensorModule` available, all of the business logic is now declared in
-the configuration.
-
-```yaml
-sensor_modules:
-  - _target_: tbp.monty.sensor_modules.SensorModule
-    sensor_module_id: patch
-    sensor_id: patch
-    transform_pipeline:
-      _target_: tbp.monty.sensor_modules.TransformPipeline
-      transforms:
-        - _target_: tbp.monty.sensor_modules.transforms.DepthTo3DLocations
-          _partial_: true
-          sensor_id: patch
-          resolutions: [64, 64]
-          world_coord: true
-          zooms: 10.0
-          get_all_points: true
-          use_semantic_sensor: false
-          is_depth_clip_sensors: true
-        - _target_: tbp.monty.sensor_modules.transforms.MissingToMaxDepth
-          _partial_: true
-          max_depth: 1
-        - _target_: tbp.monty.sensor_modules.transforms.GaussianSmoothing
-          _partial_: true
-          sigma: 6
-          kernel_width: 8
-        - _target_: tbp.monty.sensor_modules.transforms.AddNoiseToRawDepthImage
-          _partial_: true
-          sigma: 4
-        - _target_: tbp.monty.sensor_modules.extractors.ObservationProcessor
-          _partial_: true
-          sensor_module_id: patch
-          features:
-            - rgba
-            - hsv
-            - pose_vectors
-            - principal_curvatures
-          pc1_is_pc2_threshold: 10
-        - _target_: tbp.monty.sensor_modules.transforms.MessageNoise
-          _partial_: true
-          noise_params:
-            features:
-              pose_vectors: 2 # rotate by random degrees along xyz
-              hsv: 0.1 # add gaussian noise with 0.1 std
-              principal_curvatures_log: 0.1
-              pose_fully_defined: 0.01 # flip bool in 1% of cases
-            location: 0.002 # add gaussian noise with 0.002 std
-        - _target_: tbp.monty.sensor_modules.filters.FeatureChangeFilter
-          _partial_: true
-          delta_thresholds:
-            on_object: 0
-            n_steps: 20
-            hsv:
-            - 0.1
-            - 0.1
-            - 0.1
-            pose_vectors: ${np.list_eval:[np.pi / 4, np.pi * 2, np.pi * 2]}
-            principal_curvatures_log:
-            - 2
-            - 2
-            distance: 0.01
-
-```
+It is worth highlighting in this implemenation how the type of the `Goal` collection is handled. Internally, each transform invocation receives a _mutable_ `list[Goal]` and returns a _mutable_ `list[Goal]`. This way, any transform in the chain can edit the collection of `Goal`s as required by the transform. Initially, the transform pipeline is handed an empty list `[]` and, at the end, the pipeline returns a `list[Goal]` to the sensor module, which is stored at `self._goals`. However, when the `Goal`s finally exit the sensor module via `propose_goals()`, they exit as a read-only `Collection[Goal]`.
 
 ## Creating a Transform
 
@@ -293,8 +228,8 @@ class MyTransform(Transform):
         ctx: TransformContext,
         observation: SensorObservation,
         percept: Message | None,
-        goals: Sequence[Goal],
-    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        goals: list[Goal],
+    ) -> (SensorObservation, Message | None, list[Goal]):
         # ...
         return self._next_transform(ctx, observation, percept, goals)
 ```
@@ -307,8 +242,8 @@ Note that it is possible to "early exit" out of the chain of transforms by not c
         ctx: TransformContext,
         observation: SensorObservation,
         percept: Message | None,
-        goals: Sequence[Goal],
-    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        goals: list[Goal],
+    ) -> (SensorObservation, Message | None, list[Goal]):
         # ...
         return ctx, observation, percept, goals
 ```
@@ -341,8 +276,8 @@ class MissingToMaxDepth(Transform):
         ctx: TransformContext,
         observation: SensorObservation,
         percept: Message | None,
-        goals: Sequence[Goal],
-    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        goals: list[Goal],
+    ) -> (SensorObservation, Message | None, list[Goal]):
         m = np.where(observation["depth"] <= self._threshold)
         observation["depth"][m] = self._max_depth
         return self._next_transform(ctx, observation, percept, goals)
@@ -442,8 +377,8 @@ class ObservationProcessor(Transform):
         ctx: TransformContext,
         observation: SensorObservation,
         percept: Message | None,
-        goals: Sequence[Goal],
-    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        goals: list[Goal],
+    ) -> (SensorObservation, Message | None, list[Goal]):
         if percept is not None:
             raise PerceptIsNotNone
 
@@ -741,8 +676,8 @@ class FeatureChangeFilter(Transform):
         ctx: TransformContext,
         observation: SensorObservation,
         percept: Message | None,
-        goals: Sequence[Goal],
-    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        goals: list[Goal],
+    ) -> (SensorObservation, Message | None, list[Goal]):
         percept = self._filter(percept)
         return self._next_transform(ctx, observation, percept, goals)
 
@@ -816,8 +751,8 @@ class Salience(Transform):
         ctx: TransformContext,
         observation: SensorObservation,
         percept: Message | None,
-        goals: Sequence[Goal],
-    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        goals: list[Goal],
+    ) -> (SensorObservation, Message | None, list[Goal]):
         salience_map = self._salience_strategy(
             ctx=ctx, rgba=observation["rgba"], depth=observation["depth"]
         )
@@ -886,6 +821,73 @@ class Salience(Transform):
     def reset(self) -> None:
         self._return_inhibitor.reset()
         self._snapshot_telemetry.reset()
+```
+
+## Configuration
+
+With the generic `SensorModule` available, all of the business logic is now declared in
+the configuration.
+
+```yaml
+sensor_modules:
+  - _target_: tbp.monty.sensor_modules.SensorModule
+    sensor_module_id: patch
+    sensor_id: patch
+    transform_pipeline:
+      _target_: tbp.monty.sensor_modules.TransformPipeline
+      transforms:
+        - _target_: tbp.monty.sensor_modules.transforms.DepthTo3DLocations
+          _partial_: true
+          sensor_id: patch
+          resolutions: [64, 64]
+          world_coord: true
+          zooms: 10.0
+          get_all_points: true
+          use_semantic_sensor: false
+          is_depth_clip_sensors: true
+        - _target_: tbp.monty.sensor_modules.transforms.MissingToMaxDepth
+          _partial_: true
+          max_depth: 1
+        - _target_: tbp.monty.sensor_modules.transforms.GaussianSmoothing
+          _partial_: true
+          sigma: 6
+          kernel_width: 8
+        - _target_: tbp.monty.sensor_modules.transforms.AddNoiseToRawDepthImage
+          _partial_: true
+          sigma: 4
+        - _target_: tbp.monty.sensor_modules.extractors.ObservationProcessor
+          _partial_: true
+          sensor_module_id: patch
+          features:
+            - rgba
+            - hsv
+            - pose_vectors
+            - principal_curvatures
+          pc1_is_pc2_threshold: 10
+        - _target_: tbp.monty.sensor_modules.transforms.MessageNoise
+          _partial_: true
+          noise_params:
+            features:
+              pose_vectors: 2 # rotate by random degrees along xyz
+              hsv: 0.1 # add gaussian noise with 0.1 std
+              principal_curvatures_log: 0.1
+              pose_fully_defined: 0.01 # flip bool in 1% of cases
+            location: 0.002 # add gaussian noise with 0.002 std
+        - _target_: tbp.monty.sensor_modules.filters.FeatureChangeFilter
+          _partial_: true
+          delta_thresholds:
+            on_object: 0
+            n_steps: 20
+            hsv:
+            - 0.1
+            - 0.1
+            - 0.1
+            pose_vectors: ${np.list_eval:[np.pi / 4, np.pi * 2, np.pi * 2]}
+            principal_curvatures_log:
+            - 2
+            - 2
+            distance: 0.01
+
 ```
 
 # Drawbacks
