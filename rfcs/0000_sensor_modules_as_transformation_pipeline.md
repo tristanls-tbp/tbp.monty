@@ -828,7 +828,7 @@ class Salience(Transform):
         )
         salience = self._weight_salience(ctx, on_object.salience, ior_weights)
 
-        goals.append(
+        goals.extend([
             Goal(
                 location=on_object.locations[i],
                 morphological_features=None,
@@ -840,7 +840,7 @@ class Salience(Transform):
                 goal_tolerances=None,
             )
             for i in range(len(on_object.locations))
-        )
+        ])
 
         return self._next_transform(ctx, observation, percept, goals)
 
