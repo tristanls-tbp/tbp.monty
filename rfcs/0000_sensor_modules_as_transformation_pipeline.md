@@ -74,6 +74,8 @@ A Sensor Module is a data flow pipeline that begins with a `SensorObservation` a
 
 ## Implementation Details
 
+# TODO: Looks like Transforms need .reset() as part of their implementation, see FeatureChangeFilter for example
+
 Internally, the Sensor Module data pipeline is assembled from a series of transforms that implement the `sensor_module.Transform` protocol:
 
 ```python
@@ -297,7 +299,21 @@ class MyTransform(Transform):
         return self._next_transform(ctx, observation, percept, goals)
 ```
 
-Note that it is possible to "early exit" out of the
+Note that it is possible to "early exit" out of the chain of transforms by not calling `self._next_transform`. For example:
+
+```python
+    def __call__(
+        self: Self,
+        ctx: TransformContext,
+        observation: SensorObservation,
+        percept: Message | None,
+        goals: Sequence[Goal],
+    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        # ...
+        return ctx, observation, percept, goals
+```
+
+While it is possible, as of this writing there are no specific use cases for this feature.
 
 ### Transforms
 
@@ -330,6 +346,545 @@ class MissingToMaxDepth(Transform):
         m = np.where(observation["depth"] <= self._threshold)
         observation["depth"][m] = self._max_depth
         return self._next_transform(ctx, observation, percept, goals)
+```
+
+### Feature Extractors
+
+The main feature extractor is the `ObservationProcessor`. Rewriting the current version of it as a `Transform` would result in the example below. Note that the main change is the addition of `_next_transform` instance attribute and ending the `__call__` implementation with `return self._next_transform(ctx, observation, percept, goals)
+
+```python
+class PerceptIsNotNone(RuntimeError):
+    """Raised when percept should be None but isn't."""
+
+class ObservationProcessor(Transform):
+    """Processes SensorObservations into Cortical Messages."""
+
+    CURVATURE_FEATURES: ClassVar[list[str]] = [
+        "principal_curvatures",
+        "principal_curvatures_log",
+        "gaussian_curvature",
+        "mean_curvature",
+        "gaussian_curvature_sc",
+        "mean_curvature_sc",
+        "curvature_for_TM",
+    ]
+
+    POSSIBLE_FEATURES: ClassVar[list[str]] = [
+        "on_object",
+        "object_coverage",
+        "min_depth",
+        "mean_depth",
+        "rgba",
+        "hsv",
+        "pose_vectors",
+        "principal_curvatures",
+        "principal_curvatures_log",
+        "pose_fully_defined",
+        "gaussian_curvature",
+        "mean_curvature",
+        "gaussian_curvature_sc",
+        "mean_curvature_sc",
+        "curvature_for_TM",
+        "coords_for_TM",
+        "edge_strength",
+        "coherence",
+    ]
+
+    _next_transform: Transform
+    _features: list[str]
+    _is_surface_sm: bool
+    _pc1_is_pc2_threshold: int
+    _sensor_module_id: str
+    _surface_normal_method: SurfaceNormalMethod
+    _weight_curvature: bool
+
+    def __init__(
+        self,
+        next_transform: Transform,
+        features: list[str],
+        sensor_module_id: str,
+        pc1_is_pc2_threshold=10,
+        surface_normal_method=SurfaceNormalMethod.TLS,
+        weight_curvature=True,
+        is_surface_sm=False,
+    ) -> None:
+        """Initializes the ObservationProcessor.
+
+        Args:
+            next_transform: The next transform to invoke in the transform pipeline.
+            features: List of features to extract.
+            pc1_is_pc2_threshold: Maximum difference between pc1 and pc2 to be
+                classified as being roughly the same (ignore curvature directions).
+                Defaults to 10.
+            sensor_module_id: ID of sensor module.
+            surface_normal_method: Method to use for surface normal extraction. Defaults
+              to TLS.
+            weight_curvature: Whether to use the weighted implementation for principal
+                curvature extraction (True) or unweighted (False). Defaults to True.
+            is_surface_sm: Surface SMs do not require that the central pixel is
+                "on object" in order to process the observation (i.e., extract
+                features). Defaults to False.
+        """
+        for feature in features:
+            assert feature in self.POSSIBLE_FEATURES, (
+                f"{feature} not part of {self.POSSIBLE_FEATURES}"
+            )
+        self._next_transform = next_transform
+        self._features = features
+        self._is_surface_sm = is_surface_sm
+        self._pc1_is_pc2_threshold = pc1_is_pc2_threshold
+        self._sensor_module_id = sensor_module_id
+        self._surface_normal_method = surface_normal_method
+        self._weight_curvature = weight_curvature
+
+    def __call__(
+        self: Self,
+        ctx: TransformContext,
+        observation: SensorObservation,
+        percept: Message | None,
+        goals: Sequence[Goal],
+    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        if percept is not None:
+            raise PerceptIsNotNone
+
+        obs_3d = observation["semantic_3d"]
+        sensor_frame_data = observation["sensor_frame_data"]
+        cam_to_world = observation["cam_to_world"]
+        rgba_feat = observation["rgba"]
+        depth_feat = (
+            observation["depth"]
+            .reshape(observation["depth"].size, 1)
+            .astype(np.float64)
+        )
+        # Assuming squared patches
+        center_row_col = rgba_feat.shape[0] // 2
+        # Calculate center ID for flat semantic obs
+        obs_dim = int(np.sqrt(obs_3d.shape[0]))
+        half_obs_dim = obs_dim // 2
+        center_id = half_obs_dim + obs_dim * half_obs_dim
+        # Extract all specified features
+        features = {}
+        if "object_coverage" in self._features:
+            # Last dimension is semantic ID (integer >0 if on any object)
+            features["object_coverage"] = sum(obs_3d[:, 3] > 0) / len(obs_3d[:, 3])
+            assert features["object_coverage"] <= 1.0, (
+                "Coverage cannot be greater than 100%"
+            )
+
+        x, y, z, semantic_id = obs_3d[center_id]
+        on_object = semantic_id > 0
+        if on_object or (self._is_surface_sm and features["object_coverage"] > 0):
+            (
+                features,
+                morphological_features,
+                valid_signals,
+            ) = self._extract_and_add_features(
+                features,
+                obs_3d,
+                rgba_feat,
+                depth_feat,
+                center_id,
+                center_row_col,
+                sensor_frame_data,
+                cam_to_world,
+            )
+        else:
+            valid_signals = False
+            morphological_features = {}
+
+        if "on_object" in self._features:
+            morphological_features["on_object"] = float(on_object)
+
+        # Sensor module returns features at a location in the form of a Message class.
+        # use_state is a bool indicating whether the input is "interesting",
+        # which indicates that it merits processing by the learning module; by default
+        # it will always be True so long as the surface normal and principal curvature
+        # directions were valid; certain SMs and policies used separately can also set
+        # it to False under appropriate conditions
+
+        percept = Message(
+            location=np.array([x, y, z]),
+            morphological_features=morphological_features,
+            non_morphological_features=features,
+            confidence=1.0,
+            use_state=on_object and valid_signals,
+            sender_id=self._sensor_module_id,
+            sender_type="SM",
+        )
+        # This is just for logging! Do not use _ attributes for matching
+        percept._semantic_id = semantic_id
+
+        return self._next_transform(ctx, observation, percept, goals)
+
+    def _extract_and_add_features(
+        self,
+        features: dict[str, Any],
+        obs_3d: np.ndarray,
+        rgba_feat: np.ndarray,
+        depth_feat: np.ndarray,
+        center_id: int,
+        center_row_col: int,
+        sensor_frame_data: np.ndarray,
+        cam_to_world: np.ndarray,
+    ) -> tuple[dict[str, Any], dict[str, Any], bool]:
+        """Extract features configured for extraction from sensor patch.
+
+        Returns the features in the patch, and True if the surface normal
+        and principal curvature directions are well-defined.
+
+        Returns:
+            features: The features in the patch.
+            morphological_features: ?
+            valid_signals: True if the surface normal and principal curvature
+                directions are well-defined.
+        """
+        # ------------ Extract Morphological Features ------------
+        # Get surface normal for graph matching with features
+        surface_normal, valid_sn = self._get_surface_normals(
+            obs_3d, sensor_frame_data, center_id, cam_to_world
+        )
+
+        k1, k2, dir1, dir2, valid_pc = principal_curvatures(
+            obs_3d, center_id, surface_normal, weighted=self._weight_curvature
+        )
+        # TODO: test using log curvatures instead
+        if np.abs(k1 - k2) < self._pc1_is_pc2_threshold:
+            pose_fully_defined = False
+        else:
+            pose_fully_defined = True
+
+        morphological_features: dict[str, Any] = {
+            "pose_vectors": np.vstack(
+                [
+                    surface_normal,
+                    dir1,
+                    dir2,
+                ]
+            ),
+            "pose_fully_defined": pose_fully_defined,
+        }
+        # ---------- Extract Optional, Non-Morphological Features ----------
+        if "rgba" in self._features:
+            features["rgba"] = rgba_feat[center_row_col, center_row_col]
+        if "min_depth" in self._features:
+            features["min_depth"] = np.min(depth_feat[obs_3d[:, 3] != 0])
+        if "mean_depth" in self._features:
+            features["mean_depth"] = np.mean(depth_feat[obs_3d[:, 3] != 0])
+        if "hsv" in self._features:
+            rgba = rgba_feat[center_row_col, center_row_col]
+            hsv = rgb2hsv(rgba[:3])
+            features["hsv"] = hsv
+
+        # Note we only determine curvature if we could determine a valid surface normal
+        if any(feat in self.CURVATURE_FEATURES for feat in self._features) and valid_sn:
+            if valid_pc:
+                # Only process the below features if the principal curvature was valid,
+                # and therefore we have a defined k1, k2 etc.
+                if "principal_curvatures" in self._features:
+                    features["principal_curvatures"] = np.array([k1, k2])
+
+                if "principal_curvatures_log" in self._features:
+                    features["principal_curvatures_log"] = log_sign(np.array([k1, k2]))
+
+                if "gaussian_curvature" in self._features:
+                    features["gaussian_curvature"] = k1 * k2
+
+                if "mean_curvature" in self._features:
+                    features["mean_curvature"] = (k1 + k2) / 2
+
+                if "gaussian_curvature_sc" in self._features:
+                    gc = k1 * k2
+                    gc_scaled_clipped = scale_clip(gc, 4096)
+                    features["gaussian_curvature_sc"] = gc_scaled_clipped
+
+                if "mean_curvature_sc" in self._features:
+                    mc = (k1 + k2) / 2
+                    mc_scaled_clipped = scale_clip(mc, 256)
+                    features["mean_curvature_sc"] = mc_scaled_clipped
+        else:
+            # Flag that PC directions are non-meaningful for e.g. downstream motor
+            # policies
+            features["pose_fully_defined"] = False
+
+        valid_signals = valid_sn and valid_pc
+        if not valid_signals:
+            logger.debug("Either the surface-normal or pc-directions were ill-defined")
+
+        return features, morphological_features, valid_signals
+
+    def _get_surface_normals(
+        self,
+        obs_3d: np.ndarray,
+        sensor_frame_data: np.ndarray,
+        center_id: int,
+        cam_to_world: np.ndarray,
+    ) -> tuple[np.ndarray, bool]:
+        if self._surface_normal_method == SurfaceNormalMethod.TLS:
+            surface_normal, valid_sn = surface_normal_total_least_squares(
+                obs_3d, center_id, cam_to_world[:3, 2]
+            )
+        elif self._surface_normal_method == SurfaceNormalMethod.OLS:
+            surface_normal, valid_sn = surface_normal_ordinary_least_squares(
+                sensor_frame_data, cam_to_world, center_id
+            )
+        elif self._surface_normal_method == SurfaceNormalMethod.NAIVE:
+            surface_normal, valid_sn = surface_normal_naive(
+                obs_3d, patch_radius_frac=2.5
+            )
+        else:
+            raise ValueError(
+                f"surface_normal_method must be in [{SurfaceNormalMethod.TLS} (default)"
+                f", {SurfaceNormalMethod.OLS}, {SurfaceNormalMethod.NAIVE}]."
+            )
+
+        return surface_normal, valid_sn
+```
+
+### Filters
+
+Filter transforms' main purpose is to filter. As an example, implementation of the `FeatureChangeFilter` as a `Transform` would look as follows:
+
+```python
+class FeatureChangeFilter(Transform):
+
+    _delta_thresholds: dict[str, Any]
+    _last_percent: Message
+    _last_sent_n_steps_ago: int
+
+    def __init__(
+        self: Self,
+        next_tranform: Transform,
+        delta_thresholds: dict[str, Any]
+    ) -> None:
+        self._next_transform = next_transform
+        self._delta_thresholds = delta_thresholds
+        self._last_percept = None
+        self._last_sent_n_steps_ago = 0
+
+    def reset(self):
+        """Reset buffer and is_exploring flag."""
+        self._last_percept = None
+
+    def _check_feature_change(self, percept: Message) -> bool:
+        """Check feature change between last transmitted observation.
+
+        Args:
+            percept: Percept to check for feature change.
+
+        Returns:
+            True if the features have changed significantly.
+        """
+        if not percept.get_on_object():
+            # Even for the surface-agent sensor, do not return a feature for LM
+            # processing that is not on the object
+            logger.debug("No new point because not on object")
+            return False
+
+        for feature in self._delta_thresholds:
+            if feature not in ["n_steps", "distance"]:
+                last_feat = self._last_percept.get_feature_by_name(feature)
+                current_feat = percept.get_feature_by_name(feature)
+
+            if feature == "n_steps":
+                if self._last_sent_n_steps_ago >= self._delta_thresholds[feature]:
+                    logger.debug(f"new point because of {feature}")
+                    return True
+            elif feature == "distance":
+                distance = np.linalg.norm(
+                    np.array(self._last_percept.location) - np.array(percept.location)
+                )
+
+                if distance > self._delta_thresholds[feature]:
+                    logger.debug(f"new point because of {feature}")
+                    return True
+
+            elif feature == "hsv":
+                last_hue = last_feat[0]
+                current_hue = current_feat[0]
+                hue_d = min(
+                    abs(current_hue - last_hue), 1 - abs(current_hue - last_hue)
+                )
+                if hue_d > self._delta_thresholds[feature][0]:
+                    return True
+                delta_change_sv = np.abs(last_feat[1:] - current_feat[1:])
+                for i, dc in enumerate(delta_change_sv):
+                    if dc > self._delta_thresholds[feature][i + 1]:
+                        logger.debug(f"new point because of {feature} - {i + 1}")
+                        return True
+
+            elif feature == "pose_vectors":
+                angle_between = get_angle(
+                    last_feat[0],
+                    current_feat[0],
+                )
+                if angle_between >= self._delta_thresholds[feature][0]:
+                    logger.debug(
+                        f"new point because of {feature} angle : {angle_between}"
+                    )
+                    return True
+
+            else:
+                delta_change = np.abs(last_feat - current_feat)
+                if len(delta_change.shape) > 0:
+                    for i, dc in enumerate(delta_change):
+                        if dc > self._delta_thresholds[feature][i]:
+                            logger.debug(f"new point because of {feature} - {dc}")
+                            return True
+                elif delta_change > self._delta_thresholds[feature]:
+                    logger.debug(f"new point because of {feature}")
+                    return True
+        return False
+
+    def __call__(
+        self: Self,
+        ctx: TransformContext,
+        observation: SensorObservation,
+        percept: Message | None,
+        goals: Sequence[Goal],
+    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        percept = self._filter(percept)
+        return self._next_transform(ctx, observation, percept, goals)
+
+    def _filter(self, percept: Message) -> Message:
+        """Sets `percept.use_state` to False if features haven't changed significantly.
+
+        Args:
+            percept: Percept to check for feature change.
+
+        Returns:
+            Percept with `percept.use_state` set to False if features haven't
+            changed significantly.
+        """
+        if not percept.use_state:
+            # If we already know the features are uninteresting (e.g. invalid surface
+            # normal due to <3/4 of the object in view, or motor only-step), then
+            # don't bother with the below
+            return percept
+
+        if not self._last_percept:  # first step
+            self._last_percept = percept  # type: ignore[assignment]
+            self._last_sent_n_steps_ago = 0
+            return percept
+
+        significant_feature_change = self._check_feature_change(percept)
+
+        # Save bool which will tell us whether to pass the information to LMs
+        percept.use_state = significant_feature_change
+
+        if significant_feature_change:
+            # As per original implementation : only update the "last feature" when a
+            # significant change has taken place
+            self._last_percept = percept
+            self._last_sent_n_steps_ago = 0
+        else:
+            self._last_sent_n_steps_ago += 1
+
+        return percept
+```
+
+### Goal Generators
+
+Some Sensor Module transforms may generate goals. For example, implementing the `SalienceSM` goal generation as a `Transform` would look something like:
+
+```python
+class Salience(Transform):
+
+    _next_transform: Transform
+    _sensor_module_id: str
+    _salience_strategy: SalienceStrategy
+    _return_inhibitor: ReturnInhibitor
+
+    def __init__(
+        self: Self,
+        next_transform: Transform,
+        sensor_module_id: str,
+        salience_strategy: SalienceStrategy | None = None,
+        return_inhibitor: ReturnInhibitor | None = None,
+    ) -> None:
+        self._next_transform = next_transform
+        self._sensor_module_id = sensor_module_id
+        self._salience_strategy = (
+            Uniform() if salience_strategy is None else salience_strategy
+        )
+        self._return_inhibitor = (
+            ReturnInhibitor() if return_inhibitor is None else return_inhibitor
+        )
+
+    def __call__(
+        self: Self,
+        ctx: TransformContext,
+        observation: SensorObservation,
+        percept: Message | None,
+        goals: Sequence[Goal],
+    ) -> (SensorObservation, Message | None, Sequence[Goal]):
+        salience_map = self._salience_strategy(
+            ctx=ctx, rgba=observation["rgba"], depth=observation["depth"]
+        )
+
+        on_object = on_object_observation(observation, salience_map)
+        ior_weights = self._return_inhibitor(
+            on_object.center_location, on_object.locations
+        )
+        salience = self._weight_salience(ctx, on_object.salience, ior_weights)
+
+        goals.append(
+            Goal(
+                location=on_object.locations[i],
+                morphological_features=None,
+                non_morphological_features=None,
+                confidence=salience[i],
+                use_state=True,
+                sender_id=self._sensor_module_id,
+                sender_type="SM",
+                goal_tolerances=None,
+            )
+            for i in range(len(on_object.locations))
+        )
+
+        return self._next_transform(ctx, observation, percept, goals)
+
+    def _weight_salience(
+        self,
+        ctx: RuntimeContext,
+        salience: np.ndarray,
+        ior_weights: np.ndarray,
+    ) -> np.ndarray:
+        weighted_salience = self._decay_salience(salience, ior_weights)
+
+        weighted_salience = self._randomize_salience(ctx, weighted_salience)
+
+        return self._normalize_salience(weighted_salience)
+
+    def _decay_salience(
+        self, salience: np.ndarray, ior_weights: np.ndarray
+    ) -> np.ndarray:
+        decay_factor = 0.75
+        return salience - decay_factor * ior_weights
+
+    def _randomize_salience(
+        self, ctx: RuntimeContext, weighted_salience: np.ndarray
+    ) -> np.ndarray:
+        randomness_factor = 0.05
+        weighted_salience += ctx.rng.normal(
+            loc=0, scale=randomness_factor, size=weighted_salience.shape[0]
+        )
+        return weighted_salience
+
+    def _normalize_salience(self, weighted_salience: np.ndarray) -> np.ndarray:
+        if weighted_salience.size == 0:
+            return weighted_salience
+
+        min_ = weighted_salience.min()
+        max_ = weighted_salience.max()
+        scale = max_ - min_
+        if np.isclose(scale, 0):
+            return np.clip(weighted_salience, 0, 1)
+
+        return (weighted_salience - min_) / scale
+
+    def reset(self) -> None:
+        self._return_inhibitor.reset()
+        self._snapshot_telemetry.reset()
 ```
 
 # Drawbacks
