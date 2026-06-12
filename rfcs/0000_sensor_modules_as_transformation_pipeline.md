@@ -35,7 +35,7 @@ Writing bespoke sensor module implementations was toilsome, especially if functi
 
 ## Reusable Components
 
-Given the high-level API along with the general transform domains, it ought to be possible to design sensor modules as a data flow pipeline of reusable componetns, such that a new sensor module can be created entirely via configuration. Any functionality that does not exist, ought to be written in a generic way that can later be reused by a different sensor module. This way, new functionality is written once, and reused multiple times.
+Given the high-level API along with the general transform domains, it ought to be possible to design sensor modules as a data flow pipeline of reusable components, such that a new sensor module can be created entirely via configuration. Any functionality that does not exist, ought to be written in a generic way that can later be reused by a different sensor module. This way, new functionality is written once, and reused multiple times.
 
 ## Faster Research
 
@@ -210,7 +210,7 @@ class SensorModule(RuntimeSensorModule, ExperimentSensorModule):
 
 ```
 
-It is worth highlighting in this implemenation how the type of the `Goal` collection is handled. Internally, each transform invocation receives a _mutable_ `list[Goal]` and returns a _mutable_ `list[Goal]`. This way, any transform in the chain can edit the collection of `Goal`s as required by the transform. Initially, the transform pipeline is handed an empty list `[]` and, at the end, the pipeline returns a `list[Goal]` to the sensor module, which is stored at `self._goals`. However, when the `Goal`s finally exit the sensor module via `propose_goals()`, they exit as a read-only `Collection[Goal]`.
+It is worth highlighting in this implementation how the type of the `Goal` collection is handled. Internally, each transform invocation receives a _mutable_ `list[Goal]` and returns a _mutable_ `list[Goal]`. This way, any transform in the chain can edit the collection of `Goal`s as required by the transform. Initially, the transform pipeline is handed an empty list `[]` and, at the end, the pipeline returns a `list[Goal]` to the sensor module, which is stored at `self._goals`. However, when the `Goal`s finally exit the sensor module via `propose_goals()`, they exit as a read-only `Collection[Goal]`.
 
 ## Creating a Transform
 
@@ -908,7 +908,7 @@ Transferring more of the sensor module "business logic" to configuration results
 
 ## Verbosity
 
-While it is almost pleasant to read a single sensor module configuration layed out as a pipeline of transforms, this will get old when we have many sensor modules, especially if the configuration is repetitive. Hydra is uniquely terrible at allowing us to reuse portions of lists in a configuration. The general rule is that, when Hydra combines configuration fragments, objects are composed/combined, whereas lists are replaced in their entirety. We will likely have to handle this by creating some bespoke resolves that reduce the toil of repeating a configuration over and over again. Note that this issue is not unique due to the changes in this RFC, but also exists (or will exist after some changes) for specifying multiple learning modules.
+While it is almost pleasant to read a single sensor module configuration laid out as a pipeline of transforms, this will get old when we have many sensor modules, especially if the configuration is repetitive. Hydra is uniquely terrible at allowing us to reuse portions of lists in a configuration. The general rule is that, when Hydra combines configuration fragments, objects are composed/combined, whereas lists are replaced in their entirety. We will likely have to handle this by creating some bespoke resolves that reduce the toil of repeating a configuration over and over again. Note that this issue is not unique due to the changes in this RFC, but also exists (or will exist after some changes) for specifying multiple learning modules.
 
 ## Positioning Procedures need their own transforms
 
@@ -916,7 +916,7 @@ Prior to the implementation of this RFC, the `PositioningProcedure`s took advant
 
 # Rationale and alternatives
 
-The main rationale behind this design is that it is a well excercised industry method of handling configurable and flexible data-plane-like computation. In essence, this RFC implements the [Chain of Responsibility behavioral pattern](https://refactoring.guru/design-patterns/chain-of-responsibility), also known as middleware. The configurable and flexible aspects of the solution are appealing from research perspective. Reusing existing functionality and only authoring truly new functionality should speed up the research feedback cycle. Similarly, reusing existing functionality and only authoring truly new functionality improves engineering testing and maintenance. Resuing already tested components is simpler than creating new ones. There is also less code to maintain.
+The main rationale behind this design is that it is a well exercised industry method of handling configurable and flexible data-plane-like computation. In essence, this RFC implements the [Chain of Responsibility behavioral pattern](https://refactoring.guru/design-patterns/chain-of-responsibility), also known as middleware. The configurable and flexible aspects of the solution are appealing from research perspective. Reusing existing functionality and only authoring truly new functionality should speed up the research feedback cycle. Similarly, reusing existing functionality and only authoring truly new functionality improves engineering testing and maintenance. Reusing already tested components is simpler than creating new ones. There is also less code to maintain.
 
 There were no other designs considered. This RFC originated from pattern matching the current state of sensor module architecture against an existing industry pattern that should result in improvements.
 
@@ -924,7 +924,7 @@ There were no other designs considered. This RFC originated from pattern matchin
 
 If we do not proceed with this RFC, the internals of every new sensor module can still be reused as components. When adding a new sensor module, even when reusing existing components, a new sensor module class will need to be created in order to explicitly arrange the data flow between components specific to the new sensor module.
 
-Without the imposed `Transform` structure, new sensor module functionality may not be immediately reusable. That is, when a new sensor module is created, it does not need to create reusable components. The work to componetize for reuse would likely be done by a follow-on contributor that wanted to reuse functionality in their own sensor module. Additionally, what can be reused may not be as clear to follow-on contributors as looking at a well-defined `Transform` class.
+Without the imposed `Transform` structure, new sensor module functionality may not be immediately reusable. That is, when a new sensor module is created, it does not need to create reusable components. The work to componentize for reuse would likely be done by a follow-on contributor that wanted to reuse functionality in their own sensor module. Additionally, what can be reused may not be as clear to follow-on contributors as looking at a well-defined `Transform` class.
 
 # Prior art and references
 
