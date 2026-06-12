@@ -220,3 +220,4 @@
 \b[Oo]pponency\b
 \b[Mm]iddleware\b
 \bExcalidraw\b
+\b[Cc]omponentize\b
