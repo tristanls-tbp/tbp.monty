@@ -47,7 +47,7 @@ A Sensor Module is a data flow pipeline that begins with a `SensorObservation` a
 
 ![Sensor Module API](./0000_sensor_modules_as_transformation_pipeline/sensor_module_api.png)
 
-We use a generic `SensorModule` to minimize the amount of code and tests required to implement new functionality. The generic `SensorModule` requires a `TransformPipeline`, which is a series of `Transform`s that process and mutate a `(SensorObservation, Percept | None, list[Goal])` tuple. At the end of the transform pipeline, the contents of `(Percept | None, Collection[Goal])` is returned by the sensor module.
+We use a generic `SensorModule` to minimize the amount of code and tests required to implement new functionality. The generic `SensorModule` requires a `TransformPipeline`, which is a series of `Transform`s that process and mutate a `Payload` consisting of a `SensorObservation`, a `Percept` or `None`, and a `list[Goal]`. At the end of the transform pipeline, the contents of `(Percept | None, Collection[Goal])` is returned by the sensor module.
 
 ![Sensor Module Implementation Overview](./0000_sensor_modules_as_transformation_pipeline/implementation_overview.png)
 
@@ -59,19 +59,19 @@ Internally, the Sensor Module data pipeline is assembled from a series of transf
 
 ```python
 class RuntimeTransform(Protocol):
-    def __call__(
-        self: Self,
-        ctx: TransformContext,
-        observation: SensorObservation,
-        percept: Message | None,
-        goals: list[Goal],
-    ) -> tuple[SensorObservation, Message | None, list[Goal]]:
+    def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
         ...
 ```
 
-Where the `TransformContext` is:
+Where `Payload` and `TransformContext` are:
 
 ```python
+@dataclass
+class Payload:
+    observation: SensorObservation,
+    percept: Message | None,
+    goals: list[Goal]
+
 @dataclass
 class TransformContext:
     rng: np.random.RandomState
@@ -96,17 +96,14 @@ class Transform(RuntimeTransform, ExperimentTransform, Protocol):
 
 The combined `Transform` protocol provides a default `reset()` implementation, as not all transforms can be reset.
 
-
 We define an `identity_transform` needed to "ground out" the transform pipeline:
 
 ```python
 def identity_transform(
     ctx: TransformContext,  # noqa: ARG002
-    observation: SensorObservation,
-    percept: Message | None,
-    goals: list[Goal],
-) -> tuple[SensorObservation, Message | None, list[Goal]]:
-    return observation, percept, goals
+    payload: Payload,
+) -> Payload:
+    return payload
 ```
 
 In order to fully assemble a Sensor Module, two additional boilerplate components are needed, the `TransformMiddleware` and the `TransformPipeline`:
@@ -129,14 +126,8 @@ class TransformPipeline(Transform):
             self._transforms.append(transform)
         self._transform = transform
 
-    def __call__(
-        self: Self,
-        ctx: TransformContext,
-        observation: SensorObservation,
-        percept: Message | None,
-        goals: list[Goal],
-    ) -> tuple[SensorObservation, Message | None, list[Goal]]:
-        return self._transform(ctx, observation, percept, goals)
+    def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
+        return self._transform(ctx, payload)
 
     def reset(self: Self) -> None:
         for transform in self._transforms:
@@ -191,9 +182,10 @@ class SensorModule(RuntimeSensorModule, ExperimentSensorModule):
             motor_only_step: Whether the current step is a motor-only step.
         """
         transform_ctx = TransformContext(ctx.rng, self._agent_state, motor_only_step)
-        _, percept, goals = self._transform_pipeline(transform_ctx, observation, None, [])
-        self._goals = goals
-        return percept
+        payload = Payload(observation, None, [])
+        payload = self._transform_pipeline(transform_ctx, payload)
+        self._goals = payload.goals
+        return payload.percept
 
     def update_state(self: Self, agent: AgentState) -> None:
         """Update information about the sensor's location and rotation."""
@@ -210,7 +202,7 @@ class SensorModule(RuntimeSensorModule, ExperimentSensorModule):
 
 ```
 
-It is worth highlighting in this implementation how the type of the `Goal` collection is handled. Internally, each transform invocation receives a _mutable_ `list[Goal]` and returns a _mutable_ `list[Goal]`. This way, any transform in the chain can edit the collection of `Goal`s as required by the transform. Initially, the transform pipeline is handed an empty list `[]` and, at the end, the pipeline returns a `list[Goal]` to the sensor module, which is stored at `self._goals`. However, when the `Goal`s finally exit the sensor module via `propose_goals()`, they exit as a read-only `Collection[Goal]`.
+It is worth highlighting in this implementation how the type of the `Goal` collection is handled. Internally, each transform invocation receives a payload with a _mutable_ `list[Goal]` and returns a payload with a _mutable_ `list[Goal]`. This way, any transform in the chain can edit the collection of `Goal`s as required by the transform. Initially, the transform pipeline is handed a payload with an empty list `[]` and, at the end, the pipeline returns a payload with a possibly non-empty `list[Goal]` to the sensor module, which is stored at `self._goals`. However, when the `Goal`s finally exit the sensor module via `propose_goals()`, they exit as a read-only `Collection[Goal]`.
 
 ## Creating a Transform
 
@@ -231,13 +223,7 @@ class MyTransform(Transform):
         self._next_transform = next_transform
         # ...
 
-    def __call__(
-        self: Self,
-        ctx: TransformContext,
-        observation: SensorObservation,
-        percept: Message | None,
-        goals: list[Goal],
-    ) -> (SensorObservation, Message | None, list[Goal]):
+    def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
         # ...
         return self._next_transform(ctx, observation, percept, goals)
 
@@ -248,13 +234,7 @@ class MyTransform(Transform):
 Note that it is possible to "early exit" out of the chain of transforms by not calling `self._next_transform`. For example:
 
 ```python
-    def __call__(
-        self: Self,
-        ctx: TransformContext,
-        observation: SensorObservation,
-        percept: Message | None,
-        goals: list[Goal],
-    ) -> (SensorObservation, Message | None, list[Goal]):
+    def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
         # ...
         return ctx, observation, percept, goals
 ```
@@ -282,21 +262,15 @@ class MissingToMaxDepth(Transform):
         self._max_depth = max_depth
         self._threshold = threshold
 
-    def __call__(
-        self: Self,
-        ctx: TransformContext,
-        observation: SensorObservation,
-        percept: Message | None,
-        goals: list[Goal],
-    ) -> (SensorObservation, Message | None, list[Goal]):
-        m = np.where(observation["depth"] <= self._threshold)
-        observation["depth"][m] = self._max_depth
-        return self._next_transform(ctx, observation, percept, goals)
+def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
+        m = np.where(payload.observation["depth"] <= self._threshold)
+        payload.observation["depth"][m] = self._max_depth
+        return self._next_transform(ctx, payload)
 ```
 
 ### Feature Extractors
 
-The main feature extractor is the `ObservationProcessor`. Rewriting the current version of it as a `Transform` would result in the example below. Note that the main change is the addition of `_next_transform` instance attribute and ending the `__call__` implementation with `return self._next_transform(ctx, observation, percept, goals)`.
+The main feature extractor is the `ObservationProcessor`. Rewriting the current version of it as a `Transform` would result in the example below. Note that the main change is the addition of `_next_transform` instance attribute and ending the `__call__` implementation with `return self._next_transform(ctx, payload)`.
 
 ```python
 class PerceptIsNotNone(RuntimeError):
@@ -383,23 +357,17 @@ class ObservationProcessor(Transform):
         self._surface_normal_method = surface_normal_method
         self._weight_curvature = weight_curvature
 
-    def __call__(
-        self: Self,
-        ctx: TransformContext,
-        observation: SensorObservation,
-        percept: Message | None,
-        goals: list[Goal],
-    ) -> (SensorObservation, Message | None, list[Goal]):
-        if percept is not None:
+    def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
+        if payload.percept is not None:
             raise PerceptIsNotNone
 
-        obs_3d = observation["semantic_3d"]
-        sensor_frame_data = observation["sensor_frame_data"]
-        cam_to_world = observation["cam_to_world"]
-        rgba_feat = observation["rgba"]
+        obs_3d = payload.observation["semantic_3d"]
+        sensor_frame_data = payload.observation["sensor_frame_data"]
+        cam_to_world = payload.observation["cam_to_world"]
+        rgba_feat = payload.observation["rgba"]
         depth_feat = (
-            observation["depth"]
-            .reshape(observation["depth"].size, 1)
+            payload.observation["depth"]
+            .reshape(payload.observation["depth"].size, 1)
             .astype(np.float64)
         )
         # Assuming squared patches
@@ -448,7 +416,7 @@ class ObservationProcessor(Transform):
         # directions were valid; certain SMs and policies used separately can also set
         # it to False under appropriate conditions
 
-        percept = Message(
+        payload.percept = Message(
             location=np.array([x, y, z]),
             morphological_features=morphological_features,
             non_morphological_features=features,
@@ -458,9 +426,9 @@ class ObservationProcessor(Transform):
             sender_type="SM",
         )
         # This is just for logging! Do not use _ attributes for matching
-        percept._semantic_id = semantic_id
+        payload.percept._semantic_id = semantic_id
 
-        return self._next_transform(ctx, observation, percept, goals)
+        return self._next_transform(ctx, payload)
 
     def _extract_and_add_features(
         self,
@@ -681,15 +649,9 @@ class FeatureChangeFilter(Transform):
                     return True
         return False
 
-    def __call__(
-        self: Self,
-        ctx: TransformContext,
-        observation: SensorObservation,
-        percept: Message | None,
-        goals: list[Goal],
-    ) -> (SensorObservation, Message | None, list[Goal]):
-        percept = self._filter(percept)
-        return self._next_transform(ctx, observation, percept, goals)
+    def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
+        payload.percept = self._filter(payload.percept)
+        return self._next_transform(ctx, payload)
 
     def _filter(self, percept: Message) -> Message:
         """Sets `percept.use_state` to False if features haven't changed significantly.
@@ -756,24 +718,20 @@ class Salience(Transform):
             ReturnInhibitor() if return_inhibitor is None else return_inhibitor
         )
 
-    def __call__(
-        self: Self,
-        ctx: TransformContext,
-        observation: SensorObservation,
-        percept: Message | None,
-        goals: list[Goal],
-    ) -> (SensorObservation, Message | None, list[Goal]):
+    def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
         salience_map = self._salience_strategy(
-            ctx=ctx, rgba=observation["rgba"], depth=observation["depth"]
+            ctx=ctx,
+            rgba=payload.observation["rgba"],
+            depth=payload.observation["depth"]
         )
 
-        on_object = on_object_observation(observation, salience_map)
+        on_object = on_object_observation(payload.observation, salience_map)
         ior_weights = self._return_inhibitor(
             on_object.center_location, on_object.locations
         )
         salience = self._weight_salience(ctx, on_object.salience, ior_weights)
 
-        goals.extend([
+        payload.goals.extend([
             Goal(
                 location=on_object.locations[i],
                 morphological_features=None,
@@ -787,7 +745,7 @@ class Salience(Transform):
             for i in range(len(on_object.locations))
         ])
 
-        return self._next_transform(ctx, observation, percept, goals)
+        return self._next_transform(ctx, payload)
 
     def _weight_salience(
         self,
