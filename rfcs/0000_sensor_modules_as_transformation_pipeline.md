@@ -74,6 +74,8 @@ A Sensor Module is a data flow pipeline that begins with a `SensorObservation` a
 
 We use a generic `SensorModule` to minimize the amount of code and tests required to implement new functionality. The generic `SensorModule` requires a `TransformPipeline`, which is a series of `Transform`s that process and mutate a `(SensorObservation, Percept | None, list[Goal])` tuple. At the end of the transform pipeline, the contents of `(Percept | None, Collection[Goal])` is returned by the sensor module.
 
+![Sensor Module Implementation Overview](./0000_sensor_modules_as_transformation_pipeline/implementation_overview.png)
+
 A sensor module can thus be assembled via configuration. If new functionality is required, one creates and tests a new `Transform` and assembles it along with the already existing `Transform`s to instantiate a new type of sensor module.
 
 ## Implementation Details
@@ -934,6 +936,18 @@ sensor_modules:
 > - The cost of migrating existing Monty users (is it a breaking change?)
 >
 > There are tradeoffs to choosing any path. Please attempt to identify them here.
+
+## Increased importance of integration tests and benchmarks
+
+Transferring more of the sensor module "business logic" to configuration results in system behavior being defined in the configuration. This puts it outside the domain of unit testing. The individual transforms can be unit tested, improving their individual reliability. However, verifying how the configured ensemble of transforms behaves now falls onto integration testing and benchmarks.
+
+## Verbosity
+
+While it is almost pleasant to read a single sensor module configuration layed out as a pipeline of transforms, this will get old when we have many sensor modules, especially if the configuration is repetitive. Hydra is uniquely terrible at allowing us to reuse portions of lists in a configuration. The general rule is that, when Hydra combines configuration fragments, objects are composed/combined, whereas lists are replaced in their entirety. We will likely have to handle this by creating some bespoke resolves that reduce the toil of repeating a configuration over and over again. Note that this issue is not unique due to the changes in this RFC, but also exists (or will exist after some changes) for specifying multiple learning modules.
+
+## Positioning Procedures need their own transforms
+
+Prior to the implementation of this RFC, the `PositioningProcedure`s took advantage of shared environment transforms happening inside the `Environment`. This RFC moves those transforms to the head of the sensor module transform pipeline. However, this means that positioning procedures now need their own transforms before processing. Despite this, there appear no architectural constraints that prevent positioning procedures from incorporating a sensor module `TransformPipeline` before their own processing, effectively reusing some of the sensor module transform functionality.
 
 # Rationale and alternatives
 
