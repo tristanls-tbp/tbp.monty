@@ -236,7 +236,7 @@ Note that it is possible to "early exit" out of the chain of transforms by not c
 ```python
     def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
         # ...
-        return ctx, payload
+        return payload
 ```
 
 While it is possible, as of this writing there are no specific use cases for this feature.
