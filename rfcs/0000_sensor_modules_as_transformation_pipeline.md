@@ -9,7 +9,7 @@ Implementing a new Sensor Module should require only adding necessary and suffic
 
 ## High-level API
 
-Within a Thousand Brains System, the high-level Sensor Module API is to accept a `SensorObservation` from the environment and return an optional `Percept`, and a (possibly empty) sequence of `Goal`s.
+Within a Thousand Brains System, the high-level Sensor Module API is to accept a `SensorObservation` from the environment and return an optional `Percept`, and a (possibly empty) collection of `Goal`s.
 
 ![Sensor Module API](./0000_sensor_modules_as_transformation_pipeline/sensor_module_api.png)
 
