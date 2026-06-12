@@ -262,7 +262,7 @@ class MissingToMaxDepth(Transform):
         self._max_depth = max_depth
         self._threshold = threshold
 
-def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
+    def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
         m = np.where(payload.observation["depth"] <= self._threshold)
         payload.observation["depth"][m] = self._max_depth
         return self._next_transform(ctx, payload)
