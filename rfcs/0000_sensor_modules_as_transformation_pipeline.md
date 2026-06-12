@@ -955,6 +955,16 @@ Prior to the implementation of this RFC, the `PositioningProcedure`s took advant
 > - What other designs have been considered, and what is the rationale for not choosing them?
 > - What is the impact of not doing this?
 
+The main rationale behind this design is that it is a well excercised industry method of handling configurable and flexible data-plane-like computation. In essence, this RFC implements the [Chain of Responsibility behavioral pattern](https://refactoring.guru/design-patterns/chain-of-responsibility), also known as middleware. The configurable and flexible aspects of the solution are appealing from research perspective. Reusing existing functionality and only authoring truly new functionality should speed up the research feedback cycle. Similarly, reusing existing functionality and only authoring truly new functionality improves engineering testing and maintenance. Resuing already tested components is simpler than creating new ones. There is also less code to maintain.
+
+There were no other designs considered. This RFC originated from pattern matching the current state of sensor module architecture against an existing industry pattern that should result in improvements.
+
+## Status Quo
+
+If we do not proceed with this RFC, the internals of every new sensor module can still be reused as components. When adding a new sensor module, even when reusing existing components, a new sensor module class will need to be created in order to explicitly arrange the data flow between components specific to the new sensor module.
+
+Without the imposed `Transform` structure, new sensor module functionality may not be immediately reusable. That is, when a new sensor module is created, it does not need to create reusable components. The work to componetize for reuse would likely be done by a follow-on contributor that wanted to reuse functionality in their own sensor module. Additionally, what can be reused may not be as clear to follow-on contributors as looking at a well-defined `Transform` class.
+
 # Prior art and references
 
 > Discuss prior art, both the good and the bad, in relation to this proposal.
