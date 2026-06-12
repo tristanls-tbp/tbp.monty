@@ -225,7 +225,7 @@ class MyTransform(Transform):
 
     def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
         # ...
-        return self._next_transform(ctx, observation, percept, goals)
+        return self._next_transform(ctx, payload)
 
     def reset(self: Self) -> None:
         # override the default no-op reset if needed ...
@@ -236,7 +236,7 @@ Note that it is possible to "early exit" out of the chain of transforms by not c
 ```python
     def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
         # ...
-        return ctx, observation, percept, goals
+        return ctx, payload
 ```
 
 While it is possible, as of this writing there are no specific use cases for this feature.
