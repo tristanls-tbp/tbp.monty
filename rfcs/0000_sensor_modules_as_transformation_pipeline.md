@@ -47,7 +47,7 @@ A Sensor Module is a data flow pipeline that begins with a `SensorObservation` a
 
 ![Sensor Module API](./0000_sensor_modules_as_transformation_pipeline/sensor_module_api.png)
 
-We use a generic `SensorModule` to minimize the amount of code and tests required to implement new functionality. The generic `SensorModule` requires a `TransformPipeline`, which is a series of `Transform`s that process and mutate a `Payload` consisting of a `SensorObservation`, a `Percept` or `None`, and a `list[Goal]`. At the end of the transform pipeline, the contents of `(Percept | None, Collection[Goal])` is returned by the sensor module.
+We use a generic `SensorModule` to minimize the amount of code and tests required to implement new functionality. The generic `SensorModule` requires a sequence of `Transform`s that process and mutate a `Payload` consisting of a `SensorObservation`, a `Percept` or `None`, and a `list[Goal]`. Once transform processing completes, the contents of `(Percept | None, Collection[Goal])` are returned by the sensor module.
 
 ![Sensor Module Implementation Overview](./0000_sensor_modules_as_transformation_pipeline/implementation_overview.png)
 
@@ -96,44 +96,6 @@ class Transform(RuntimeTransform, ExperimentTransform, Protocol):
 
 The combined `Transform` protocol provides a default `reset()` implementation, as not all transforms can be reset.
 
-We define an `identity_transform` needed to "ground out" the transform pipeline:
-
-```python
-def identity_transform(
-    ctx: TransformContext,  # noqa: ARG002
-    payload: Payload,
-) -> Payload:
-    return payload
-```
-
-In order to fully assemble a Sensor Module, two additional boilerplate components are needed, the `TransformMiddleware` and the `TransformPipeline`:
-
-```python
-TransformMiddleware = Callable[[Transform], Transform]
-
-
-class TransformPipeline(Transform):
-
-    _transform: Transform
-    # _transforms are only retained for reset()
-    _transforms: list[Transform]
-
-    def __init__(self: Self, transforms: Sequence[TransformMiddleware]) -> None:
-        self._transforms = []
-        transform = identity_transform
-        for next_transform in reversed(transforms):
-            transform = next_transform(transform)
-            self._transforms.append(transform)
-        self._transform = transform
-
-    def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
-        return self._transform(ctx, payload)
-
-    def reset(self: Self) -> None:
-        for transform in self._transforms:
-            transform.reset()
-```
-
 With the above specifications and boilerplate in place, we can now author a generic `SensorModule`:
 
 ```python
@@ -144,21 +106,17 @@ class SensorModule(RuntimeSensorModule, ExperimentSensorModule):
     _sensor_id: SensorID
     _sensor_module_id: SensorModuleID
     _sensor_state: SensorState
-    _transform_pipeline: TransformPipeline
+    _transforms: Sequence[Transform]
 
     def __init__(
         self: Self,
         sensor_module_id: SensorModuleID,
         sensor_id: SensorID,
-        transform_pipeline: TransformPipeline | None
+        transforms: Sequence[Transform]
     ) -> None:
         self._sensor_module_id = sensor_module_id
         self._sensor_id = sensor_id
-        self._transform_pipeline = (
-            transform_pipeline
-            if transform_pipeline is not None
-            else TransformPipeline([])
-        )
+        self._transforms = transforms
 
     @property
     def sensor_module_id(self: Self) -> SensorModuleID:
@@ -183,7 +141,8 @@ class SensorModule(RuntimeSensorModule, ExperimentSensorModule):
         """
         transform_ctx = TransformContext(ctx.rng, self._agent_state, motor_only_step)
         payload = Payload(observation, None, [])
-        payload = self._transform_pipeline(transform_ctx, payload)
+        for transform in self._transforms:
+            payload = transform(transform_ctx, payload)
         self._goals = payload.goals
         return payload.percept
 
@@ -198,7 +157,8 @@ class SensorModule(RuntimeSensorModule, ExperimentSensorModule):
         )
 
     def reset(self: Self) -> None:
-        self._transform_pipeline.reset()
+        for transform in self._transforms:
+            transform.reset()
 
 ```
 
@@ -206,40 +166,24 @@ It is worth highlighting in this implementation how the type of the `Goal` colle
 
 ## Creating a Transform
 
-New functionality is introduced by creating a new `Transform`.
-
-The general pattern is to accept `next_transform: Transform` in the constructor and to finish the `__call__` implementation by invoking the `next_transform`.
+New functionality is introduced by creating a new `Transform`, which is done by implementing the `Transform` protocol.
 
 ```python
 class MyTransform(Transform):
 
-    _next_transform: Transform
-
     def __init__(
         self: Self,
-        next_transform: Transform,
-        # ...
+        # ... transform params
     ) -> None:
-        self._next_transform = next_transform
-        # ...
+        # ... transform initialization
 
     def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
-        # ...
-        return self._next_transform(ctx, payload)
+        # ... modify the payload
+        return payload
 
     def reset(self: Self) -> None:
         # override the default no-op reset if needed ...
 ```
-
-Note that it is possible to "early exit" out of the chain of transforms by not calling `self._next_transform`. For example:
-
-```python
-    def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
-        # ...
-        return payload
-```
-
-While it is possible, as of this writing there are no specific use cases for this feature.
 
 ### Transforms
 
@@ -248,29 +192,26 @@ Raw environmental observation transforms focus on updating the `SensorObservatio
 ```python
 class MissingToMaxDepth(Transform):
 
-    _next_transform: Transform
     _max_depth: float
     _threshold: float
 
     def __init__(
         self: Self,
-        next_transform: Transform,
         max_depth: float,
         threshold: float = 0.0
     ) -> None:
-        self._next_transform = next_transform
         self._max_depth = max_depth
         self._threshold = threshold
 
     def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
         m = np.where(payload.observation["depth"] <= self._threshold)
         payload.observation["depth"][m] = self._max_depth
-        return self._next_transform(ctx, payload)
+        return payload
 ```
 
 ### Feature Extractors
 
-The main feature extractor is the `ObservationProcessor`. Rewriting the current version of it as a `Transform` would result in the example below. Note that the main change is the addition of `_next_transform` instance attribute and ending the `__call__` implementation with `return self._next_transform(ctx, payload)`.
+The main feature extractor is the `ObservationProcessor`. Rewriting the current version of it as a `Transform` would result in the example below. Note that the main change is returning the modified payload.
 
 ```python
 class PerceptIsNotNone(RuntimeError):
@@ -310,7 +251,6 @@ class ObservationProcessor(Transform):
         "coherence",
     ]
 
-    _next_transform: Transform
     _features: list[str]
     _is_surface_sm: bool
     _pc1_is_pc2_threshold: int
@@ -320,7 +260,6 @@ class ObservationProcessor(Transform):
 
     def __init__(
         self,
-        next_transform: Transform,
         features: list[str],
         sensor_module_id: str,
         pc1_is_pc2_threshold=10,
@@ -331,7 +270,6 @@ class ObservationProcessor(Transform):
         """Initializes the ObservationProcessor.
 
         Args:
-            next_transform: The next transform to invoke in the transform pipeline.
             features: List of features to extract.
             pc1_is_pc2_threshold: Maximum difference between pc1 and pc2 to be
                 classified as being roughly the same (ignore curvature directions).
@@ -349,7 +287,6 @@ class ObservationProcessor(Transform):
             assert feature in self.POSSIBLE_FEATURES, (
                 f"{feature} not part of {self.POSSIBLE_FEATURES}"
             )
-        self._next_transform = next_transform
         self._features = features
         self._is_surface_sm = is_surface_sm
         self._pc1_is_pc2_threshold = pc1_is_pc2_threshold
@@ -428,7 +365,7 @@ class ObservationProcessor(Transform):
         # This is just for logging! Do not use _ attributes for matching
         payload.percept._semantic_id = semantic_id
 
-        return self._next_transform(ctx, payload)
+        return payload
 
     def _extract_and_add_features(
         self,
@@ -561,17 +498,14 @@ Filter transforms' main purpose is to filter. As an example, implementation of t
 ```python
 class FeatureChangeFilter(Transform):
 
-    _next_transform: Transform
     _delta_thresholds: dict[str, Any]
     _last_percent: Message
     _last_sent_n_steps_ago: int
 
     def __init__(
         self: Self,
-        next_transform: Transform,
         delta_thresholds: dict[str, Any]
     ) -> None:
-        self._next_transform = next_transform
         self._delta_thresholds = delta_thresholds
         self._last_percept = None
         self._last_sent_n_steps_ago = 0
@@ -651,7 +585,7 @@ class FeatureChangeFilter(Transform):
 
     def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
         payload.percept = self._filter(payload.percept)
-        return self._next_transform(ctx, payload)
+        return payload
 
     def _filter(self, percept: Message) -> Message:
         """Sets `percept.use_state` to False if features haven't changed significantly.
@@ -697,19 +631,16 @@ Some Sensor Module transforms may generate goals. For example, implementing the 
 ```python
 class Salience(Transform):
 
-    _next_transform: Transform
     _sensor_module_id: str
     _salience_strategy: SalienceStrategy
     _return_inhibitor: ReturnInhibitor
 
     def __init__(
         self: Self,
-        next_transform: Transform,
         sensor_module_id: str,
         salience_strategy: SalienceStrategy | None = None,
         return_inhibitor: ReturnInhibitor | None = None,
     ) -> None:
-        self._next_transform = next_transform
         self._sensor_module_id = sensor_module_id
         self._salience_strategy = (
             Uniform() if salience_strategy is None else salience_strategy
@@ -745,7 +676,7 @@ class Salience(Transform):
             for i in range(len(on_object.locations))
         ])
 
-        return self._next_transform(ctx, payload)
+        return payload
 
     def _weight_salience(
         self,
@@ -801,60 +732,51 @@ sensor_modules:
   - _target_: tbp.monty.sensor_modules.SensorModule
     sensor_module_id: patch
     sensor_id: patch
-    transform_pipeline:
-      _target_: tbp.monty.sensor_modules.TransformPipeline
-      transforms:
-        - _target_: tbp.monty.sensor_modules.transforms.DepthTo3DLocations
-          _partial_: true
-          sensor_id: patch
-          resolutions: [64, 64]
-          world_coord: true
-          zooms: 10.0
-          get_all_points: true
-          use_semantic_sensor: false
-          is_depth_clip_sensors: true
-        - _target_: tbp.monty.sensor_modules.transforms.MissingToMaxDepth
-          _partial_: true
-          max_depth: 1
-        - _target_: tbp.monty.sensor_modules.transforms.GaussianSmoothing
-          _partial_: true
-          sigma: 6
-          kernel_width: 8
-        - _target_: tbp.monty.sensor_modules.transforms.AddNoiseToRawDepthImage
-          _partial_: true
-          sigma: 4
-        - _target_: tbp.monty.sensor_modules.extractors.ObservationProcessor
-          _partial_: true
-          sensor_module_id: patch
-          features:
-            - rgba
-            - hsv
-            - pose_vectors
-            - principal_curvatures
-          pc1_is_pc2_threshold: 10
-        - _target_: tbp.monty.sensor_modules.transforms.MessageNoise
-          _partial_: true
-          noise_params:
-            features:
-              pose_vectors: 2 # rotate by random degrees along xyz
-              hsv: 0.1 # add gaussian noise with 0.1 std
-              principal_curvatures_log: 0.1
-              pose_fully_defined: 0.01 # flip bool in 1% of cases
-            location: 0.002 # add gaussian noise with 0.002 std
-        - _target_: tbp.monty.sensor_modules.filters.FeatureChangeFilter
-          _partial_: true
-          delta_thresholds:
-            on_object: 0
-            n_steps: 20
-            hsv:
-            - 0.1
-            - 0.1
-            - 0.1
-            pose_vectors: ${np.list_eval:[np.pi / 4, np.pi * 2, np.pi * 2]}
-            principal_curvatures_log:
-            - 2
-            - 2
-            distance: 0.01
+    transforms:
+      - _target_: tbp.monty.sensor_modules.transforms.DepthTo3DLocations
+        sensor_id: patch
+        resolutions: [64, 64]
+        world_coord: true
+        zooms: 10.0
+        get_all_points: true
+        use_semantic_sensor: false
+        is_depth_clip_sensors: true
+      - _target_: tbp.monty.sensor_modules.transforms.MissingToMaxDepth
+        max_depth: 1
+      - _target_: tbp.monty.sensor_modules.transforms.GaussianSmoothing
+        sigma: 6
+        kernel_width: 8
+      - _target_: tbp.monty.sensor_modules.transforms.AddNoiseToRawDepthImage
+        sigma: 4
+      - _target_: tbp.monty.sensor_modules.extractors.ObservationProcessor
+        sensor_module_id: patch
+        features:
+        - rgba
+        - hsv
+        - pose_vectors
+        - principal_curvatures
+        pc1_is_pc2_threshold: 10
+      - _target_: tbp.monty.sensor_modules.transforms.MessageNoise
+        noise_params:
+        features:
+            pose_vectors: 2 # rotate by random degrees along xyz
+            hsv: 0.1 # add gaussian noise with 0.1 std
+            principal_curvatures_log: 0.1
+            pose_fully_defined: 0.01 # flip bool in 1% of cases
+        location: 0.002 # add gaussian noise with 0.002 std
+      - _target_: tbp.monty.sensor_modules.filters.FeatureChangeFilter
+        delta_thresholds:
+        on_object: 0
+        n_steps: 20
+        hsv:
+        - 0.1
+        - 0.1
+        - 0.1
+        pose_vectors: ${np.list_eval:[np.pi / 4, np.pi * 2, np.pi * 2]}
+        principal_curvatures_log:
+        - 2
+        - 2
+        distance: 0.01
 
 ```
 
@@ -870,11 +792,11 @@ While it is almost pleasant to read a single sensor module configuration laid ou
 
 ## Positioning Procedures need their own transforms
 
-Prior to the implementation of this RFC, the `PositioningProcedure`s took advantage of shared environment transforms happening inside the `Environment`. This RFC moves those transforms to the head of the sensor module transform pipeline. However, this means that positioning procedures now need their own transforms before processing. Despite this, there appear no architectural constraints that prevent positioning procedures from incorporating a sensor module `TransformPipeline` before their own processing, effectively reusing some of the sensor module transform functionality.
+Prior to the implementation of this RFC, the `PositioningProcedure`s took advantage of shared environment transforms happening inside the `Environment`. This RFC moves those transforms to the head of the sensor module transform pipeline. However, this means that positioning procedures now need their own transforms before processing. Despite this, there appear no architectural constraints that prevent positioning procedures from incorporating a sensor module transform pipeline before their own processing, effectively reusing some of the sensor module transform functionality.
 
 # Rationale and alternatives
 
-The main rationale behind this design is that it is a well exercised industry method of handling configurable and flexible data-plane-like computation. In essence, this RFC implements the [Chain of Responsibility behavioral pattern](https://refactoring.guru/design-patterns/chain-of-responsibility), also known as middleware. The configurable and flexible aspects of the solution are appealing from research perspective. Reusing existing functionality and only authoring truly new functionality should speed up the research feedback cycle. Similarly, reusing existing functionality and only authoring truly new functionality improves engineering testing and maintenance. Reusing already tested components is simpler than creating new ones. There is also less code to maintain.
+The main rationale behind this design is that it is a well exercised industry method of handling configurable and flexible data-plane-like computation. In essence, this RFC implements a modified [Chain of Responsibility behavioral pattern](https://refactoring.guru/design-patterns/chain-of-responsibility), also known as middleware. The configurable and flexible aspects of the solution are appealing from research perspective. Reusing existing functionality and only authoring truly new functionality should speed up the research feedback cycle. Similarly, reusing existing functionality and only authoring truly new functionality improves engineering testing and maintenance. Reusing already tested components is simpler than creating new ones. There is also less code to maintain.
 
 There were no other designs considered. This RFC originated from pattern matching the current state of sensor module architecture against an existing industry pattern that should result in improvements.
 
@@ -886,7 +808,7 @@ Without the imposed `Transform` structure, new sensor module functionality may n
 
 # Prior art and references
 
-This RFC implements the [Chain of Responsibility behavioral pattern](https://refactoring.guru/design-patterns/chain-of-responsibility), also known as middleware. This is [a common](https://expressjs.com/en/guide/using-middleware/) [framework pattern](https://docs.rs/axum/latest/axum/middleware/index.html) [in HTTP](https://docs.djangoproject.com/en/6.0/topics/http/middleware/) [request-handling](https://spiral.dev/docs/http-middleware) [servers](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/?view=aspnetcore-10.0).
+This RFC implements a modified [Chain of Responsibility behavioral pattern](https://refactoring.guru/design-patterns/chain-of-responsibility), also known as middleware. This is [a common](https://expressjs.com/en/guide/using-middleware/) [framework pattern](https://docs.rs/axum/latest/axum/middleware/index.html) [in HTTP](https://docs.djangoproject.com/en/6.0/topics/http/middleware/) [request-handling](https://spiral.dev/docs/http-middleware) [servers](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/middleware/?view=aspnetcore-10.0).
 
 # Unresolved questions
 
