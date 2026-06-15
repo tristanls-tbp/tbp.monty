@@ -499,7 +499,7 @@ Filter transforms' main purpose is to filter. As an example, implementation of t
 class FeatureChangeFilter(Transform):
 
     _delta_thresholds: dict[str, Any]
-    _last_percent: Message
+    _last_percept: Message
     _last_sent_n_steps_ago: int
 
     def __init__(
@@ -796,7 +796,7 @@ Prior to the implementation of this RFC, the `PositioningProcedure`s took advant
 
 # Rationale and alternatives
 
-The main rationale behind this design is that it is a well exercised industry method of handling configurable and flexible data-plane-like computation. In essence, this RFC implements a modified [Chain of Responsibility behavioral pattern](https://refactoring.guru/design-patterns/chain-of-responsibility), also known as middleware. The configurable and flexible aspects of the solution are appealing from research perspective. Reusing existing functionality and only authoring truly new functionality should speed up the research feedback cycle. Similarly, reusing existing functionality and only authoring truly new functionality improves engineering testing and maintenance. Reusing already tested components is simpler than creating new ones. There is also less code to maintain.
+The main rationale behind this design is that it is a well exercised industry method of handling configurable and flexible data-plane-like computation. In essence, this RFC implements a modified [Chain of Responsibility behavioral pattern](https://refactoring.guru/design-patterns/chain-of-responsibility), also known as middleware. The configurable and flexible aspects of the solution are appealing from a research perspective. Reusing existing functionality and only authoring truly new functionality should speed up the research feedback cycle. Similarly, reusing existing functionality and only authoring truly new functionality improves engineering testing and maintenance. Reusing already tested components is simpler than creating new ones. There is also less code to maintain.
 
 There were no other designs considered. This RFC originated from pattern matching the current state of sensor module architecture against an existing industry pattern that should result in improvements.
 
