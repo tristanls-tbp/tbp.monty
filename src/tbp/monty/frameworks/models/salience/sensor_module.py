@@ -8,6 +8,8 @@
 # https://opensource.org/licenses/MIT.
 from __future__ import annotations
 
+from typing import Collection
+
 import numpy as np
 import quaternion as qt
 
@@ -169,5 +171,5 @@ class SalienceSM(SensorModule):
         self._snapshot_telemetry.reset()
         self.is_exploring = False
 
-    def propose_goals(self) -> list[Goal]:
+    def propose_goals(self) -> Collection[Goal]:
         return self._goals

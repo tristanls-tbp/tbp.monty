@@ -543,7 +543,7 @@ class SensorModule(RuntimeSensorModule, ExperimentSensorModule, metaclass=abc.AB
     ) -> Message | None:
         pass
 
-    def propose_goals(self) -> list[Goal]:
+    def propose_goals(self) -> Collection[Goal]:
         return []
 
     @abc.abstractmethod
