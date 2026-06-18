@@ -57,3 +57,9 @@ class Transform(Protocol):
             A payload with the transformed observation, percept, and goals.
         """
         ...
+
+
+class NoDepthSensorPresent(RuntimeError):
+    """Raised when a depth sensor is expected but not found."""
+
+    pass
