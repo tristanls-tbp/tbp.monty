@@ -21,7 +21,11 @@ from tbp.monty.frameworks.models.abstract_monty_classes import (
 )
 from tbp.monty.frameworks.models.motor_system_state import AgentState, SensorState
 from tbp.monty.frameworks.sensors import SensorID
-from tbp.monty.sensor_modules.transform import Payload, Transform, TransformContext
+from tbp.monty.sensor_modules.transforms import (
+    Payload,
+    Transform,
+    TransformContext,
+)
 
 
 class SensorModule(RuntimeSensorModule):
