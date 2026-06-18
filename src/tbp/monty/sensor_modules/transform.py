@@ -23,6 +23,7 @@ __all__ = [
     "TransformContext",
 ]
 
+
 @dataclass
 class Payload:
     observation: SensorObservation
@@ -35,6 +36,7 @@ class TransformContext:
     rng: np.random.RandomState
     state: AgentState | None = None
     motor_only_step: bool = False
+
 
 class Transform(Protocol):
     """A transform that can be applied to a payload."""

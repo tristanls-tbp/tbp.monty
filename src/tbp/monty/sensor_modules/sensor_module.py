@@ -25,7 +25,6 @@ from tbp.monty.sensor_modules.transform import Payload, Transform, TransformCont
 
 
 class SensorModule(RuntimeSensorModule):
-
     _agent_state: AgentState
     _goals: list[Goal]
     _sensor_id: SensorID
