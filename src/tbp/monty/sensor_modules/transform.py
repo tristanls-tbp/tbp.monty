@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Callable, Protocol, Sequence
+from typing import Protocol
 
 import numpy as np
 from typing_extensions import Self
@@ -19,12 +19,16 @@ from tbp.monty.frameworks.models.abstract_monty_classes import SensorObservation
 from tbp.monty.frameworks.models.motor_system_state import AgentState
 
 __all__ = [
-    "Transform",
+    "Payload",
     "TransformContext",
-    "TransformMiddleware",
-    "TransformPipeline",
-    "identity_transform",
 ]
+
+@dataclass
+class Payload:
+    observation: SensorObservation
+    percept: Message | None
+    goals: list[Goal]
+
 
 @dataclass
 class TransformContext:
@@ -33,65 +37,20 @@ class TransformContext:
     motor_only_step: bool = False
 
 class Transform(Protocol):
+    """A transform that can be applied to a payload."""
+
     def __call__(
-        self,
+        self: Self,
         ctx: TransformContext,
-        observation: SensorObservation,
-        percept: Message | None,
-        goals: list[Goal],
-    ) -> tuple[SensorObservation, Message | None, list[Goal]]:
-        """Apply the transform to the observation.
+        payload: Payload,
+    ) -> Payload:
+        """Apply the transform to the payload.
 
         Args:
             ctx: The transform context.
-            observation: The observation to transform.
-            percept: The percept to transform.
-            goals: The goals to transform.
+            payload: The payload to transform.
 
         Returns:
-            A tuple containing the transformed observation, percept, and goals.
+            A payload with the transformed observation, percept, and goals.
         """
         ...
-
-def identity_transform(
-    ctx: TransformContext,  # noqa: ARG001
-    observation: SensorObservation,
-    percept: Message | None,
-    goals: list[Goal],
-) -> tuple[SensorObservation, Message | None, list[Goal]]:
-    """Identity transform the returns the observation, percept, and goals unchanged.
-
-    The main purpose of this transform is to be the last transform in the sequence
-    when assembling a transform pipeline.
-
-    Args:
-        ctx: The transform context.
-        observation: The observation to return.
-        percept: The percept to return.
-        goals: The goals to return.
-
-    Returns:
-        A tuple containing the observation, percept, and goals unchanged.
-    """
-    return observation, percept, goals
-
-TransformMiddleware = Callable[[Transform], Transform]
-
-class TransformPipeline(Transform):
-
-    _transform: Transform
-
-    def __init__(self: Self, transforms: Sequence[TransformMiddleware]) -> None:
-        transform = identity_transform
-        for next_transform in reversed(transforms):
-            transform = next_transform(transform)
-        self._transform = transform
-
-    def __call__(
-        self,
-        ctx: TransformContext,
-        observation: SensorObservation,
-        percept: Message | None,
-        goals: list[Goal],
-    ) -> tuple[SensorObservation, Message | None, list[Goal]]:
-        return self._transform(ctx, observation, percept, goals)

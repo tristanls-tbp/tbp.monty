@@ -8,41 +8,40 @@
 # https://opensource.org/licenses/MIT.
 from __future__ import annotations
 
-from typing import Collection
+from typing import Collection, Sequence
 
 import quaternion as qt
 from typing_extensions import Self
 
 from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
-from tbp.monty.frameworks.models.abstract_monty_classes import SensorObservation
+from tbp.monty.frameworks.models.abstract_monty_classes import (
+    RuntimeSensorModule,
+    SensorObservation,
+)
 from tbp.monty.frameworks.models.motor_system_state import AgentState, SensorState
 from tbp.monty.frameworks.sensors import SensorID
-from tbp.monty.sensor_modules.transform import TransformContext, TransformPipeline
+from tbp.monty.sensor_modules.transform import Payload, Transform, TransformContext
 
 
-class SensorModule:
+class SensorModule(RuntimeSensorModule):
 
     _agent_state: AgentState
     _goals: list[Goal]
     _sensor_id: SensorID
     _sensor_module_id: str
     _sensor_state: SensorState
-    _transform_pipeline: TransformPipeline
+    _transforms: Sequence[Transform]
 
     def __init__(
         self: Self,
         sensor_module_id: str,
         sensor_id: SensorID,
-        transform_pipeline: TransformPipeline | None = None,
+        transforms: Sequence[Transform],
     ) -> None:
         self._sensor_module_id = sensor_module_id
         self._sensor_id = sensor_id
-        self._transform_pipeline = (
-            transform_pipeline
-            if transform_pipeline is not None
-            else TransformPipeline([])
-        )
+        self._transforms = transforms
 
     @property
     def sensor_module_id(self) -> str:
@@ -72,11 +71,11 @@ class SensorModule:
             state=self._agent_state,
             motor_only_step=motor_only_step,
         )
-        _, percept, goals = self._transform_pipeline(
-            transform_ctx, observation, None, []
-        )
-        self._goals = goals
-        return percept
+        payload = Payload(observation=observation, percept=None, goals=[])
+        for transform in self._transforms:
+            payload = transform(transform_ctx, payload)
+        self._goals = payload.goals
+        return payload.percept
 
     def update_state(self: Self, agent: AgentState) -> None:
         self._agent_state = agent

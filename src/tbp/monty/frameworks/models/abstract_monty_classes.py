@@ -516,11 +516,11 @@ class RuntimeSensorModule(Protocol):
         """
         ...
 
-    def propose_goals(self) -> Sequence[Goal]:
+    def propose_goals(self) -> Collection[Goal]:
         """Return the goals proposed by this Sensor Module.
 
         Returns:
-            A sequence of proposed Goals.
+            A collection of proposed Goals.
         """
         ...
 
