@@ -106,7 +106,8 @@ class SensorModule(RuntimeSensorModule):
         """
         transform_ctx = TransformContext(
             rng=ctx.rng,
-            state=self._agent_state,
+            agent_state=self._agent_state,
+            sensor_state=self._sensor_state,
             motor_only_step=motor_only_step,
         )
         payload = Payload(observation=observation, percept=None, goals=[])

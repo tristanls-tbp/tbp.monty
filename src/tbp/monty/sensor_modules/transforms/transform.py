@@ -15,7 +15,7 @@ import numpy as np
 from typing_extensions import Self
 
 from tbp.monty.cmp import Goal, Message
-from tbp.monty.frameworks.models.motor_system_state import AgentState
+from tbp.monty.frameworks.models.motor_system_state import AgentState, SensorState
 from tbp.monty.observations import SensorObservation
 
 __all__ = [
@@ -35,7 +35,8 @@ class Payload:
 @dataclass
 class TransformContext:
     rng: np.random.RandomState
-    state: AgentState | None = None
+    agent_state: AgentState
+    sensor_state: SensorState
     motor_only_step: bool = False
 
 
@@ -61,5 +62,10 @@ class Transform(Protocol):
 
 class NoDepthSensorPresent(RuntimeError):
     """Raised when a depth sensor is expected but not found."""
+
+    pass
+
+class NoRGBASensorPresent(RuntimeError):
+    """Raised when a RGBA sensor is expected but not found."""
 
     pass
