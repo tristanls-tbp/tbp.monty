@@ -15,8 +15,8 @@ import numpy as np
 from typing_extensions import Self
 
 from tbp.monty.cmp import Goal, Message
-from tbp.monty.frameworks.models.abstract_monty_classes import SensorObservation
 from tbp.monty.frameworks.models.motor_system_state import AgentState
+from tbp.monty.observations import SensorObservation
 
 __all__ = [
     "Payload",

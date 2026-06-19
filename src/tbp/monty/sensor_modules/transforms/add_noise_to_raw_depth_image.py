@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing_extensions import Self
 
-from tbp.monty.sensor_modules.transforms import (
+from tbp.monty.sensor_modules.transforms.transform import (
     NoDepthSensorPresent,
     Payload,
     Transform,

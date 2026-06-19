@@ -8,24 +8,59 @@
 # https://opensource.org/licenses/MIT.
 from __future__ import annotations
 
-from typing import Collection, Sequence
+from typing import Collection, Protocol, Sequence
 
 import quaternion as qt
 from typing_extensions import Self
 
 from tbp.monty.cmp import Goal, Message
 from tbp.monty.context import RuntimeContext
-from tbp.monty.frameworks.models.abstract_monty_classes import (
-    RuntimeSensorModule,
-    SensorObservation,
-)
 from tbp.monty.frameworks.models.motor_system_state import AgentState, SensorState
 from tbp.monty.frameworks.sensors import SensorID
-from tbp.monty.sensor_modules.transforms import (
+from tbp.monty.observations import SensorObservation
+from tbp.monty.sensor_modules.transforms.transform import (
     Payload,
     Transform,
     TransformContext,
 )
+
+
+class RuntimeSensorModule(Protocol):
+    """Monty runtime interface to a Sensor Module."""
+
+    def update_state(self, agent: AgentState) -> None:
+        """Update the proprioceptive state for this Sensor Module.
+
+        Args:
+            agent: The proprioceptive state of this sensor module's Agent.
+        """
+        ...
+
+    def step(
+        self,
+        ctx: RuntimeContext,
+        observation: SensorObservation,
+        motor_only_step: bool = False,
+    ) -> Message | None:
+        """Execute a time-step for the Sensor Module.
+
+        Args:
+            ctx: The runtime context.
+            observation: Sensor observation.
+            motor_only_step: Whether the current step is a motor-only step.
+
+        Returns:
+            An optional percept with features and morphological features.
+        """
+        ...
+
+    def propose_goals(self) -> Collection[Goal]:
+        """Return the goals proposed by this Sensor Module.
+
+        Returns:
+            A collection of proposed Goals.
+        """
+        ...
 
 
 class SensorModule(RuntimeSensorModule):

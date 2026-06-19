@@ -11,7 +11,11 @@ from __future__ import annotations
 import numpy as np
 from typing_extensions import Self
 
-from tbp.monty.sensor_modules.transforms import Payload, Transform, TransformContext
+from tbp.monty.sensor_modules.transforms.transform import (
+    Payload,
+    Transform,
+    TransformContext,
+)
 
 __all__ = [
     "MissingToMaxDepth",
