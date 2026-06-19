@@ -179,15 +179,14 @@ class DepthTo3DLocations(Transform):
                     sensor. Has the same structure as "semantic_3d". Included only
                     when `self._get_all_points` is `True`.
         """
-        obs = payload.observation
-        depth_patch = obs["depth"]
+        depth_patch = payload.observation["depth"]
 
         # We need a semantic map that masks off-object pixels. We can use the
         # ground-truth semantic map if it's available. Otherwise, we generate one
         # from the depth map and (temporarily) add it to the observation dict.
         semantic_patch: npt.NDArray[np.int_]
-        if "semantic" in obs:
-            semantic_patch = obs["semantic"]
+        if "semantic" in payload.observation:
+            semantic_patch = payload.observation["semantic"]
         else:
             # The generated map uses depth observations to determine whether
             # pixels are on object using 1 meter as a threshold since
@@ -218,7 +217,7 @@ class DepthTo3DLocations(Transform):
             # self._use_semantic_sensor is not commonly used at present, if ever.
             # self._should_clip_depth implies a surface agent, and
             # self._use_semantic_sensor implies multi-object experiments.
-            surface_patch = obs["semantic"]
+            surface_patch = payload.observation["semantic"]
         else:
             surface_patch = self._get_surface_from_depth(
                 depth_patch,
