@@ -8,8 +8,10 @@
 # https://opensource.org/licenses/MIT.
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Collection, Protocol, Sequence
 
+import numpy as np
 import quaternion as qt
 from typing_extensions import Self
 
@@ -18,11 +20,41 @@ from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.models.motor_system_state import AgentState, SensorState
 from tbp.monty.frameworks.sensors import SensorID
 from tbp.monty.observations import SensorObservation
-from tbp.monty.sensor_modules.transforms.transform import (
-    Payload,
-    Transform,
-    TransformContext,
-)
+
+
+@dataclass
+class Payload:
+    observation: SensorObservation
+    percept: Message | None
+    goals: list[Goal]
+
+
+@dataclass
+class TransformContext:
+    rng: np.random.RandomState
+    agent_state: AgentState
+    sensor_state: SensorState
+    motor_only_step: bool = False
+
+
+class Transform(Protocol):
+    """A transform that can be applied to a payload."""
+
+    def __call__(
+        self: Self,
+        ctx: TransformContext,
+        payload: Payload,
+    ) -> Payload:
+        """Apply the transform to the payload.
+
+        Args:
+            ctx: The transform context.
+            payload: The payload to transform.
+
+        Returns:
+            A payload with the transformed observation, percept, and goals.
+        """
+        ...
 
 
 class RuntimeSensorModule(Protocol):

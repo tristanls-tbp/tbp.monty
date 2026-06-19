@@ -13,7 +13,7 @@ import numpy.typing as npt
 import quaternion as qt
 from typing_extensions import Self
 
-from tbp.monty.sensor_modules.transforms.transform import (
+from tbp.monty.sensor_modules.sensor_module import (
     Payload,
     Transform,
     TransformContext,
@@ -226,9 +226,7 @@ class DepthTo3DLocations(Transform):
             )
 
         # Approximate true world coordinates
-        x, y = np.meshgrid(
-            np.linspace(-1, 1, self._w), np.linspace(1, -1, self._h)
-        )
+        x, y = np.meshgrid(np.linspace(-1, 1, self._w), np.linspace(1, -1, self._h))
         x = x.reshape(1, self._h, self._w)
         y = y.reshape(1, self._h, self._w)
 
@@ -276,9 +274,7 @@ class DepthTo3DLocations(Transform):
 
             # Add point-cloud data expressed in sensor coordinate frame. Used for
             # surface normal extraction
-            payload.observation["sensor_frame_data"] = (
-                sensor_frame_data
-            )
+            payload.observation["sensor_frame_data"] = sensor_frame_data
         else:
             detected = semantic.any(axis=0)
             xyz = xyz.transpose(1, 0)

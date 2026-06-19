@@ -12,11 +12,9 @@ import cv2
 import numpy as np
 from typing_extensions import Self
 
+from tbp.monty.sensor_modules.sensor_module import Payload, Transform, TransformContext
 from tbp.monty.sensor_modules.transforms.transform import (
     NoRGBASensorPresent,
-    Payload,
-    Transform,
-    TransformContext,
 )
 
 __all__ = [

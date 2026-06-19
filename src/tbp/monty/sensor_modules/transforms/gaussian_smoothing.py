@@ -13,11 +13,9 @@ import numpy.typing as npt
 import scipy
 from typing_extensions import Self
 
+from tbp.monty.sensor_modules.sensor_module import Payload, Transform, TransformContext
 from tbp.monty.sensor_modules.transforms.transform import (
     NoDepthSensorPresent,
-    Payload,
-    Transform,
-    TransformContext,
 )
 
 __all__ = [
