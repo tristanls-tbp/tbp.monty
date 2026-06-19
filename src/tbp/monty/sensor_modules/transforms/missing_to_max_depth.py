@@ -11,9 +11,10 @@ from __future__ import annotations
 import numpy as np
 from typing_extensions import Self
 
-from tbp.monty.sensor_modules.sensor_module import Payload, TransformContext
 from tbp.monty.sensor_modules.sensor_module import (
+    Payload,
     Transform,
+    TransformContext,
 )
 
 __all__ = [

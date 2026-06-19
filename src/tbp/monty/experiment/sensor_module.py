@@ -13,8 +13,7 @@ from typing_extensions import Self
 
 from tbp.monty.frameworks.sensors import SensorID
 from tbp.monty.sensor_modules import SensorModule
-from tbp.monty.sensor_modules.sensor_module import RuntimeSensorModule
-from tbp.monty.sensor_modules.sensor_module import Transform
+from tbp.monty.sensor_modules.sensor_module import RuntimeSensorModule, Transform
 
 __all__ = [
     "ExperimentSensorModule",
