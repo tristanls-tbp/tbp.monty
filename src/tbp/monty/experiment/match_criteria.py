@@ -12,11 +12,8 @@ from typing import Mapping, Protocol
 
 from typing_extensions import Self
 
-__all__ = [
-    "AllLMsMatch",
-    "AnyLMsMatch",
-    "MatchCriterion"
-]
+__all__ = ["AllLMsMatch", "AnyLMsMatch", "MatchCriterion", "NamedLMsMatch"]
+
 
 class MatchCriterion(Protocol):
     """Decides whether learning modules have collectively matched the target.
