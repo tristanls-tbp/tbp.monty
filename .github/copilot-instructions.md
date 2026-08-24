@@ -1,0 +1,1 @@
+Limit your code review to only check if code comments (throught the code base) and documentation (in `/docs` folder) became stale as a result of the current changes. You can ignore the `/rfcs` folder, as they're expected to become stale over time.
