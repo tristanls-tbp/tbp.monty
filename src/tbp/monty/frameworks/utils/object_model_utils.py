@@ -441,7 +441,7 @@ def pose_vector_mean(pose_vecs, pose_fully_defined):
         # )
         # Just take 1st one. Shouldn't matter since cd should not be used anyways if
         # not pose_fully_defined. Only has a small effect on sampled possible poses.
-        pv_means = np.hstack([norm_mean, cds1[0], cds2[0]])
+        pv_means = orthonormal_pose_vectors(norm_mean, cds1[0])
         use_cds_to_update = False
     else:
         # Find cds pointing in opposing directions and invert them. This is needed
@@ -449,13 +449,8 @@ def pose_vector_mean(pose_vecs, pose_fully_defined):
         # equivalent. If we average over opposing directions, we will get noise.
         cd1_dirs = get_right_hand_angle(cds1, cds2[0], norm_mean) < 0
         cds1[cd1_dirs] = -cds1[cd1_dirs]
-        cd1_mean = normalize(np.mean(cds1, axis=0))
-        # Get the second cd by calculating a vector orthogonal to cd1 and surface normal
-        cd2_mean = normalize(np.cross(norm_mean, cd1_mean))
-        if get_right_hand_angle(cd1_mean, cd2_mean, norm_mean) < 0:
-            cd2_mean = -cd2_mean
+        pv_means = orthonormal_pose_vectors(norm_mean, np.mean(cds1, axis=0))
         use_cds_to_update = True
-        pv_means = np.hstack([norm_mean, cd1_mean, cd2_mean])
 
     assert not np.any(np.isnan(pv_means)), "NaN in pose vector mean"
     return pv_means, use_cds_to_update

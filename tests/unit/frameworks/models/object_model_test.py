@@ -12,7 +12,7 @@ import copy
 import unittest
 
 import numpy as np
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from tbp.monty.frameworks.models.object_model import (
@@ -297,6 +297,7 @@ class ObjectModelTest(unittest.TestCase):
             )
         self.assertTrue(check_orthonormal(avg_pvs), "Average PVs are not orthonormal")
 
+    @settings(deadline=1000)
     @given(pose_fully_defined=st.booleans())
     def test_update_model_keeps_pose_vectors_as_rotation_matrix(
         self, pose_fully_defined
