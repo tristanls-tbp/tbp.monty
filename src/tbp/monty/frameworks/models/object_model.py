@@ -842,17 +842,16 @@ class GridObjectModel(GraphObjectModel):
                 num_old_obs = num_obs_in_voxel - num_new_obs
 
                 if feature == "pose_vectors":
-                    avg_feat = (
-                        previous_average
-                        if avg_feat is None
-                        else pose_vector_merge(
+                    if avg_feat is None:
+                        avg_feat = previous_average
+                    else:
+                        avg_feat = pose_vector_merge(
                             avg_feat,
                             previous_average,
                             use_cds_to_update,
                             num_new_obs,
                             num_old_obs,
                         )
-                    )
                 else:
                     if feature == "object_id" and avg_feat != previous_average:
                         # TODO: Figure out a more nuanced way to take into account

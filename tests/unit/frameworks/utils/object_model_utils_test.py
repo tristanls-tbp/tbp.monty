@@ -66,7 +66,9 @@ class PoseVectorsTest(unittest.TestCase):
         """
         matrix = np.array(pose_vecs).reshape((3, 3))
         self.assertAlmostEqual(np.linalg.det(matrix), 1.0, places=6, msg=msg)
-        np.testing.assert_allclose(matrix @ matrix.T, np.eye(3), atol=1e-6, err_msg=msg)
+        np.testing.assert_allclose(
+            matrix @ matrix.T, np.identity(3), atol=1e-6, err_msg=msg
+        )
         # Raises for non-positive determinant on scipy > 1.14.1
         Rotation.from_matrix(matrix)
 
@@ -80,7 +82,7 @@ class PoseVectorsTest(unittest.TestCase):
     ) -> None:
         pose_vecs = orthonormal_pose_vectors(self.normal, self.normal * 2.0)
         self.assert_is_rotation(
-            pose_vecs, "Degenerate curvature direction did not fall back"
+            pose_vecs, "Parallel curvature direction did not fall back"
         )
 
     def test_pose_vector_mean_of_spread_observations_is_a_rotation(self) -> None:
