@@ -11,13 +11,17 @@
 import logging
 
 import numpy as np
+import numpy.typing as npt
 import torch
 
 from tbp.monty.frameworks.utils.spatial_arithmetics import (
+    TangentFrame,
     get_angle,
     get_right_hand_angle,
     normalize,
+    project_onto_tangent_plane,
 )
+from tbp.monty.math import DEFAULT_TOLERANCE
 
 logger = logging.getLogger(__name__)
 
@@ -310,6 +314,88 @@ def get_cubic_patches(arr_shape, centers, size):
     mask = np.any((new_centers < 0) | (new_centers >= np.array(arr_shape[:3])), axis=-1)
 
     return new_centers, mask
+
+
+def orthonormal_pose_vectors(
+    surface_normal: npt.NDArray[np.float64],
+    curvature_direction: npt.NDArray[np.float64],
+) -> npt.NDArray[np.float64]:
+    """Build a right-handed orthonormal pose from two rough directions.
+
+    The surface normal is used as a give, up to normalization. The curvature direction
+    is orthogonlized agaist it, so the returned pose vectors are always a valid
+    rotation matrix.
+
+    Args:
+        surface_normal: Surface normal direction. Does not need to be unit length.
+        curvature_direction: First curvature direction. Does not need to be unit length
+            or orthogonal to the surface normal.
+
+    Returns:
+        Flat array of nine elements holding the surface normal and the two curvature
+        directions.
+    """
+    normal = normalize(surface_normal)
+    tangent = project_onto_tangent_plane(curvature_direction, normal)
+    if np.linalg.norm(tangent) < DEFAULT_TOLERANCE:
+        # The curvature direction holds no information perpendicular to the surface
+        # normal, so fall back to an arbitrary direction in the tangent plane. The
+        # curvature directions are not used for matching in this case anyway.
+        tangent = TangentFrame(normal).basis_u
+    cd1 = normalize(tangent)
+    return np.hstack([normal, cd1, np.cross(normal, cd1)])
+
+
+def pose_vector_merge(
+    new_pose_vecs: npt.NDArray[np.float64],
+    previous_pose_vecs: npt.NDArray[np.float64],
+    use_cds_to_update: bool,
+    num_new_obs: int,
+    num_previous_obs: int,
+) -> npt.NDArray[np.float64]:
+    """Merge newly observed pose vectors into previous ones.
+
+    Surface normals observed from opposite sides of a surface are not two estimates
+    of the same direction, so they are not averaged. The side with more observations
+    is kept, the same way `pose_vector_mean` discards the minority side withing a
+    single batch of observations.
+
+    Curvature directions are ambiguous in direction, so the new one is flipped to agree
+    with the stored one before they are averaged.
+
+    Note that the returned pose vectors could be weighted by the number of observations,
+    but this is currently not implemented.
+
+    Args:
+        new_pose_vecs: Flat array of nine elements holding the pose vectors averaged
+            over the new observations.
+        previous_pose_vecs: Flat array of nine elements holding the averaged previous
+            pose vectors.
+        use_cds_to_update: Whether the new curvature directions are meaningful.
+        num_new_obs: Number of new observations.
+        num_previous_obs: Number of previous observations.
+
+    Returns:
+        Flat array of nine elements holding the merged pose vectors.
+    """
+    new_normal = new_pose_vecs[:3]
+    previous_normal = previous_pose_vecs[:3]
+    if np.dot(new_normal, previous_normal) < 0:
+        majority = (
+            new_pose_vecs if num_new_obs > num_previous_obs else previous_pose_vecs
+        )
+        return orthonormal_pose_vectors(majority[:3], majority[3:6])
+
+    if use_cds_to_update:
+        new_cd1 = new_pose_vecs[3:6]
+        previous_cd1 = previous_pose_vecs[3:6]
+        if np.dot(new_cd1, previous_cd1) < 0:
+            new_cd1 = -new_cd1
+        curvature_direction = new_cd1 + previous_cd1
+    else:
+        curvature_direction = previous_pose_vecs[3:6]
+
+    return orthonormal_pose_vectors(new_normal + previous_normal, curvature_direction)
 
 
 def pose_vector_mean(pose_vecs, pose_fully_defined):
