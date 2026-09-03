@@ -322,8 +322,8 @@ def orthonormal_pose_vectors(
 ) -> npt.NDArray[np.float64]:
     """Build a right-handed orthonormal pose from two rough directions.
 
-    The surface normal is used as a give, up to normalization. The curvature direction
-    is orthogonlized agaist it, so the returned pose vectors are always a valid
+    The surface normal is used as a given, up to normalization. The curvature direction
+    is orthogonalized against it, so the returned pose vectors are always a valid
     rotation matrix.
 
     Args:
@@ -357,7 +357,7 @@ def pose_vector_merge(
 
     Surface normals observed from opposite sides of a surface are not two estimates
     of the same direction, so they are not averaged. The side with more observations
-    is kept, the same way `pose_vector_mean` discards the minority side withing a
+    is kept, the same way `pose_vector_mean` discards the minority side within a
     single batch of observations.
 
     Curvature directions are ambiguous in direction, so the new one is flipped to agree
