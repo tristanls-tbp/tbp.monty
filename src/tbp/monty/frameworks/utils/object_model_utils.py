@@ -358,7 +358,7 @@ def pose_vector_merge(
     Surface normals observed from opposite sides of a surface are not two estimates
     of the same direction, so they are not averaged. The side with more observations
     is kept, the same way `pose_vector_mean` discards the minority side within a
-    single batch of observations.
+    single episode of observations.
 
     Curvature directions are ambiguous in direction, so the new one is flipped to agree
     with the stored one before they are averaged.
