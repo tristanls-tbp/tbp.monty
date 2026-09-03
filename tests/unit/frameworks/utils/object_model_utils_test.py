@@ -65,9 +65,15 @@ class PoseVectorsTest(unittest.TestCase):
             msg: Assertion message.
         """
         matrix = np.array(pose_vecs).reshape((3, 3))
-        self.assertAlmostEqual(np.linalg.det(matrix), 1.0, places=6, msg=msg)
         np.testing.assert_allclose(
-            matrix @ matrix.T, np.identity(3), atol=1e-6, err_msg=msg
+            np.linalg.det(matrix), 1.0, atol=DEFAULT_TOLERANCE, rtol=0.0, err_msg=msg
+        )
+        np.testing.assert_allclose(
+            matrix @ matrix.T,
+            np.identity(3),
+            atol=DEFAULT_TOLERANCE,
+            rtol=0.0,
+            err_msg=msg,
         )
         # Raises for non-positive determinant on scipy > 1.14.1
         Rotation.from_matrix(matrix)
