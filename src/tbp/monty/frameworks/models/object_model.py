@@ -852,14 +852,14 @@ class GridObjectModel(GraphObjectModel):
                             num_new_obs,
                             num_old_obs,
                         )
-                else:
-                    if feature == "object_id" and avg_feat != previous_average:
+                elif feature == "object_id" and avg_feat != previous_average:
                         # TODO: Figure out a more nuanced way to take into account
                         # past obs
                         if num_old_obs > num_new_obs:
                             avg_feat = previous_average
                         else:
                             previous_average = avg_feat
+                else:
                     # NOTE: could weight these
                     avg_feat = (avg_feat + previous_average) / 2
             target_ids = target_fm[feature]
