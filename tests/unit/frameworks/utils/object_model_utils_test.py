@@ -18,31 +18,8 @@ from tbp.monty.frameworks.utils.object_model_utils import (
     pose_vector_mean,
     pose_vector_merge,
 )
-from tbp.monty.frameworks.utils.spatial_arithmetics import (
-    normalize,
-    project_onto_tangent_plane,
-)
 from tbp.monty.geometry import Rotation
 from tbp.monty.math import DEFAULT_TOLERANCE
-
-
-def pose_frame(
-    normal: npt.NDArray[np.float64], tangent_seed: npt.NDArray[np.float64]
-) -> npt.NDArray[np.float64]:
-    """Return flat right-handed orthonormal pose vectors.
-
-    Args:
-        normal: Surface normal direction.
-        tangent_seed: Direction to derive the first curvature direction from.
-
-    Returns:
-        Flat array of nine elements holding the surface normal and the two curvature
-        directions.
-    """
-    normal = normalize(normal)
-    tangent = project_onto_tangent_plane(tangent_seed, normal)
-    cd1 = normalize(tangent)
-    return np.hstack([normal, cd1, np.cross(normal, cd1)])
 
 
 class PoseVectorsTest(unittest.TestCase):
@@ -96,7 +73,9 @@ class PoseVectorsTest(unittest.TestCase):
         for _ in range(50):
             observations = np.array(
                 [
-                    pose_frame(self.normal + rng.normal(0, 0.3, 3), rng.normal(size=3))
+                    orthonormal_pose_vectors(
+                        self.normal + rng.normal(0, 0.3, 3), rng.normal(size=3)
+                    )
                     for _ in range(6)
                 ]
             )
@@ -140,7 +119,7 @@ class PoseVectorsTest(unittest.TestCase):
         )
 
     def test_pose_vector_merge_averages_normals_on_the_same_surface_side(self) -> None:
-        tilted = pose_frame(np.array([0.0, 0.5, 1.0]), self.cd1)
+        tilted = orthonormal_pose_vectors(np.array([0.0, 0.5, 1.0]), self.cd1)
         merged = pose_vector_merge(
             tilted,
             self.frame,
@@ -175,7 +154,7 @@ class PoseVectorsTest(unittest.TestCase):
         for _ in range(50):
             observations = np.array(
                 [
-                    pose_frame(
+                    orthonormal_pose_vectors(
                         self.normal + rng.normal(0, 0.3, 3),
                         self.cd1 * (1.0 if rng.rand() < 0.5 else -1.0),
                     )
