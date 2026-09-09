@@ -21,6 +21,7 @@ from tbp.monty.frameworks.utils.spatial_arithmetics import (
     normalize,
     project_onto_tangent_plane,
 )
+from tbp.monty.geometry import Rotation
 from tbp.monty.math import DEFAULT_TOLERANCE
 
 logger = logging.getLogger(__name__)
@@ -349,53 +350,25 @@ def orthonormal_pose_vectors(
 def pose_vector_merge(
     new_pose_vecs: npt.NDArray[np.float64],
     previous_pose_vecs: npt.NDArray[np.float64],
-    use_cds_to_update: bool,
     num_new_obs: int,
     num_previous_obs: int,
 ) -> npt.NDArray[np.float64]:
-    """Merge newly observed pose vectors into previous ones.
-
-    Surface normals observed from opposite sides of a surface are not two estimates
-    of the same direction, so they are not averaged. The side with more observations
-    is kept, the same way `pose_vector_mean` discards the minority side within a
-    single episode of observations.
-
-    Curvature directions are ambiguous in direction, so the new one is flipped to agree
-    with the stored one before they are averaged.
-
-    Note that the returned pose vectors could be weighted by the number of observations,
-    but this is currently not implemented.
+    """Merge newly observed pose vectors into previous ones using a weighted mean.
 
     Args:
         new_pose_vecs: Flat array of nine elements holding the pose vectors averaged
             over the new observations.
         previous_pose_vecs: Flat array of nine elements holding the averaged previous
             pose vectors.
-        use_cds_to_update: Whether the new curvature directions are meaningful.
         num_new_obs: Number of new observations.
         num_previous_obs: Number of previous observations.
 
     Returns:
         Flat array of nine elements holding the merged pose vectors.
     """
-    new_normal = new_pose_vecs[:3]
-    previous_normal = previous_pose_vecs[:3]
-    if np.dot(new_normal, previous_normal) < 0:
-        majority = (
-            new_pose_vecs if num_new_obs > num_previous_obs else previous_pose_vecs
-        )
-        return orthonormal_pose_vectors(majority[:3], majority[3:6])
-
-    if use_cds_to_update:
-        new_cd1 = new_pose_vecs[3:6]
-        previous_cd1 = previous_pose_vecs[3:6]
-        if np.dot(new_cd1, previous_cd1) < 0:
-            new_cd1 = -new_cd1
-        curvature_direction = new_cd1 + previous_cd1
-    else:
-        curvature_direction = previous_pose_vecs[3:6]
-
-    return orthonormal_pose_vectors(new_normal + previous_normal, curvature_direction)
+    return Rotation.from_matrix(
+        np.stack([new_pose_vecs.reshape(3, 3), previous_pose_vecs.reshape(3, 3)])
+    ).mean(weights=[num_new_obs, num_previous_obs]).as_matrix().flatten()
 
 
 def pose_vector_mean(pose_vecs, pose_fully_defined):
