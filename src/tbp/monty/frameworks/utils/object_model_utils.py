@@ -366,9 +366,14 @@ def pose_vector_merge(
     Returns:
         Flat array of nine elements holding the merged pose vectors.
     """
-    return Rotation.from_matrix(
-        np.stack([new_pose_vecs.reshape(3, 3), previous_pose_vecs.reshape(3, 3)])
-    ).mean(weights=[num_new_obs, num_previous_obs]).as_matrix().flatten()
+    return (
+        Rotation.from_matrix(
+            np.stack([new_pose_vecs.reshape(3, 3), previous_pose_vecs.reshape(3, 3)])
+        )
+        .mean(weights=[num_new_obs, num_previous_obs])
+        .as_matrix()
+        .flatten()
+    )
 
 
 def pose_vector_mean(pose_vecs, pose_fully_defined):
