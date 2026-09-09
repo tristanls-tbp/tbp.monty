@@ -90,7 +90,6 @@ class PoseVectorsTest(unittest.TestCase):
         merged = pose_vector_merge(
             self.opposite_frame,
             self.frame,
-            use_cds_to_update=True,
             num_new_obs=4,
             num_previous_obs=4,
         )
@@ -102,7 +101,6 @@ class PoseVectorsTest(unittest.TestCase):
         keeps_new = pose_vector_merge(
             self.opposite_frame,
             self.frame,
-            use_cds_to_update=True,
             num_new_obs=8,
             num_previous_obs=4,
         )
@@ -110,7 +108,6 @@ class PoseVectorsTest(unittest.TestCase):
         keeps_previous = pose_vector_merge(
             self.opposite_frame,
             self.frame,
-            use_cds_to_update=True,
             num_new_obs=4,
             num_previous_obs=8,
         )
@@ -123,7 +120,6 @@ class PoseVectorsTest(unittest.TestCase):
         merged = pose_vector_merge(
             tilted,
             self.frame,
-            use_cds_to_update=True,
             num_new_obs=4,
             num_previous_obs=4,
         )
@@ -138,7 +134,6 @@ class PoseVectorsTest(unittest.TestCase):
             stored = pose_vector_merge(
                 self.opposite_frame,
                 stored,
-                use_cds_to_update=True,
                 num_new_obs=4,
                 num_previous_obs=4 * update,
             )
@@ -161,11 +156,10 @@ class PoseVectorsTest(unittest.TestCase):
                     for _ in range(4)
                 ]
             )
-            pv_mean, use_cds_to_update = pose_vector_mean(observations, np.ones((4, 1)))
+            pv_mean, _ = pose_vector_mean(observations, np.ones((4, 1)))
             stored = pose_vector_merge(
                 pv_mean,
                 stored,
-                use_cds_to_update=use_cds_to_update,
                 num_new_obs=4,
                 num_previous_obs=observation_count,
             )

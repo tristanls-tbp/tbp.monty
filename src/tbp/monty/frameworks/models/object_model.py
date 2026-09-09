@@ -813,7 +813,7 @@ class GridObjectModel(GraphObjectModel):
             pdefined_ids = obs_fm["pose_fully_defined"]
             pose_vecs = new_features_in_voxel[:, pv_ids[0] : pv_ids[1]]
             pdefined = new_features_in_voxel[:, pdefined_ids[0] : pdefined_ids[1]]
-            pv_mean, use_cds_to_update = pose_vector_mean(pose_vecs, pdefined)
+            pv_mean, _ = pose_vector_mean(pose_vecs, pdefined)
         for feature in obs_fm:
             ids = obs_fm[feature]
             feats = new_features_in_voxel[:, ids[0] : ids[1]]
@@ -848,7 +848,6 @@ class GridObjectModel(GraphObjectModel):
                         avg_feat = pose_vector_merge(
                             avg_feat,
                             previous_average,
-                            use_cds_to_update,
                             num_new_obs,
                             num_old_obs,
                         )
