@@ -12,6 +12,7 @@ import unittest
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Callable, Tuple
+from unittest.mock import MagicMock
 
 import numpy as np
 import numpy.testing as nptest
@@ -21,6 +22,11 @@ from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 
 from tbp.monty.attention.voxel_grid import Voxel, voxelize_and_bin_points
+from tests.strategies.arrays import (
+    float_array_n_by_3,
+    float_array_not_1d,
+    float_array_not_n_by_3,
+)
 from tests.unit.attention import strategies
 
 
@@ -33,17 +39,17 @@ class VoxelizedAndBinnedPoints:
     """
 
     voxel_size: float
-    points: np.ndarray
+    points: npt.NDArray[np.floating]
     point_ind_to_voxel: list[Voxel]
     voxel_to_point_inds: dict[Voxel, list[int]]
-    features: dict[str, np.ndarray]
+    weights: npt.NDArray[np.floating]
 
 
 @st.composite
 def voxelized_and_binned_points(
     draw: st.DrawFn,
     voxel_size_strategy: st.SearchStrategy[float] = strategies.voxel_sizes,
-    weights_strategy: Callable[[int], st.SearchStrategy] | None = None,
+    weights_strategy: Callable[[int], st.SearchStrategy] = strategies.valid_weights,
 ) -> VoxelizedAndBinnedPoints:
     """Construct a set of points that are known to lie inside specific voxels.
 
@@ -51,9 +57,10 @@ def voxelized_and_binned_points(
       1. Select voxels that will be occupied.
       2. Assign the number of points that will fall into each voxel.
       3. For each voxel, generate the points that fall inside it.
+      4. Generate the weights for each point.
 
     Returns:
-        points: The generated points inside the voxels.
+       Voxelized and binned points.
     """
     voxel_size = draw(voxel_size_strategy)
 
@@ -128,26 +135,39 @@ def voxelized_and_binned_points(
             assert point_ind_to_voxel[point_ind] == voxel
 
     # 4. One value per point for each requested feature.
-    features = {
-        name: draw(make_strategy(len(points)))
-        for name, make_strategy in (feature_strategies or {}).items()
-    }
+    weights = draw(weights_strategy(len(points)))
 
     return VoxelizedAndBinnedPoints(
         voxel_size=voxel_size,
         points=np.stack(points),
         point_ind_to_voxel=point_ind_to_voxel,
         voxel_to_point_inds=voxel_to_point_inds,
-        features=features,
+        weights=weights,
     )
 
 
 class VoxelizeAndBinPointsTest(unittest.TestCase):
-    def test_points_not_n_by_3_raises_value_error(self):
-        pass
+    @given(points=float_array_not_n_by_3())
+    def test_points_not_n_by_3_raises_value_error(
+        self, points: npt.NDArray[np.float64]
+    ):
+        with self.assertRaises(ValueError):
+            voxelize_and_bin_points(
+                voxel_size=1.0,
+                points=points,
+                weights=MagicMock(),
+            )
 
-    def test_weights_not_1d_raises_value_error(self):
-        pass
+    @given(points=float_array_n_by_3(), weights=float_array_not_1d())
+    def test_weights_not_1d_raises_value_error(
+        self, points: npt.NDArray[np.float64], weights: npt.NDArray[np.float64]
+    ):
+        with self.assertRaises(ValueError):
+            voxelize_and_bin_points(
+                voxel_size=1.0,
+                points=points,
+                weights=weights,
+            )
 
     def test_recovers_voxels_that_points_were_generated_from(self):
         pass

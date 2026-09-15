@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import numpy as np
+import numpy.typing as npt
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 
@@ -52,11 +53,11 @@ voxel_sizes = st.floats(min_value=MIN_VOXEL_SIZE, max_value=MAX_VOXEL_SIZE)
 #     )
 
 
-# def valid_weights(length: int) -> st.SearchStrategy[np.ndarray]:
-#     return arrays(
-#         dtype=np.float64,
-#         shape=(length,),
-#         elements=st.floats(
-#             min_value=MIN_ATTENTION_WEIGHT, max_value=MAX_ATTENTION_WEIGHT
-#         ),
-#     )
+def valid_weights(length: int) -> st.SearchStrategy[npt.NDArray[np.floating]]:
+    return arrays(
+        dtype=np.float64,
+        shape=(length,),
+        elements=st.floats(
+            min_value=MIN_ATTENTION_WEIGHT, max_value=MAX_ATTENTION_WEIGHT
+        ),
+    )

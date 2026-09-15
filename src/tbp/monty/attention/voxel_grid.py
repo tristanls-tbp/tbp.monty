@@ -56,6 +56,10 @@ def voxelize_and_bin_points(
     if pts.ndim != 2 or pts.shape[1] != 3:
         raise ValueError(f"points must be of shape (N, 3), got {pts.shape}.")
 
+    weights = np.asarray(weights)
+    if weights.ndim != 1:
+        raise ValueError(f"weights must be of shape (N,), got {weights.shape}.")
+
     voxels_ = np.floor(pts / voxel_size).astype(int)
     voxels = list(map(tuple, voxels_.tolist()))
     df = pd.DataFrame({"voxel": voxels, "weight": weights})
