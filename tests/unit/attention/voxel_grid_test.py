@@ -49,7 +49,9 @@ class VoxelizedAndBinnedPoints:
 def voxelized_and_binned_points(
     draw: st.DrawFn,
     voxel_size_strategy: st.SearchStrategy[float] = strategies.voxel_sizes,
-    weights_strategy: Callable[[int], st.SearchStrategy] = strategies.valid_weights,
+    weights_strategy: Callable[
+        [int], st.SearchStrategy
+    ] = strategies.valid_default_attention_system_weights,
 ) -> VoxelizedAndBinnedPoints:
     """Construct a set of points that are known to lie inside specific voxels.
 

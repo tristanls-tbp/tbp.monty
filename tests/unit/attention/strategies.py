@@ -13,7 +13,7 @@ import numpy.typing as npt
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 
-from tbp.monty.cmp import MAX_ATTENTION_WEIGHT, MIN_ATTENTION_WEIGHT
+from tbp.monty.attention.attention_system import DefaultAttentionSystem
 
 MIN_POINT_COORDINATE = -10
 MAX_POINT_COORDINATE = 10
@@ -53,11 +53,14 @@ voxel_sizes = st.floats(min_value=MIN_VOXEL_SIZE, max_value=MAX_VOXEL_SIZE)
 #     )
 
 
-def valid_weights(length: int) -> st.SearchStrategy[npt.NDArray[np.floating]]:
+def valid_default_attention_system_weights(
+    length: int,
+) -> st.SearchStrategy[npt.NDArray[np.floating]]:
     return arrays(
         dtype=np.float64,
         shape=(length,),
         elements=st.floats(
-            min_value=MIN_ATTENTION_WEIGHT, max_value=MAX_ATTENTION_WEIGHT
+            min_value=DefaultAttentionSystem.MIN_ATTENTION_WEIGHT,
+            max_value=DefaultAttentionSystem.MAX_ATTENTION_WEIGHT,
         ),
     )
