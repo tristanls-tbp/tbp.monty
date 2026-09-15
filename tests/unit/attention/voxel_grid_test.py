@@ -171,8 +171,16 @@ class VoxelizeAndBinPointsTest(unittest.TestCase):
                 weights=weights,
             )
 
-    def test_recovers_voxels_that_points_were_generated_from(self):
-        pass
+    @given(binned=voxelized_and_binned_points())
+    def test_recovers_voxels_that_points_were_generated_from(
+        self, binned: VoxelizedAndBinnedPoints
+    ):
+        result = voxelize_and_bin_points(
+            voxel_size=binned.voxel_size, points=binned.points, weights=binned.weights
+        )
+        expected = binned.point_ind_to_voxel
+        voxels = list(result["voxel"])
+        nptest.assert_array_equal(voxels, expected)
 
     def test_returned_dataframe_rows_contain_each_points_voxel_and_weight(self):
         pass
