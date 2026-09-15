@@ -11,13 +11,13 @@ from __future__ import annotations
 import unittest
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import Callable, Tuple
+from typing import Callable
 from unittest.mock import MagicMock
 
 import numpy as np
 import numpy.testing as nptest
 import numpy.typing as npt
-from hypothesis import assume, given
+from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 
@@ -172,15 +172,15 @@ class VoxelizeAndBinPointsTest(unittest.TestCase):
             )
 
     @given(binned=voxelized_and_binned_points())
-    def test_recovers_voxels_that_points_were_generated_from(
+    def test_returned_dataframe_rows_contain_each_points_voxel_and_weight(
         self, binned: VoxelizedAndBinnedPoints
     ):
         result = voxelize_and_bin_points(
             voxel_size=binned.voxel_size, points=binned.points, weights=binned.weights
         )
-        expected = binned.point_ind_to_voxel
-        voxels = list(result["voxel"])
-        nptest.assert_array_equal(voxels, expected)
 
-    def test_returned_dataframe_rows_contain_each_points_voxel_and_weight(self):
-        pass
+        voxels = list(result["voxel"])
+        nptest.assert_array_equal(voxels, binned.point_ind_to_voxel)
+
+        weights = result["weight"]
+        nptest.assert_array_equal(weights, binned.weights)
