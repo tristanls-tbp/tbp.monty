@@ -119,7 +119,6 @@ class VoxelGrid:
                 feature; an empty grid when None.
         """
         self._voxel_size = voxel_size
-#         self._inhibit_all = inhibit_all
         if data is None:
             # The weight column must carry a numeric dtype: a bare empty
             # column would be object dtype and poison later concats.
@@ -177,41 +176,27 @@ class VoxelGrid:
 #         voxel_index = pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS)
 #         return voxel_index.isin(self._data.index)
 
-#     def feature_at_points(
-#         self,
-#         feature: str,
-#         points: npt.NDArray[np.floating],
-#         fill_value: float | None = None,
-#     ) -> npt.NDArray:
-#         """Look up a feature's value at each point.
+    def weights_at_points(
+        self,
+        points: npt.NDArray[np.floating],
+        fill_value: float = np.nan,
+    ) -> npt.NDArray:
+        """Look up a feature's value at each point.
 
-#         Args:
-#             feature: The feature (column) to look up.
-#             points: A (N, 3) array of points; a single flat point is accepted.
-#             fill_value: The value reported for points whose voxel is not in
-#                 the grid; NaN when None.
+        Args:
+            points: A (N, 3) array of points.
+            fill_value: The value reported for points whose voxel is not in
+                the grid; defaults to NaN.
 
-#         Returns:
-#             A (N,) array of the feature's values, ``fill_value`` where the
-#             point's voxel is unoccupied.
-#         """
-#         voxel_index = voxelize_points(points, self._voxel_size)
-#         # An explicit fill_value of None would fill with Python None (object
-#         # dtype); NaN keeps the result numeric.
-#         fill = np.nan if fill_value is None else fill_value
-#         return self._data[feature].reindex(voxel_index, fill_value=fill).to_numpy()
+        Returns:
+            An (N,) array of weights; ``fill_value`` is used for any points in
+            unoccupied voxels.
+        """
+        voxel_index = voxelize_points(self._voxel_size, points)
+        return (
+            self._data["weight"].reindex(voxel_index, fill_value=fill_value).to_numpy()
+        )
 
-#     def __getitem__(self, feature: str) -> pd.Series:
-#         """Get a feature's values, one per occupied voxel.
-
-#         Args:
-#             feature: The feature (column) to select.
-
-#         Returns:
-#             The feature as a Series indexed by voxel.
-#         """
-#         assert isinstance(feature, str)
-#         return self._data[feature]
 
 #     def __len__(self) -> int:
 #         """Return the number of occupied voxels."""
