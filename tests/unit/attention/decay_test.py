@@ -59,6 +59,7 @@ from tests.unit.attention import strategies
 #     )
 #     return VoxelGrid(DEFAULT_VOXEL_SIZE, frame)
 
+
 class NoopDecayTest(unittest.TestCase):
     @given(grid=strategies.default_voxel_grid())
     def test_the_grid_is_left_unchanged(self, grid: VoxelGrid) -> None:
@@ -74,70 +75,49 @@ class NoopDecayTest(unittest.TestCase):
         pd.testing.assert_frame_equal(after, before)
 
 
-# MIN_LINEAR_DECAY_RATE = 1e-6
-# MAX_LINEAR_DECAY_RATE = 10.0
-
-# linear_decay_rates = st.floats(
-#     min_value=MIN_LINEAR_DECAY_RATE, max_value=MAX_LINEAR_DECAY_RATE, allow_nan=False
-# )
-# non_positive_decay_rates = st.floats(max_value=0.0)
+MIN_LINEAR_WEIGHT_DECAY_RATE = 1e-6
+MAX_LINEAR_WEIGHT_DECAY_RATE = 10.0
 
 
-# class LinearDecayTest(unittest.TestCase):
-#     def setUp(self) -> None:
-#         self.decay = LinearDecay(rate=0.1)
+class LinearWeightDecayTest(unittest.TestCase):
+    @given(
+        rate=st.floats(
+            min_value=-MAX_LINEAR_WEIGHT_DECAY_RATE,
+            max_value=0.0,
+            allow_nan=False,
+            exclude_max=True,
+        )
+    )
+    def test_raises_value_error_for_negative_rate(self, rate: float) -> None:
+        with self.assertRaises(ValueError):
+            LinearWeightDecay(rate=rate)
 
-#     @given(weights=valid_weights(100), rate=linear_decay_rates)
-#     def test_moves_weights_toward_zero_by_the_rate_and_clamps_near_zero(
-#         self,
-#         weights: np.ndarray,
-#         rate: float,
-#     ) -> None:
-#         # The documented rule: step each weight toward zero by the rate, and a
-#         # weight that would land within the rate of zero is clamped to zero.
-#         # A step lands within the rate of zero exactly when |weight| <= 2 * rate,
-#         # which splits the weights into three disjoint groups.
-#         grid = voxel_grid_with_weights(weights)
-#         pre_step_weights = grid.to_pandas()["weight"].to_numpy()
+    @given(
+        grid=strategies.default_voxel_grid(),
+        rate=st.floats(
+            min_value=MIN_LINEAR_WEIGHT_DECAY_RATE,
+            max_value=MAX_LINEAR_WEIGHT_DECAY_RATE,
+            allow_nan=False,
+        ),
+    )
+    def test_moves_weights_toward_zero_by_the_rate_and_clamps_near_zero(
+        self,
+        grid: VoxelGrid,
+        rate: float,
+    ) -> None:
+        weights = grid.to_pandas()["weight"].to_numpy()
+        pre_step_weights = weights.copy()
+        far_negative = pre_step_weights < -rate
+        near_zero = np.abs(pre_step_weights) <= rate
+        far_positive = pre_step_weights > rate
 
-#         far_negative = pre_step_weights < -2 * rate
-#         near_zero = np.abs(pre_step_weights) <= 2 * rate
-#         far_positive = pre_step_weights > 2 * rate
-#         assert (far_negative | near_zero | far_positive).all()
+        LinearWeightDecay(rate=rate)(grid)
 
-#         LinearDecay(rate=rate)(grid)
-
-#         post_step_weights = grid.to_pandas()["weight"].to_numpy()
-#         np.testing.assert_allclose(
-#             post_step_weights[far_negative], pre_step_weights[far_negative] + rate
-#         )
-#         np.testing.assert_array_equal(post_step_weights[near_zero], 0.0)
-#         np.testing.assert_allclose(
-#             post_step_weights[far_positive], pre_step_weights[far_positive] - rate
-#         )
-
-#     def test_decays_in_place_and_returns_nothing(self) -> None:
-#         grid = grid_with_weights(3.0)
-#         frame = grid.to_pandas()
-#         returned = self.decay(grid)
-
-#         self.assertIsNone(returned)
-#         self.assertIs(grid.to_pandas(), frame)
-#         np.testing.assert_allclose(frame["weight"].to_numpy(), [2.9])
-
-#     @given(weights=valid_weights(MAX_POINTS), rate=non_positive_decay_rates)
-#     def test_a_non_positive_rate_disables_decay(
-#         self,
-#         weights: np.ndarray,
-#         rate: float,
-#     ) -> None:
-#         grid = grid_with_weights(*weights)
-#         LinearDecay(rate=rate)(grid)
-
-#         np.testing.assert_array_equal(grid["weight"].to_numpy(), weights)
-
-#     def test_an_empty_grid_stays_empty(self) -> None:
-#         grid = VoxelGrid(DEFAULT_VOXEL_SIZE)
-#         self.decay(grid)
-
-#         self.assertEqual(len(grid), 0)
+        post_step_weights = weights
+        np.testing.assert_allclose(
+            post_step_weights[far_negative], pre_step_weights[far_negative] + rate
+        )
+        np.testing.assert_array_equal(post_step_weights[near_zero], 0.0)
+        np.testing.assert_allclose(
+            post_step_weights[far_positive], pre_step_weights[far_positive] - rate
+        )

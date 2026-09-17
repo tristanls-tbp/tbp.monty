@@ -48,7 +48,12 @@ class LinearWeightDecay(VoxelGridWeightDecay):
 
         Args:
             rate: How much a weight moves toward zero per step.
+
+        Raises:
+            ValueError: If the rate is negative.
         """
+        if rate < 0.0:
+            raise ValueError(f"Rate must be non-negative, got {rate}")
         self._rate = rate
 
     def __call__(self, grid: VoxelGrid) -> None:
@@ -57,9 +62,13 @@ class LinearWeightDecay(VoxelGridWeightDecay):
         Args:
             grid: The grid to decay.
         """
-        if len(grid) == 0 or self._rate <= 0:
+        if len(grid) == 0 or self._rate == 0.0:
             return
         data = grid.to_pandas()
         weights = data["weight"].to_numpy()
-        stepped = weights - self._rate * np.sign(weights)
-        data["weight"] = np.where(np.abs(stepped) <= self._rate, 0.0, stepped)
+        to_step = np.abs(weights) > self._rate
+
+        stepped = weights[to_step] - self._rate * np.sign(weights[to_step])
+        weights[to_step] = stepped
+        weights[~to_step] = 0.0
+        data["weight"] = weights

@@ -82,7 +82,7 @@ def default_voxel_grid(
     max_voxel_coord = int(MAX_POINT_COORDINATE / voxel_size)
     voxel_axis_length = max_voxel_coord - min_voxel_coord + 1
 
-    min_total_voxels = 1
+    min_total_voxels = 0
     max_total_voxels = min(voxel_axis_length**3, MAX_VOXELS)
     voxels = draw(
         st.lists(
