@@ -95,6 +95,38 @@ class VoxelGrid:
     _voxel_size: float
     _data: pd.DataFrame
 
+    @classmethod
+    def from_pandas(cls, voxel_size: float, data: pd.DataFrame) -> VoxelGrid:
+        """Create a voxel grid from a pandas DataFrame.
+
+        Args:
+            voxel_size: Edge length of a voxel.
+            data: A DataFrame with a MultiIndex of (x, y, z) voxel coordinates and a
+            "weight" column.
+
+        Returns:
+            A voxel grid.
+
+        Raises:
+            ValueError: If the DataFrame index is not named (x, y, z), is not unique,
+            does not have a "weight" column, or the weights are not 1D.
+        """
+        if not data.index.names == VOXEL_LEVELS:
+            raise ValueError("DataFrame index levels must be named (x, y, z).")
+        if not data.index.is_unique:
+            raise ValueError("voxels must be unique.")
+        if "weight" not in data.columns:
+            raise ValueError("DataFrame must have a 'weight' column.")
+        if not data["weight"].ndim == 1:
+            raise ValueError(
+                f"weights must be of shape (N,), got {data['weight'].shape}."
+            )
+
+        grid = object.__new__(cls)
+        grid._voxel_size = voxel_size
+        grid._data = data
+        return grid
+
     def __init__(
         self,
         voxel_size: float,

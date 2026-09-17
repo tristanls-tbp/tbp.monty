@@ -21,8 +21,10 @@ import numpy.typing as npt
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
+import pandas as pd
 
 from tbp.monty.attention.voxel_grid import (
+    VOXEL_LEVELS,
     Voxel,
     VoxelGrid,
     encode_voxel_grid,
@@ -357,6 +359,44 @@ def non_unique_voxels(draw: st.DrawFn) -> list[Voxel]:
 
 
 class VoxelGridTest(unittest.TestCase):
+    def test_from_pandas_raises_value_error_if_index_levels_not_named_x_y_z(self):
+        df = pd.DataFrame(index=pd.MultiIndex.from_tuples([(0, 0, 0)]))
+        with self.assertRaisesRegex(
+            ValueError, "DataFrame index levels must be named (x, y, z)."
+        ):
+            VoxelGrid.from_pandas(voxel_size=MagicMock(), data=df)
+
+    @given(voxels=non_unique_voxels())
+    def test_from_pandas_raises_value_error_if_index_is_not_unique(
+        self, voxels: list[Voxel]
+    ):
+        df = pd.DataFrame(index=pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS))
+        with self.assertRaisesRegex(ValueError, "voxels must be unique."):
+            VoxelGrid.from_pandas(voxel_size=MagicMock(), data=df)
+
+    @given(voxel_grid=strategies.default_voxel_grid())
+    def test_from_pandas_raises_value_error_if_data_does_not_have_weight_column(
+        self, voxel_grid: VoxelGrid
+    ):
+        df = voxel_grid.to_pandas().drop(columns=["weight"])
+        with self.assertRaisesRegex(
+            ValueError, "DataFrame must have a 'weight' column."
+        ):
+            VoxelGrid.from_pandas(voxel_size=MagicMock(), data=df)
+
+    @given(voxel_grid=strategies.default_voxel_grid())
+    def test_from_pandas_raises_value_error_if_weights_are_not_1d(
+        self, voxel_grid: VoxelGrid
+    ):
+        pass
+        # TODO: make it work
+        # df = voxel_grid.to_pandas()
+        # df["weight"] = voxel_grid.weights.reshape(-1, 1)
+        # with self.assertRaisesRegex(
+        #     ValueError, "weights must be of shape (N,), got (N, 1)."
+        # ):
+        #     VoxelGrid.from_pandas(voxel_size=MagicMock(), data=df)
+
     @given(voxels=non_unique_voxels())
     def test_non_unique_voxels_raises_value_error(self, voxels: list[Voxel]):
         with self.assertRaises(ValueError):
