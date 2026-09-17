@@ -107,12 +107,20 @@ class VoxelGrid:
             voxel_size: Edge length of a voxel.
             voxels: The occupied voxels.
             weights: The weights of the occupied voxels.
+
+        Raises:
+            ValueError: If ``voxels`` contains duplicates or ``weights`` is not 1D.
         """
+        index = pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS)
+        if not index.is_unique:
+            raise ValueError("voxels must be unique.")
+
+        weights = np.asarray(weights)
+        if not weights.ndim == 1:
+            raise ValueError(f"weights must be of shape (N,), got {weights.shape}.")
+
         self._voxel_size = voxel_size
-        self._data = pd.DataFrame(
-            {"weight": weights},
-            index=pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS),
-        )
+        self._data = pd.DataFrame({"weight": weights}, index=index)
 
     @property
     def voxel_size(self) -> float:
@@ -156,9 +164,8 @@ def encode_voxel_grid(grid: VoxelGrid) -> dict:
         grid: The grid to encode.
 
     Returns:
-        The grid's voxel size, its inhibit-all signal, its occupied voxels as
-        a (V, 3) array, and one (V,) array per feature column, keyed by the
-        feature name.
+        A dictionary with the grid's ``voxel_size``, its occupied ``voxels``
+        as a (V, 3) array, and their ``weight`` as a (V,) array.
     """
     df = grid.to_pandas()
     return {

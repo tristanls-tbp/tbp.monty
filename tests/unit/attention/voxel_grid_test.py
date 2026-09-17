@@ -13,7 +13,7 @@ import unittest
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Callable
-from unittest.mock import patch, sentinel
+from unittest.mock import MagicMock, patch, sentinel
 
 import numpy as np
 import numpy.testing as nptest
@@ -343,7 +343,33 @@ def voxel_grid_and_points(
     )
 
 
+@st.composite
+def non_unique_voxels(draw: st.DrawFn) -> list[Voxel]:
+    """Draw a list of voxels in which at least one voxel appears more than once.
+
+    Returns:
+        Voxels with duplicates.
+    """
+    coords = st.integers(min_value=-100, max_value=100)
+    voxels = draw(st.lists(st.tuples(coords, coords, coords), min_size=1))
+    duplicate = draw(st.sampled_from(voxels))
+    return draw(st.permutations([*voxels, duplicate]))
+
+
 class VoxelGridTest(unittest.TestCase):
+    @given(voxels=non_unique_voxels())
+    def test_non_unique_voxels_raises_value_error(self, voxels: list[Voxel]):
+        with self.assertRaises(ValueError):
+            VoxelGrid(
+                voxel_size=MagicMock(), voxels=voxels, weights=np.zeros(len(voxels))
+            )
+
+    @given(weights=float_array_not_1d())
+    def test_weights_not_1d_raises_value_error(self, weights: npt.NDArray[np.floating]):
+        voxels = np.arange(len(weights) * 3).reshape(len(weights), 3)
+        with self.assertRaises(ValueError):
+            VoxelGrid(voxel_size=MagicMock(), voxels=voxels, weights=weights)
+
     @given(voxel_grid_and_points=voxel_grid_and_points())
     def test_weights_at_points_returns_weights_for_occupied_voxels_and_fill_value_for_unoccupied_voxels(  # noqa: E501
         self,
