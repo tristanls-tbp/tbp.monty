@@ -19,13 +19,38 @@ Voxel = Tuple[int, int, int]
 # from tbp.monty.frameworks.models.buffer import BufferEncoder
 
 # # Edge length of a voxel, in meters, when none is specified.
-# DEFAULT_VOXEL_SIZE = 0.005
 
 # # Names of the row index levels: a voxel's integer grid coordinate.
-# VOXEL_LEVELS = ("x", "y", "z")
+VOXEL_LEVELS = ("x", "y", "z")
 
 # # The feature every grid carries: the attention weight of each voxel.
 # WEIGHT_FEATURE = "weight"
+
+def voxelize_points(
+    voxel_size: float,
+    points: npt.NDArray[np.floating],
+) -> list[Voxel]:
+    """Find the voxel containing each point.
+
+    Voxels are half-open: a point on the face shared by two voxels belongs to
+    the one with the larger coordinate, i.e. voxel v spans [v, v + 1) along
+    each axis, in units of ``voxel_size``.
+
+    Args:
+        points: An (N, 3) array of points.
+        voxel_size: Edge length of a voxel.
+
+    Returns:
+        The voxel of each point, in point order.
+
+    Raises:
+        ValueError: If ``points`` is not an (N, 3) array.
+    """
+    pts = np.asarray(points)
+    if pts.ndim != 2 or pts.shape[1] != 3:
+        raise ValueError(f"points must be of shape (N, 3), got {pts.shape}.")
+    voxels = np.floor(pts / voxel_size).astype(int)
+    return list(map(tuple, voxels.tolist()))
 
 
 def voxelize_and_bin_points(
@@ -41,73 +66,69 @@ def voxelize_and_bin_points(
 
     Args:
         voxel_size: Edge length of a voxel.
-        points: An (N, 3) array of points; a single flat point is accepted.
+        points: An (N, 3) array of points.
         weights: An (N,) array of weights, aligned with ``points``.
 
     Raises:
-        ValueError: If ``points`` is not an (N, 3) array.
+        ValueError: If ``weights`` is not an (N,) array.
 
     Returns:
         A frame with one row per point, indexed by ``point_ind`` (the
         point's position in ``points``), holding the point's ``voxel`` and
         ``weight``.
     """
-    pts = np.asarray(points)
-    if pts.ndim != 2 or pts.shape[1] != 3:
-        raise ValueError(f"points must be of shape (N, 3), got {pts.shape}.")
-
     weights = np.asarray(weights)
     if weights.ndim != 1:
         raise ValueError(f"weights must be of shape (N,), got {weights.shape}.")
 
-    voxels_ = np.floor(pts / voxel_size).astype(int)
-    voxels = list(map(tuple, voxels_.tolist()))
+    voxels = voxelize_points(voxel_size, points)
     df = pd.DataFrame({"voxel": voxels, "weight": weights})
     df.index.name = "point_ind"
     return df
 
 
-# class VoxelGrid:
-#     """A sparse grid of per-voxel features over 3D space.
+class VoxelGrid:
+    """A sparse grid of per-voxel features over 3D space.
 
-#     Backed by a pandas DataFrame whose rows are the occupied voxels -- an
-#     (x, y, z) integer MultiIndex of voxel coordinates (lower corners) -- and
-#     whose columns are the features. Every grid carries the ``weight``
-#     feature; a grid built without data has no voxels but keeps a typed,
-#     empty ``weight`` column so it merges, looks up, and encodes like any
-#     other grid. The attention system's ``decay`` updates a grid's weights in
-#     place; its ``merge`` and ``expire`` build new grids from old ones.
+    Backed by a pandas DataFrame whose rows are the occupied voxels -- an
+    (x, y, z) integer MultiIndex of voxel coordinates (lower corners) -- and
+    whose columns are the features. As of this writing, the only column is "weight".
 
-#     A grid built from one step's proposals may carry the ``inhibit_all``
-#     signal (see ``AttentionRegion``): a request to the merge to inhibit
-#     everything, which the merged result itself never carries.
-#     """
+    TODO: delete below?
+    # Every grid carries the ``weight``
+    # feature; a grid built without data has no voxels but keeps a typed,
+    # empty ``weight`` column so it merges, looks up, and encodes like any
+    # other grid. The attention system's ``decay`` updates a grid's weights in
+    # place; its ``merge`` and ``expire`` build new grids from old ones.
 
-#     def __init__(
-#         self,
-#         voxel_size: float,
-#         data: pd.DataFrame | None = None,
-#         inhibit_all: bool = False,
-#     ):
-#         """Initialize the voxel grid.
+    # A grid built from one step's proposals may carry the ``inhibit_all``
+    # signal (see ``AttentionRegion``): a request to the merge to inhibit
+    # everything, which the merged result itself never carries.
+    """
 
-#         Args:
-#             voxel_size: Edge length of a voxel, in meters.
-#             data: The backing frame, indexed by voxel with one column per
-#                 feature; an empty grid when None.
-#             inhibit_all: Whether the grid carries the inhibit-all signal.
-#         """
-#         self._voxel_size = voxel_size
+    def __init__(
+        self,
+        voxel_size: float,
+        data: pd.DataFrame | None = None,
+    ):
+        """Initialize the voxel grid.
+
+        Args:
+            voxel_size: Edge length of a voxel, in meters.
+            data: The backing frame, indexed by voxel with one column per
+                feature; an empty grid when None.
+        """
+        self._voxel_size = voxel_size
 #         self._inhibit_all = inhibit_all
-#         if data is None:
-#             # The weight column must carry a numeric dtype: a bare empty
-#             # column would be object dtype and poison later concats.
-#             self._data = pd.DataFrame(
-#                 {WEIGHT_FEATURE: pd.Series(dtype=float)},
-#                 index=pd.MultiIndex.from_arrays([[], [], []], names=VOXEL_LEVELS),
-#             )
-#         else:
-#             self._data = data
+        if data is None:
+            # The weight column must carry a numeric dtype: a bare empty
+            # column would be object dtype and poison later concats.
+            self._data = pd.DataFrame(
+                {"weight": pd.Series(dtype=float)},
+                index=pd.MultiIndex.from_arrays([[], [], []], names=VOXEL_LEVELS),
+            )
+        else:
+            self._data = data
 
 #     @property
 #     def voxel_size(self) -> float:

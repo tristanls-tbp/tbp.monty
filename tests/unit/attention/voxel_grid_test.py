@@ -21,7 +21,11 @@ from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 
-from tbp.monty.attention.voxel_grid import Voxel, voxelize_and_bin_points
+from tbp.monty.attention.voxel_grid import (
+    Voxel,
+    voxelize_and_bin_points,
+    voxelize_points,
+)
 from tests.strategies.arrays import (
     float_array_n_by_3,
     float_array_not_1d,
@@ -148,18 +152,25 @@ def voxelized_and_binned_points(
     )
 
 
-class VoxelizeAndBinPointsTest(unittest.TestCase):
+class VoxelizePointsTest(unittest.TestCase):
     @given(points=float_array_not_n_by_3())
     def test_points_not_n_by_3_raises_value_error(
         self, points: npt.NDArray[np.float64]
     ):
         with self.assertRaises(ValueError):
-            voxelize_and_bin_points(
-                voxel_size=1.0,
-                points=points,
-                weights=MagicMock(),
-            )
+            voxelize_points(voxel_size=1.0, points=points)
 
+    @given(binned=voxelized_and_binned_points())
+    def test_returned_tuple_list_contains_each_points_voxel(
+        self,
+        binned: VoxelizedAndBinnedPoints,
+    ) -> None:
+        result = voxelize_points(binned.voxel_size, binned.points)
+        expected = binned.point_ind_to_voxel
+        nptest.assert_array_equal(result, expected)
+
+
+class VoxelizeAndBinPointsTest(unittest.TestCase):
     @given(points=float_array_n_by_3(), weights=float_array_not_1d())
     def test_weights_not_1d_raises_value_error(
         self, points: npt.NDArray[np.float64], weights: npt.NDArray[np.float64]
