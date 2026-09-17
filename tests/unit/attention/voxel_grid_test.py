@@ -23,6 +23,7 @@ from hypothesis.extra.numpy import arrays
 
 from tbp.monty.attention.voxel_grid import (
     Voxel,
+    VoxelGrid,
     voxelize_and_bin_points,
     voxelize_points,
 )
@@ -204,3 +205,23 @@ class VoxelizeAndBinPointsTest(unittest.TestCase):
         nptest.assert_array_equal(weights, binned.weights)
 
         voxelize_points_mock.assert_called_once_with(binned.voxel_size, binned.points)
+
+
+class VoxelGridTest(unittest.TestCase):
+    def test_weights_at_points_returnsfill_value_for_every_point_when_voxel_grid_is_empty(  # noqa: E501
+        self,
+    ):
+        # TODO: remove once better test is written.
+        points = np.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]])
+        fill_value = 8675309
+        grid = VoxelGrid(voxel_size=0.1)
+
+        result = grid.weights_at_points(points, fill_value=fill_value)
+
+        expected = np.full(shape=(points.shape[0],), fill_value=fill_value)
+        nptest.assert_array_equal(result, expected)
+
+    def test_weights_at_points_returns_weights_for_occupied_voxels_and_fill_value_for_points_in_unoccupied_voxels(  # noqa: E501
+        self,
+    ):
+        pass
