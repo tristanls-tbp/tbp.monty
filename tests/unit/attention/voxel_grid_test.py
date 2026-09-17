@@ -8,6 +8,7 @@
 # https://opensource.org/licenses/MIT.
 from __future__ import annotations
 
+import json
 import unittest
 from collections import defaultdict
 from dataclasses import dataclass
@@ -24,9 +25,11 @@ from hypothesis.extra.numpy import arrays
 from tbp.monty.attention.voxel_grid import (
     Voxel,
     VoxelGrid,
+    encode_voxel_grid,
     voxelize_and_bin_points,
     voxelize_points,
 )
+from tbp.monty.frameworks.models.buffer import BufferEncoder
 from tests.strategies.arrays import (
     float_array_n_by_3,
     float_array_not_1d,
@@ -360,3 +363,19 @@ class VoxelGridTest(unittest.TestCase):
         expected_fill_values = np.full(int(np.sum(~point_in_grid)), np.nan)
         actual_fill_values = result[~point_in_grid]
         nptest.assert_array_equal(expected_fill_values, actual_fill_values)
+
+
+class EncodeVoxelGridTest(unittest.TestCase):
+    @given(voxel_grid_and_points=voxel_grid_and_points())
+    def test_buffer_encoder_encodes_voxel_grid(
+        self,
+        voxel_grid_and_points: VoxelGridAndPoints,
+    ):
+        voxel_grid = voxel_grid_and_points.voxel_grid
+        loaded = json.loads(json.dumps(voxel_grid, cls=BufferEncoder))
+        encoded = encode_voxel_grid(voxel_grid)
+
+        self.assertTrue(len(loaded) == len(encoded))
+        self.assertTrue(loaded["voxel_size"] == encoded["voxel_size"])
+        nptest.assert_array_equal(loaded["voxels"], encoded["voxels"])
+        nptest.assert_array_equal(loaded["weight"], encoded["weight"])

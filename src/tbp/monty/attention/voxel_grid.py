@@ -8,23 +8,19 @@
 # https://opensource.org/licenses/MIT.
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple
+from typing import Tuple
 
 import numpy as np
 import numpy.typing as npt
 import pandas as pd
 
+from tbp.monty.frameworks.models.buffer import BufferEncoder
+
 Voxel = Tuple[int, int, int]
 
-# from tbp.monty.frameworks.models.buffer import BufferEncoder
-
-# # Edge length of a voxel, in meters, when none is specified.
 
 VOXEL_LEVELS = ("x", "y", "z")
 """Names of the row index levels: a voxel's integer grid coordinate."""
-
-# # The feature every grid carries: the attention weight of each voxel.
-# WEIGHT_FEATURE = "weight"
 
 
 def voxelize_points(
@@ -93,18 +89,7 @@ class VoxelGrid:
 
     Backed by a pandas DataFrame whose rows are the occupied voxels -- an
     (x, y, z) integer MultiIndex of voxel coordinates (lower corners) -- and
-    whose columns are the features. As of this writing, the only column is "weight".
-
-    TODO: delete below?
-    # Every grid carries the ``weight``
-    # feature; a grid built without data has no voxels but keeps a typed,
-    # empty ``weight`` column so it merges, looks up, and encodes like any
-    # other grid. The attention system's ``decay`` updates a grid's weights in
-    # place; its ``merge`` and ``expire`` build new grids from old ones.
-
-    # A grid built from one step's proposals may carry the ``inhibit_all``
-    # signal (see ``AttentionRegion``): a request to the merge to inhibit
-    # everything, which the merged result itself never carries.
+    a "weight" column.
     """
 
     _voxel_size: float
@@ -119,7 +104,7 @@ class VoxelGrid:
         """Initialize the voxel grid.
 
         Args:
-            voxel_size: Edge length of a voxel, in meters.
+            voxel_size: Edge length of a voxel.
             voxels: The occupied voxels.
             weights: The weights of the occupied voxels.
         """
@@ -129,52 +114,18 @@ class VoxelGrid:
             index=pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS),
         )
 
-    #     @property
-    #     def voxel_size(self) -> float:
-    #         """Edge length of a voxel, in meters."""
-    #         return self._voxel_size
+    @property
+    def voxel_size(self) -> float:
+        """Edge length of a voxel."""
+        return self._voxel_size
 
-    #     @property
-    #     def inhibit_all(self) -> bool:
-    #         """Whether the grid asks the merge to inhibit everything."""
-    #         return self._inhibit_all
+    def to_pandas(self) -> pd.DataFrame:
+        """Return the backing frame, not a copy.
 
-    #     @property
-    #     def index(self) -> pd.MultiIndex:
-    #         """The occupied voxel coordinates, as pandas multi-index."""
-    #         return self._data.index
-
-    #     @property
-    #     def features(self) -> tuple[str]:
-    #         """The names of the features (columns) in the grid."""
-    #         return tuple(self._data.columns)
-
-    #     def copy(self) -> VoxelGrid:
-    #         """Return a (deep) copy of the voxel grid."""
-    #         return VoxelGrid(self._voxel_size, self._data.copy(), self._inhibit_all)
-
-    #     def to_pandas(self) -> pd.DataFrame:
-    #         """Return the backing frame, not a copy.
-
-    #         Returns:
-    #             The frame indexed by (x, y, z) voxel, one column per feature.
-    #         """
-    #         return self._data
-
-    #     def contains_points(
-    #         self, points: npt.NDArray[np.floating]
-    #     ) -> npt.NDArray[np.bool_]:
-    #         """Test which points fall within an occupied voxel.
-
-    #         Args:
-    #             points: A (N, 3) array of points; a single flat point is accepted.
-
-    #         Returns:
-    #             A (N,) boolean array, True where the point's voxel is in the grid.
-    #         """
-    #         voxels: list[Voxel] = voxelize_points(points, self._voxel_size)
-    #         voxel_index = pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS)
-    #         return voxel_index.isin(self._data.index)
+        Returns:
+            The frame indexed by (x, y, z) voxel, one column per feature.
+        """
+        return self._data
 
     def weights_at_points(
         self,
@@ -198,29 +149,24 @@ class VoxelGrid:
         )
 
 
-#     def __len__(self) -> int:
-#         """Return the number of occupied voxels."""
-#         return len(self._data)
+def encode_voxel_grid(grid: VoxelGrid) -> dict:
+    """Encode a voxel grid into a JSON-encodable dictionary.
+
+    Args:
+        grid: The grid to encode.
+
+    Returns:
+        The grid's voxel size, its inhibit-all signal, its occupied voxels as
+        a (V, 3) array, and one (V,) array per feature column, keyed by the
+        feature name.
+    """
+    df = grid.to_pandas()
+    return {
+        "voxel_size": grid.voxel_size,
+        # As a (V, 3) array: the MultiIndex itself is not JSON-encodable.
+        "voxels": df.index.to_frame(index=False).to_numpy(),
+        "weight": df["weight"].to_numpy(),
+    }
 
 
-# def encode_voxel_grid(grid: VoxelGrid) -> dict:
-#     """Encode a voxel grid into a JSON-encodable dictionary.
-
-#     Args:
-#         grid: The grid to encode.
-
-#     Returns:
-#         The grid's voxel size, its inhibit-all signal, its occupied voxels as
-#         a (V, 3) array, and one (V,) array per feature column, keyed by the
-#         feature name.
-#     """
-#     return {
-#         "voxel_size": grid.voxel_size,
-#         "inhibit_all": grid.inhibit_all,
-#         # As a (V, 3) array: the MultiIndex itself is not JSON-encodable.
-#         "voxels": grid.index.to_frame(index=False).to_numpy(),
-#         **{feature: grid[feature].to_numpy() for feature in grid.features},
-#     }
-
-
-# BufferEncoder.register(VoxelGrid, encode_voxel_grid)
+BufferEncoder.register(VoxelGrid, encode_voxel_grid)
