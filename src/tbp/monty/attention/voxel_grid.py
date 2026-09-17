@@ -156,6 +156,10 @@ class VoxelGrid:
             self._data["weight"].reindex(voxel_index, fill_value=fill_value).to_numpy()
         )
 
+    def __len__(self) -> int:
+        """Return the number of occupied voxels."""
+        return len(self._data)
+
 
 def encode_voxel_grid(grid: VoxelGrid) -> dict:
     """Encode a voxel grid into a JSON-encodable dictionary.

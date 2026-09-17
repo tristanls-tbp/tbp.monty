@@ -14,6 +14,7 @@ from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 
 from tbp.monty.attention.attention_system import DefaultAttentionSystem
+from tbp.monty.attention.voxel_grid import VoxelGrid
 
 MIN_POINT_COORDINATE = -10
 MAX_POINT_COORDINATE = 10
@@ -63,4 +64,50 @@ def valid_default_attention_system_weights(
             min_value=DefaultAttentionSystem.MIN_ATTENTION_WEIGHT,
             max_value=DefaultAttentionSystem.MAX_ATTENTION_WEIGHT,
         ),
+    )
+
+@st.composite
+def default_voxel_grid(
+    draw: st.DrawFn,
+    voxel_size_strategy: st.SearchStrategy[float] = voxel_sizes,
+) -> VoxelGrid:
+    """Constructs a voxel grid with a set of weights.
+
+    Returns:
+       Voxel grid.
+    """
+    voxel_size = draw(voxel_size_strategy)
+
+    min_voxel_coord = int(-MAX_POINT_COORDINATE / voxel_size)
+    max_voxel_coord = int(MAX_POINT_COORDINATE / voxel_size)
+    voxel_axis_length = max_voxel_coord - min_voxel_coord + 1
+
+    min_total_voxels = 1
+    max_total_voxels = min(voxel_axis_length**3, MAX_VOXELS)
+    voxels = draw(
+        st.lists(
+            st.tuples(
+                st.integers(
+                    min_value=min_voxel_coord,
+                    max_value=max_voxel_coord,
+                ),
+                st.integers(
+                    min_value=min_voxel_coord,
+                    max_value=max_voxel_coord,
+                ),
+                st.integers(
+                    min_value=min_voxel_coord,
+                    max_value=max_voxel_coord,
+                ),
+            ),
+            min_size=min_total_voxels,
+            max_size=max_total_voxels,
+            unique=True,
+        )
+    )
+    weights = draw(valid_default_attention_system_weights(len(voxels)))
+    return VoxelGrid(
+        voxel_size=voxel_size,
+        voxels=voxels,
+        weights=weights,
     )
