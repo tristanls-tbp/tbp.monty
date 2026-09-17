@@ -17,11 +17,13 @@ from unittest.mock import patch, sentinel
 import numpy as np
 import numpy.testing as nptest
 import numpy.typing as npt
+import pandas as pd
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 
 from tbp.monty.attention.voxel_grid import (
+    VOXEL_LEVELS,
     Voxel,
     VoxelGrid,
     voxelize_and_bin_points,
@@ -207,21 +209,159 @@ class VoxelizeAndBinPointsTest(unittest.TestCase):
         voxelize_points_mock.assert_called_once_with(binned.voxel_size, binned.points)
 
 
+@dataclass
+class VoxelGridAndPoints:
+    """Points built inside known voxels, and which voxel each went into.
+
+    Voxel k is the k-th distinct voxel met walking along ``points``, so the
+    voxels are already in the order ``voxelize_and_bin_points`` reports them.
+    """
+
+    voxel_grid: VoxelGrid
+    points: npt.NDArray[np.floating]
+    weights: npt.NDArray[np.floating]
+    point_in_grid: npt.NDArray[np.bool_]
+
+
+@st.composite
+def voxel_grid_and_points(
+    draw: st.DrawFn,
+    voxel_size_strategy: st.SearchStrategy[float] = strategies.voxel_sizes,
+) -> VoxelGridAndPoints:
+    """Construct a set of points that are known to lie inside specific voxels.
+
+    Strategy overview
+      1. Select distinct voxels and split them into occupied and unoccupied voxels.
+         Create a VoxelGrid using the occupied voxels and their (drawn) weights.
+      2. Construct points that fall within the grid and their weights. A point's weight
+         is equal to its enclosing voxel's weight.
+      3. Construct points that do not fall within the grid by generating points inside
+         the unoccupied voxels.
+
+    Returns:
+       Voxel grid and points.
+    """
+    voxel_size = draw(voxel_size_strategy)
+
+    # 1. Select distinct voxels and split them into occupied and unoccupied voxels.
+    #    Drawing both from one unique list guarantees they don't overlap. Select a
+    #    weight for each occupied voxel.
+    min_voxel_coord = int(-strategies.MAX_POINT_COORDINATE / voxel_size)
+    max_voxel_coord = int(strategies.MAX_POINT_COORDINATE / voxel_size)
+    voxel_axis_length = max_voxel_coord - min_voxel_coord + 1
+
+    min_total_voxels = 2
+    max_total_voxels = min(voxel_axis_length**3, 2 * strategies.MAX_VOXELS)
+    occupied_and_unoccupied_voxels = draw(
+        st.lists(
+            st.tuples(
+                st.integers(
+                    min_value=min_voxel_coord,
+                    max_value=max_voxel_coord,
+                ),
+                st.integers(
+                    min_value=min_voxel_coord,
+                    max_value=max_voxel_coord,
+                ),
+                st.integers(
+                    min_value=min_voxel_coord,
+                    max_value=max_voxel_coord,
+                ),
+            ),
+            min_size=min_total_voxels,
+            max_size=max_total_voxels,
+            unique=True,
+        )
+    )
+    num_occupied_voxels = draw(
+        st.integers(min_value=1, max_value=len(occupied_and_unoccupied_voxels) - 1)
+    )
+    occupied_voxels = occupied_and_unoccupied_voxels[:num_occupied_voxels]
+    unoccupied_voxels = occupied_and_unoccupied_voxels[num_occupied_voxels:]
+    occupied_voxel_weights = draw(
+        strategies.valid_default_attention_system_weights(len(occupied_voxels))
+    )
+    voxel_grid = VoxelGrid(
+        voxel_size=voxel_size,
+        data=pd.DataFrame(
+            {"weight": occupied_voxel_weights},
+            index=pd.MultiIndex.from_tuples(occupied_voxels, names=VOXEL_LEVELS),
+        ),
+    )
+
+    # 2. Construct points that fall within the grid and their weights. A point's weight
+    # is equal to its enclosing voxel's weight.
+    points_per_voxel = draw(
+        st.lists(
+            st.integers(min_value=1, max_value=strategies.MAX_POINTS_PER_VOXEL),
+            min_size=len(occupied_voxels),
+            max_size=len(occupied_voxels),
+        )
+    )
+    points: list[npt.NDArray[np.floating]] = []
+    weights: list[float] = []
+    point_in_grid: list[bool] = []
+    for voxel_ind, voxel in enumerate(occupied_voxels):
+        for _ in range(points_per_voxel[voxel_ind]):
+            voxel_offsets = draw(
+                arrays(
+                    dtype=np.float64,
+                    shape=(3,),
+                    elements=st.floats(
+                        min_value=strategies.VOXEL_EDGE_TOLERANCE,
+                        max_value=1 - strategies.VOXEL_EDGE_TOLERANCE,
+                        exclude_max=True,
+                    ),
+                )
+            )
+            points.append((np.array(voxel, dtype=float) + voxel_offsets) * voxel_size)
+            weights.append(occupied_voxel_weights[voxel_ind])
+            point_in_grid.append(True)
+
+    # 3. Construct points that do not fall within the grid by generating points inside
+    #    the unoccupied voxels.
+    for voxel in unoccupied_voxels:
+        voxel_offsets = draw(
+            arrays(
+                dtype=np.float64,
+                shape=(3,),
+                elements=st.floats(
+                    min_value=strategies.VOXEL_EDGE_TOLERANCE,
+                    max_value=1 - strategies.VOXEL_EDGE_TOLERANCE,
+                    exclude_max=True,
+                ),
+            )
+        )
+        points.append((np.array(voxel, dtype=float) + voxel_offsets) * voxel_size)
+        weights.append(0.0)
+        point_in_grid.append(False)
+
+    return VoxelGridAndPoints(
+        voxel_grid=voxel_grid,
+        points=np.stack(points),
+        weights=np.array(weights),
+        point_in_grid=np.array(point_in_grid, dtype=bool),
+    )
+
+
 class VoxelGridTest(unittest.TestCase):
-    def test_weights_at_points_returnsfill_value_for_every_point_when_voxel_grid_is_empty(  # noqa: E501
-        self,
-    ):
-        # TODO: remove once better test is written.
-        points = np.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]])
-        fill_value = 8675309
-        grid = VoxelGrid(voxel_size=0.1)
-
-        result = grid.weights_at_points(points, fill_value=fill_value)
-
-        expected = np.full(shape=(points.shape[0],), fill_value=fill_value)
-        nptest.assert_array_equal(result, expected)
-
+    @given(voxel_grid_and_points=voxel_grid_and_points())
     def test_weights_at_points_returns_weights_for_occupied_voxels_and_fill_value_for_points_in_unoccupied_voxels(  # noqa: E501
         self,
+        voxel_grid_and_points: VoxelGridAndPoints,
     ):
-        pass
+        voxel_grid = voxel_grid_and_points.voxel_grid
+        points = voxel_grid_and_points.points
+        weights = voxel_grid_and_points.weights
+        point_in_grid = voxel_grid_and_points.point_in_grid
+
+        result = voxel_grid.weights_at_points(points, fill_value=np.nan)
+
+        nptest.assert_array_equal(
+            weights[point_in_grid],  # expected (by construction)
+            result[point_in_grid],  # actual
+        )
+        nptest.assert_array_equal(
+            np.full(np.sum(~point_in_grid), np.nan),  # expected (all fill-value)
+            result[~point_in_grid],  # actual
+        )
