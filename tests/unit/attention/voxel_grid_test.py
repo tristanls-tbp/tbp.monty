@@ -12,7 +12,7 @@ import unittest
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import Callable
-from unittest.mock import MagicMock
+from unittest.mock import patch, sentinel
 
 import numpy as np
 import numpy.testing as nptest
@@ -183,15 +183,24 @@ class VoxelizeAndBinPointsTest(unittest.TestCase):
             )
 
     @given(binned=voxelized_and_binned_points())
-    def test_returned_dataframe_rows_contain_each_points_voxel_and_weight(
-        self, binned: VoxelizedAndBinnedPoints
+    def test_returned_dataframe_rows_contain_each_points_voxel_from_voxelize_points_and_weight(  # noqa: E501
+        self,
+        binned: VoxelizedAndBinnedPoints,
     ):
-        result = voxelize_and_bin_points(
-            voxel_size=binned.voxel_size, points=binned.points, weights=binned.weights
-        )
+        with patch(
+            "tbp.monty.attention.voxel_grid.voxelize_points"
+        ) as voxelize_points_mock:
+            voxelize_points_mock.return_value = sentinel.voxels
+            result = voxelize_and_bin_points(
+                voxel_size=binned.voxel_size,
+                points=binned.points,
+                weights=binned.weights,
+            )
 
         voxels = list(result["voxel"])
-        nptest.assert_array_equal(voxels, binned.point_ind_to_voxel)
+        nptest.assert_array_equal(voxels, sentinel.voxels)
 
         weights = result["weight"]
         nptest.assert_array_equal(weights, binned.weights)
+
+        voxelize_points_mock.assert_called_once_with(binned.voxel_size, binned.points)
