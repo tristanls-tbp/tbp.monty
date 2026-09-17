@@ -360,15 +360,12 @@ class VoxelGridTest(unittest.TestCase):
     @given(voxels=non_unique_voxels())
     def test_non_unique_voxels_raises_value_error(self, voxels: list[Voxel]):
         with self.assertRaises(ValueError):
-            VoxelGrid(
-                voxel_size=MagicMock(), voxels=voxels, weights=np.zeros(len(voxels))
-            )
+            VoxelGrid(voxel_size=MagicMock(), voxels=voxels, weights=MagicMock())
 
     @given(weights=float_array_not_1d())
     def test_weights_not_1d_raises_value_error(self, weights: npt.NDArray[np.floating]):
-        voxels = np.arange(len(weights) * 3).reshape(len(weights), 3)
         with self.assertRaises(ValueError):
-            VoxelGrid(voxel_size=MagicMock(), voxels=voxels, weights=weights)
+            VoxelGrid(voxel_size=MagicMock(), voxels=MagicMock(), weights=weights)
 
     @given(voxel_grid_and_points=voxel_grid_and_points())
     def test_weights_at_points_returns_weights_for_occupied_voxels_and_fill_value_for_unoccupied_voxels(  # noqa: E501
