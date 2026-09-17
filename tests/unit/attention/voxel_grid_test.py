@@ -17,13 +17,11 @@ from unittest.mock import patch, sentinel
 import numpy as np
 import numpy.testing as nptest
 import numpy.typing as npt
-import pandas as pd
 from hypothesis import given
 from hypothesis import strategies as st
 from hypothesis.extra.numpy import arrays
 
 from tbp.monty.attention.voxel_grid import (
-    VOXEL_LEVELS,
     Voxel,
     VoxelGrid,
     voxelize_and_bin_points,
@@ -283,10 +281,8 @@ def voxel_grid_and_points(
     )
     voxel_grid = VoxelGrid(
         voxel_size=voxel_size,
-        data=pd.DataFrame(
-            {"weight": occupied_voxel_weights},
-            index=pd.MultiIndex.from_tuples(occupied_voxels, names=VOXEL_LEVELS),
-        ),
+        voxels=occupied_voxels,
+        weights=occupied_voxel_weights,
     )
 
     # 2. Construct points that fall within the grid and their weights. A point's weight
@@ -346,7 +342,7 @@ def voxel_grid_and_points(
 
 class VoxelGridTest(unittest.TestCase):
     @given(voxel_grid_and_points=voxel_grid_and_points())
-    def test_weights_at_points_returns_weights_for_occupied_voxels_and_fill_value_for_points_in_unoccupied_voxels(  # noqa: E501
+    def test_weights_at_points_returns_weights_for_occupied_voxels_and_fill_value_for_unoccupied_voxels(  # noqa: E501
         self,
         voxel_grid_and_points: VoxelGridAndPoints,
     ):
@@ -357,11 +353,10 @@ class VoxelGridTest(unittest.TestCase):
 
         result = voxel_grid.weights_at_points(points, fill_value=np.nan)
 
-        nptest.assert_array_equal(
-            weights[point_in_grid],  # expected (by construction)
-            result[point_in_grid],  # actual
-        )
-        nptest.assert_array_equal(
-            np.full(np.sum(~point_in_grid), np.nan),  # expected (all fill-value)
-            result[~point_in_grid],  # actual
-        )
+        expected_weights = weights[point_in_grid]
+        actual_weights = result[point_in_grid]
+        nptest.assert_array_equal(expected_weights, actual_weights)
+
+        expected_fill_values = np.full(int(np.sum(~point_in_grid)), np.nan)
+        actual_fill_values = result[~point_in_grid]
+        nptest.assert_array_equal(expected_fill_values, actual_fill_values)

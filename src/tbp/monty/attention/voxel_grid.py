@@ -20,8 +20,8 @@ Voxel = Tuple[int, int, int]
 
 # # Edge length of a voxel, in meters, when none is specified.
 
-# # Names of the row index levels: a voxel's integer grid coordinate.
 VOXEL_LEVELS = ("x", "y", "z")
+"""Names of the row index levels: a voxel's integer grid coordinate."""
 
 # # The feature every grid carries: the attention weight of each voxel.
 # WEIGHT_FEATURE = "weight"
@@ -107,28 +107,27 @@ class VoxelGrid:
     # everything, which the merged result itself never carries.
     """
 
+    _voxel_size: float
+    _data: pd.DataFrame
+
     def __init__(
         self,
         voxel_size: float,
-        data: pd.DataFrame | None = None,
+        voxels: list[Voxel],
+        weights: npt.NDArray[np.floating],
     ):
         """Initialize the voxel grid.
 
         Args:
             voxel_size: Edge length of a voxel, in meters.
-            data: The backing frame, indexed by voxel with one column per
-                feature; an empty grid when None.
+            voxels: The occupied voxels.
+            weights: The weights of the occupied voxels.
         """
         self._voxel_size = voxel_size
-        if data is None:
-            # The weight column must carry a numeric dtype: a bare empty
-            # column would be object dtype and poison later concats.
-            self._data = pd.DataFrame(
-                {"weight": pd.Series(dtype=float)},
-                index=pd.MultiIndex.from_arrays([[], [], []], names=VOXEL_LEVELS),
-            )
-        else:
-            self._data = data
+        self._data = pd.DataFrame(
+            {"weight": weights},
+            index=pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS),
+        )
 
     #     @property
     #     def voxel_size(self) -> float:
@@ -182,7 +181,7 @@ class VoxelGrid:
         points: npt.NDArray[np.floating],
         fill_value: float = np.nan,
     ) -> npt.NDArray:
-        """Look up a feature's value at each point.
+        """Look up voxel's weight at each point.
 
         Args:
             points: A (N, 3) array of points.
