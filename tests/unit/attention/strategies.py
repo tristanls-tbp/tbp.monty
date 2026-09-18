@@ -68,6 +68,7 @@ def valid_default_attention_system_weights(
         ),
     )
 
+
 @st.composite
 def unique_voxels(draw: st.DrawFn, min_voxels: int = 0) -> list[Voxel]:
     """Draw a list of unique voxels.

@@ -17,6 +17,7 @@ from tbp.monty.attention.voxel_grid import VoxelGrid
 DEFAULT_LINEAR_WEIGHT_DECAY_RATE = 0.1
 """Default per-step decay toward zero for linear decay."""
 
+
 class VoxelGridWeightDecay(Protocol):
     def __call__(self, grid: VoxelGrid) -> None: ...
 
@@ -30,6 +31,7 @@ class NoopDecay(VoxelGridWeightDecay):
         Args:
             grid: The grid to (not) decay.
         """
+
 
 class LinearWeightDecay(VoxelGridWeightDecay):
     """Move each voxel weight toward zero by a fixed rate per step.
