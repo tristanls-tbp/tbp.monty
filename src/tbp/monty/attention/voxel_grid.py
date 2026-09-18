@@ -186,20 +186,19 @@ def validate_dataframe(df: pd.DataFrame) -> None:
           - ``df`` does not have a "weight" column.
           - ``df``'s "weight" column is not 1D.
     """
-    # Check multi-index with levels ('x', 'y', 'z').
     if not isinstance(df.index, pd.MultiIndex) or not all(
         level in df.index.names for level in VOXEL_LEVELS
     ):
         raise ValueError(
             f"DataFrame must have a multi-index with level names {VOXEL_LEVELS}."
         )
-    # Check index is unique.
+
     if not df.index.is_unique:
         raise ValueError("DataFrame index must be unique.")
-    # Check for presence of "weight" column.
+
     if "weight" not in df.columns:
         raise ValueError("DataFrame must have a 'weight' column.")
-    # Check weight column is 1D.
+
     weights = df["weight"].to_numpy()
     if not len(weights.shape) == 1:
         raise ValueError(f"weights must be of shape (N,), got {weights.shape}.")

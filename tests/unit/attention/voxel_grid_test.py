@@ -361,56 +361,27 @@ def non_unique_voxels(draw: st.DrawFn) -> list[Voxel]:
 
 
 class VoxelGridTest(unittest.TestCase):
-    def test_from_pandas_raises_value_error_if_index_levels_not_named_x_y_z(self):
-        df = pd.DataFrame(index=pd.MultiIndex.from_tuples([(0, 0, 0)]))
-        with self.assertRaisesRegex(
-            ValueError,
-            re.escape(
-                "DataFrame must have a multi-index with level names ('x', 'y', 'z')."
-            ),
-        ):
-            VoxelGrid.from_pandas(voxel_size=MagicMock(), data=df)
-
-    @given(voxels=non_unique_voxels())
-    def test_from_pandas_raises_value_error_if_index_is_not_unique(
-        self, voxels: list[Voxel]
-    ):
-        df = pd.DataFrame(index=pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS))
-        with self.assertRaisesRegex(ValueError, "DataFrame index must be unique."):
-            VoxelGrid.from_pandas(voxel_size=MagicMock(), data=df)
+    def test_from_pandas_validates_input_using_validate_dataframe(self):
+        with patch(
+            "tbp.monty.attention.voxel_grid.validate_dataframe"
+        ) as validate_dataframe_mock:
+            VoxelGrid.from_pandas(voxel_size=MagicMock(), data=sentinel.data)
+            validate_dataframe_mock.assert_called_once_with(sentinel.data)
 
     @given(voxel_grid=strategies.default_voxel_grid())
-    def test_from_pandas_raises_value_error_if_data_does_not_have_weight_column(
-        self, voxel_grid: VoxelGrid
-    ):
-        df = voxel_grid.to_pandas().drop(columns=["weight"])
-        with self.assertRaisesRegex(
-            ValueError, "DataFrame must have a 'weight' column."
-        ):
-            VoxelGrid.from_pandas(voxel_size=MagicMock(), data=df)
+    def test_init_validates_input_using_validate_dataframe(self, voxel_grid: VoxelGrid):
+        with patch(
+            "tbp.monty.attention.voxel_grid.validate_dataframe"
+        ) as validate_dataframe_mock:
+            df = voxel_grid.to_pandas()
+            weights = df["weight"].to_numpy()
+            voxels = list(df.index)
 
-    @given(voxel_grid=strategies.default_voxel_grid(min_voxels=1))
-    def test_from_pandas_raises_value_error_if_weights_are_not_1d(
-        self, voxel_grid: VoxelGrid
-    ):
-        df = voxel_grid.to_pandas()
-        weights = df["weight"].to_numpy()
-        del df["weight"]
-        # If "weight" has shape (N, 1), pandas silently squeezes it into shape (N,).
-        # To get a >1D "weight" column, we have to add 2 singleton dimensions like so:
-        df["weight"] = weights.reshape(-1, 1, 1)
-        with self.assertRaises(ValueError):
-            VoxelGrid.from_pandas(voxel_size=MagicMock(), data=df)
+            VoxelGrid(voxel_size=MagicMock(), voxels=voxels, weights=weights)
 
-    @given(voxels=non_unique_voxels())
-    def test_non_unique_voxels_raises_value_error(self, voxels: list[Voxel]):
-        with self.assertRaises(ValueError):
-            VoxelGrid(voxel_size=MagicMock(), voxels=voxels, weights=MagicMock())
-
-    @given(weights=float_array_not_1d())
-    def test_weights_not_1d_raises_value_error(self, weights: npt.NDArray[np.floating]):
-        with self.assertRaises(ValueError):
-            VoxelGrid(voxel_size=MagicMock(), voxels=MagicMock(), weights=weights)
+            pd.testing.assert_frame_equal(
+                validate_dataframe_mock.call_args_list[0][0][0], df
+            )
 
     @given(voxel_grid_and_points=voxel_grid_and_points())
     def test_weights_at_points_returns_weights_for_occupied_voxels_and_fill_value_for_unoccupied_voxels(  # noqa: E501
@@ -434,10 +405,11 @@ class VoxelGridTest(unittest.TestCase):
 
 
 class ValidateDataFrameTest(unittest.TestCase):
+    @given(voxel_grid=strategies.default_voxel_grid())
     def test_raises_value_error_if_dataframe_does_not_have_a_multiindex_with_level_names_xyz(  # noqa: E501
-        self,
+        self, voxel_grid: VoxelGrid
     ):
-        df = pd.DataFrame({"weight": [1, 2, 3]})
+        df = voxel_grid.to_pandas().reset_index(drop=True)
         with self.assertRaisesRegex(
             ValueError,
             re.escape(
@@ -450,12 +422,8 @@ class ValidateDataFrameTest(unittest.TestCase):
     def test_raises_value_error_if_dataframe_index_is_not_unique(
         self, voxels: list[Voxel]
     ):
-        index = pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS)
-        df = pd.DataFrame({"weight": np.ones(len(voxels))}, index=index)
-        with self.assertRaisesRegex(
-            ValueError,
-            re.escape("DataFrame index must be unique."),
-        ):
+        df = pd.DataFrame(index=pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS))
+        with self.assertRaisesRegex(ValueError, "DataFrame index must be unique."):
             validate_dataframe(df)
 
     @given(voxel_grid=strategies.default_voxel_grid())
@@ -470,20 +438,27 @@ class ValidateDataFrameTest(unittest.TestCase):
 
     @given(voxel_grid=strategies.default_voxel_grid(min_voxels=1))
     def test_raises_value_error_if_weight_column_not_1d(self, voxel_grid: VoxelGrid):
-        # Note: >1D columns are not supported by pandas. You can force pandas
-        # into a corrupt state and get strange/undefined behavior in certain
-        # special cases. I don't know if that means we should or should not spend
-        # much time testing it. But this test shows one possible case where things
-        # can go haywire.
+        """Validate dataframe weights column is 1D.
+
+        Note:
+            It is not at all straightforward to create a wrong dataframe.
+
+            >1D columns are not supported by pandas. You can force pandas
+            into a corrupt state and get strange/undefined behavior in certain
+            special cases. I don't know if that means we should or should not spend
+            much time testing it. But this test shows one possible case where things
+            can go haywire.
+
+            If "weight" has shape (N, 1), pandas silently squeezes it into shape (N,).
+            We have to add 2 singleton dimensions like above. Note also that attempting
+            to add the reshape a zero-length weight column into (-1, 1, 1) and adding
+            it to the dataframe will crash. That's why we set `min_voxels=1` for
+            voxel grid creation.
+        """
         df = voxel_grid.to_pandas()
         weights = df["weight"].to_numpy()
         del df["weight"]
         df["weight"] = weights.reshape(-1, 1, 1)
-        # If "weight" has shape (N, 1), pandas silently squeezes it into shape (N,).
-        # We have to add 2 singleton dimensions like above. Note also that attempting
-        # to add the reshape a zero-length weight column into (-1, 1, 1) and adding
-        # it to the dataframe will crash. That's why we set `min_voxels=1` for
-        # voxel grid creation.
         with self.assertRaises(ValueError):
             validate_dataframe(df)
 
