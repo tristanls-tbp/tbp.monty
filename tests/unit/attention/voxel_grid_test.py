@@ -384,7 +384,11 @@ class ValidateDataFrameTest(unittest.TestCase):
         ):
             validate_dataframe(df)
 
-    @given(voxel_grid=strategies.default_voxel_grid(min_voxels=1))
+    @given(
+        voxel_grid=strategies.default_voxel_grid(
+            voxels_strategy=strategies.unique_voxels(min_voxels=1)
+        )
+    )
     def test_raises_value_error_if_weight_column_not_1d(self, voxel_grid: VoxelGrid):
         """Validate dataframe weights column is 1D.
 

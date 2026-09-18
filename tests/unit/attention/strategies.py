@@ -147,15 +147,17 @@ def unique_voxels(draw: st.DrawFn, min_voxels: int = 0) -> list[Voxel]:
 def default_voxel_grid(
     draw: st.DrawFn,
     voxel_size_strategy: st.SearchStrategy[float] = voxel_sizes,
-    min_voxels: int = 0,
+    voxels_strategy: st.SearchStrategy[list[Voxel]] | None = None,
 ) -> VoxelGrid:
     """Constructs a voxel grid with a set of weights.
 
     Returns:
        Voxel grid.
     """
+    voxels_strategy = voxels_strategy or unique_voxels()
+
     voxel_size = draw(voxel_size_strategy)
-    voxels = draw(unique_voxels(min_voxels=min_voxels))
+    voxels = draw(voxels_strategy)
     weights = draw(valid_default_attention_system_weights(len(voxels)))
     return VoxelGrid(
         voxel_size=voxel_size,
