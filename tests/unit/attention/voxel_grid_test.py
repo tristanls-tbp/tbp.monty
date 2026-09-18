@@ -81,7 +81,7 @@ def voxelized_and_binned_points(
     # 1. Select voxels that will be occupied. Since voxel coordinates depend on
     #    voxel sizes, we have to scale min/max voxel coordinates to make sure all
     #    points will fall in a voxel.
-    voxels = draw(strategies.unique_voxels(voxel_size=voxel_size, min_voxels=1))
+    voxels = draw(strategies.unique_voxels(min_voxels=1))
 
     # 2. Assign the number of points that will fall into each voxel.
     points_per_voxel = draw(
@@ -225,7 +225,7 @@ def voxel_grid_and_points(
     # 1. Select distinct voxels and split them into occupied and unoccupied voxels.
     #    Drawing both from one unique list guarantees they don't overlap. Select a
     #    weight for each occupied voxel.
-    occupied_and_unoccupied_voxels = draw(strategies.unique_voxels(voxel_size, 2))
+    occupied_and_unoccupied_voxels = draw(strategies.unique_voxels(min_voxels=2))
     num_occupied_voxels = draw(
         st.integers(min_value=1, max_value=len(occupied_and_unoccupied_voxels) - 1)
     )

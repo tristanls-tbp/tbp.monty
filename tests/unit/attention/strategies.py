@@ -22,6 +22,8 @@ MAX_VOXELS = 100
 MAX_POINTS_PER_VOXEL = 10
 MIN_VOXEL_SIZE = 0.001
 MAX_VOXEL_SIZE = 1.0
+MAX_VOXEL_COORDINATE = int(MAX_POINT_COORDINATE / MIN_VOXEL_SIZE)
+MIN_VOXEL_COORDINATE = -MAX_VOXEL_COORDINATE
 
 VOXEL_EDGE_TOLERANCE = 1e-6
 """Generated points stay this far (as a fraction of a voxel) from voxel faces,
@@ -66,18 +68,15 @@ def valid_default_attention_system_weights(
         ),
     )
 
-
 @st.composite
-def unique_voxels(
-    draw: st.DrawFn, voxel_size: float, min_voxels: int = 0
-) -> list[Voxel]:
+def unique_voxels(draw: st.DrawFn, min_voxels: int = 0) -> list[Voxel]:
     """Draw a list of unique voxels.
 
     Returns:
         List of unique voxel coordinates.
     """
-    min_voxel_coord = int(-MAX_POINT_COORDINATE / voxel_size)
-    max_voxel_coord = int(MAX_POINT_COORDINATE / voxel_size)
+    min_voxel_coord = MIN_VOXEL_COORDINATE
+    max_voxel_coord = MAX_VOXEL_COORDINATE
     voxel_axis_length = max_voxel_coord - min_voxel_coord + 1
 
     min_total_voxels = min_voxels
@@ -105,6 +104,45 @@ def unique_voxels(
     )
 
 
+# TODO: delete if unused once attention tests are completed
+# @st.composite
+# def unique_coordinate_bound_voxels(
+#     draw: st.DrawFn, voxel_size: float, min_voxels: int = 0
+# ) -> list[Voxel]:
+#     """Draw a list of unique voxels that lie within coordinate bounds.
+
+#     Returns:
+#         List of unique voxel coordinates.
+#     """
+#     min_voxel_coord = int(-MAX_POINT_COORDINATE / voxel_size)
+#     max_voxel_coord = int(MAX_POINT_COORDINATE / voxel_size)
+#     voxel_axis_length = max_voxel_coord - min_voxel_coord + 1
+
+#     min_total_voxels = min_voxels
+#     max_total_voxels = min(voxel_axis_length**3, MAX_VOXELS)
+#     return draw(
+#         st.lists(
+#             st.tuples(
+#                 st.integers(
+#                     min_value=min_voxel_coord,
+#                     max_value=max_voxel_coord,
+#                 ),
+#                 st.integers(
+#                     min_value=min_voxel_coord,
+#                     max_value=max_voxel_coord,
+#                 ),
+#                 st.integers(
+#                     min_value=min_voxel_coord,
+#                     max_value=max_voxel_coord,
+#                 ),
+#             ),
+#             min_size=min_total_voxels,
+#             max_size=max_total_voxels,
+#             unique=True,
+#         )
+#     )
+
+
 @st.composite
 def default_voxel_grid(
     draw: st.DrawFn,
@@ -117,7 +155,7 @@ def default_voxel_grid(
        Voxel grid.
     """
     voxel_size = draw(voxel_size_strategy)
-    voxels = draw(unique_voxels(voxel_size=voxel_size, min_voxels=min_voxels))
+    voxels = draw(unique_voxels(min_voxels=min_voxels))
     weights = draw(valid_default_attention_system_weights(len(voxels)))
     return VoxelGrid(
         voxel_size=voxel_size,
