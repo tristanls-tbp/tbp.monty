@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from hypothesis import given
 from hypothesis import strategies as st
@@ -16,10 +17,6 @@ from hypothesis import strategies as st
 from tbp.monty.attention.merge import Union
 from tbp.monty.attention.voxel_grid import VoxelGrid
 from tests.unit.attention import strategies
-
-
-# @st.composite
-# def disjoint_voxels(draw: st.DrawFn) -> list[Voxel]:
 
 
 class UnionTest(unittest.TestCase):
@@ -32,22 +29,22 @@ class UnionTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Voxel sizes must match for merging."):
             self.union(grid_a, grid_b)
 
-    # disjoint, full overlap, partial overlap
-    @given(grid=strategies.default_voxel_grid())
-    def test_returns_grid_size_which_is_the_sum_of_the_input_grid_sizes_when_input_grids_are_disjoint(  # noqa: E501
-        self, grid: VoxelGrid
-    ):
-        pass
-
-    def test_returns_grid_b_when_input_grids_fully_overlap(self):
-        pass
-
-    def test_returns_grid_size_less_than_the_sum_of_the_input_grid_sizes_when_input_grids_partially_overlap(  # noqa: E501
+    @given(
+        grid_a=strategies.default_voxel_grid(voxel_size_strategy=st.just(1.0)),
+        grid_b=strategies.default_voxel_grid(voxel_size_strategy=st.just(1.0)),
+        grid_result=strategies.default_voxel_grid(voxel_size_strategy=st.just(1.0)),
+    )
+    def test_returns_voxel_grid_from_grid_b_combine_first_grid_a(
         self,
+        grid_a: VoxelGrid,
+        grid_b: VoxelGrid,
+        grid_result: VoxelGrid,
     ):
-        pass
+        with patch(
+            "pandas.DataFrame.combine_first", return_value=grid_result.to_pandas()
+        ) as combine_first_mock:
+            result = self.union(grid_a, grid_b)
 
-    def test_grid_b_weights_survive_in_overlapping_voxels_when_input_grids_overlap(
-        self,
-    ):
-        pass
+        combine_first_mock.assert_called_once_with(grid_a.to_pandas())
+        self.assertIs(result.voxel_size, grid_a.voxel_size)
+        self.assertIs(result.to_pandas(), grid_result.to_pandas())
