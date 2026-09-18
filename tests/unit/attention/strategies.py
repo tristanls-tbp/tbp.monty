@@ -70,6 +70,7 @@ def valid_default_attention_system_weights(
 def default_voxel_grid(
     draw: st.DrawFn,
     voxel_size_strategy: st.SearchStrategy[float] = voxel_sizes,
+    min_voxels: int = 0,
 ) -> VoxelGrid:
     """Constructs a voxel grid with a set of weights.
 
@@ -82,7 +83,7 @@ def default_voxel_grid(
     max_voxel_coord = int(MAX_POINT_COORDINATE / voxel_size)
     voxel_axis_length = max_voxel_coord - min_voxel_coord + 1
 
-    min_total_voxels = 0
+    min_total_voxels = min_voxels
     max_total_voxels = min(voxel_axis_length**3, MAX_VOXELS)
     voxels = draw(
         st.lists(

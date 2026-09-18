@@ -107,21 +107,8 @@ class VoxelGrid:
         Returns:
             A voxel grid.
 
-        Raises:
-            ValueError: If the DataFrame index is not named (x, y, z), is not unique,
-            does not have a "weight" column, or the weights are not 1D.
         """
-        if not data.index.names == VOXEL_LEVELS:
-            raise ValueError("DataFrame index levels must be named (x, y, z).")
-        if not data.index.is_unique:
-            raise ValueError("voxels must be unique.")
-        if "weight" not in data.columns:
-            raise ValueError("DataFrame must have a 'weight' column.")
-        if not data["weight"].ndim == 1:
-            raise ValueError(
-                f"weights must be of shape (N,), got {data['weight'].shape}."
-            )
-
+        validate_dataframe(data)
         grid = object.__new__(cls)
         grid._voxel_size = voxel_size
         grid._data = data
@@ -140,19 +127,11 @@ class VoxelGrid:
             voxels: The occupied voxels.
             weights: The weights of the occupied voxels.
 
-        Raises:
-            ValueError: If ``voxels`` contains duplicates or ``weights`` is not 1D.
         """
-        index = pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS)
-        if not index.is_unique:
-            raise ValueError("voxels must be unique.")
-
-        weights = np.asarray(weights)
-        if not weights.ndim == 1:
-            raise ValueError(f"weights must be of shape (N,), got {weights.shape}.")
-
         self._voxel_size = voxel_size
+        index = pd.MultiIndex.from_tuples(voxels, names=VOXEL_LEVELS)
         self._data = pd.DataFrame({"weight": weights}, index=index)
+        validate_dataframe(self._data)
 
     @property
     def voxel_size(self) -> float:
@@ -191,6 +170,39 @@ class VoxelGrid:
     def __len__(self) -> int:
         """Return the number of occupied voxels."""
         return len(self._data)
+
+
+def validate_dataframe(df: pd.DataFrame) -> None:
+    """Validate the structure of the voxel grid DataFrame.
+
+    Args:
+        df: The DataFrame to validate.
+
+    Raises:
+        ValueError: If
+          - ``df`` does not have a MultiIndex with level
+            names ('x', 'y', 'z').
+          - ``df``'s index is not unique.
+          - ``df`` does not have a "weight" column.
+          - ``df``'s "weight" column is not 1D.
+    """
+    # Check multi-index with levels ('x', 'y', 'z').
+    if not isinstance(df.index, pd.MultiIndex) or not all(
+        level in df.index.names for level in VOXEL_LEVELS
+    ):
+        raise ValueError(
+            f"DataFrame must have a multi-index with level names {VOXEL_LEVELS}."
+        )
+    # Check index is unique.
+    if not df.index.is_unique:
+        raise ValueError("DataFrame index must be unique.")
+    # Check for presence of "weight" column.
+    if "weight" not in df.columns:
+        raise ValueError("DataFrame must have a 'weight' column.")
+    # Check weight column is 1D.
+    weights = df["weight"].to_numpy()
+    if not len(weights.shape) == 1:
+        raise ValueError(f"weights must be of shape (N,), got {weights.shape}.")
 
 
 def encode_voxel_grid(grid: VoxelGrid) -> dict:
