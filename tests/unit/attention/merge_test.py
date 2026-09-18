@@ -41,10 +41,14 @@ class UnionTest(unittest.TestCase):
         grid_result: VoxelGrid,
     ):
         with patch(
-            "pandas.DataFrame.combine_first", return_value=grid_result.to_pandas()
+            "pandas.DataFrame.combine_first",
+            autospec=True,
+            return_value=grid_result.to_pandas(),
         ) as combine_first_mock:
             result = self.union(grid_a, grid_b)
 
-        combine_first_mock.assert_called_once_with(grid_a.to_pandas())
+        combine_first_mock.assert_called_once_with(
+            grid_b.to_pandas(), grid_a.to_pandas()
+        )
         self.assertIs(result.voxel_size, grid_a.voxel_size)
         self.assertIs(result.to_pandas(), grid_result.to_pandas())
