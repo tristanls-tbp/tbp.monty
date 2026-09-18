@@ -119,7 +119,7 @@ class VoxelGrid:
         voxel_size: float,
         voxels: list[Voxel],
         weights: npt.NDArray[np.floating],
-    ):
+    ) -> None:
         """Initialize the voxel grid.
 
         Args:
@@ -150,7 +150,7 @@ class VoxelGrid:
         self,
         points: npt.NDArray[np.floating],
         fill_value: float = np.nan,
-    ) -> npt.NDArray:
+    ) -> npt.NDArray[np.floating]:
         """Look up voxel's weight at each point.
 
         Args:
@@ -166,6 +166,10 @@ class VoxelGrid:
         return (
             self._data["weight"].reindex(voxel_index, fill_value=fill_value).to_numpy()
         )
+
+    def weights(self) -> npt.NDArray[np.floating]:
+        """Return the weights of the occupied voxels."""
+        return self._data["weight"].to_numpy()
 
     def __len__(self) -> int:
         """Return the number of occupied voxels."""

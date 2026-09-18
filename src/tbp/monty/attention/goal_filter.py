@@ -79,9 +79,9 @@ class HardGoalFilter(GoalFilter):
             return unlocated
 
         points = np.array([g.location for g in located])
-        voxel_weights = voxel_grid.weight_at_points(points)
+        voxel_weights = voxel_grid.weights_at_points(points)
 
-        all_inhibited = bool((voxel_grid["weight"].to_numpy() < 0).all())
+        all_inhibited = bool((voxel_grid.weights() < 0).all())
 
         kept = [
             goal
