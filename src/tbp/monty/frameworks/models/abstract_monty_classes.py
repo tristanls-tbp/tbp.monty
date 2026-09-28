@@ -12,7 +12,6 @@ from __future__ import annotations
 import abc
 from typing import Any, Collection, Dict, Protocol, Sequence
 
-
 from tbp.monty.cmp import AttentionRegion, Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.experiment.learning_module import ExperimentLearningModule
@@ -492,45 +491,7 @@ class GoalGenerator(metaclass=abc.ABCMeta):
         pass
 
 
-class RuntimeSensorModule(Protocol):
-    """Monty runtime interface to a Sensor Module."""
-
-    def update_state(self, agent: AgentState) -> None:
-        """Update the proprioceptive state for this Sensor Module.
-
-        Args:
-            agent: The proprioceptive state of this sensor module's Agent.
-        """
-        ...
-
-    def step(
-        self,
-        ctx: RuntimeContext,
-        observation: SensorObservation,
-        motor_only_step: bool = False,
-    ) -> Message | None:
-        """Execute a time-step for the Sensor Module.
-
-        Args:
-            ctx: The runtime context.
-            observation: Sensor observation.
-            motor_only_step: Whether the current step is a motor-only step.
-
-        Returns:
-            An optional percept with features and morphological features.
-        """
-        ...
-
-    def propose_goals(self) -> Sequence[Goal]:
-        """Return the goals proposed by this Sensor Module.
-
-        Returns:
-            A sequence of proposed Goals.
-        """
-        ...
-
-
-class SensorModule(RuntimeSensorModule, ExperimentSensorModule, metaclass=abc.ABCMeta):
+class SensorModule(ExperimentSensorModule, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def state_dict(self) -> Memento:
         pass
@@ -548,7 +509,7 @@ class SensorModule(RuntimeSensorModule, ExperimentSensorModule, metaclass=abc.AB
     ) -> Message | None:
         pass
 
-    def propose_goals(self) -> list[Goal]:
+    def propose_goals(self) -> Collection[Goal]:
         return []
 
     def propose_region(self) -> AttentionRegion:
