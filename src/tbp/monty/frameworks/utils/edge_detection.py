@@ -15,7 +15,7 @@ from dataclasses import dataclass
 import cv2
 import numpy as np
 
-from tbp.monty.frameworks.models.abstract_monty_classes import SensorObservation
+from tbp.monty.observations import SensorObservation
 from tbp.monty.frameworks.utils.spatial_arithmetics import (
     TangentFrame,
     normalize,

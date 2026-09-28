@@ -18,7 +18,7 @@ import quaternion as qt
 
 from tbp.monty.cmp import Message
 from tbp.monty.context import RuntimeContext
-from tbp.monty.frameworks.models.abstract_monty_classes import SensorObservation
+from tbp.monty.observations import SensorObservation
 from tbp.monty.frameworks.models.motor_system_state import AgentState, SensorState
 from tbp.monty.frameworks.models.two_d_sensor_module import TwoDSensorModule
 from tbp.monty.frameworks.sensors import SensorID

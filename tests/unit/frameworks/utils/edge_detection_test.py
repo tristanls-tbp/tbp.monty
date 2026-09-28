@@ -19,7 +19,7 @@ from hypothesis import example, given
 from hypothesis import strategies as st
 from unittest_parametrize import ParametrizedTestCase, parametrize
 
-from tbp.monty.frameworks.models.abstract_monty_classes import SensorObservation
+from tbp.monty.observations import SensorObservation
 from tbp.monty.frameworks.utils.edge_detection import (
     EdgeDetector,
     StructureTensor,

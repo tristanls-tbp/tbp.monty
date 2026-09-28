@@ -10,10 +10,8 @@
 from __future__ import annotations
 
 import abc
-from typing import Any, Collection, Dict, Protocol, Sequence, TypedDict
+from typing import Any, Collection, Dict, Protocol, Sequence
 
-import numpy as np
-import numpy.typing as npt
 
 from tbp.monty.cmp import AttentionRegion, Goal, Message
 from tbp.monty.context import RuntimeContext
@@ -30,6 +28,7 @@ from tbp.monty.frameworks.models.motor_system_state import (
 )
 from tbp.monty.frameworks.sensors import SensorID
 from tbp.monty.memento import Memento, Snapshotable
+from tbp.monty.observations import SensorObservation
 
 __all__ = [
     "AgentObservations",
@@ -42,21 +41,7 @@ __all__ = [
     "RuntimeContext",
     "RuntimeLearningModule",
     "SensorModule",
-    "SensorObservation",
 ]
-
-
-class SensorObservation(TypedDict, total=False):
-    """Observations from a sensor."""
-
-    rgba: npt.NDArray[np.uint8]
-    depth: npt.NDArray[np.float64]  # TODO: Verify specific type
-    semantic: npt.NDArray[np.int_]  # TODO: Verify specific type
-    semantic_3d: npt.NDArray[np.int_]  # TODO: Verify specific type
-    sensor_frame_data: npt.NDArray[np.int_]  # TODO: Verify specific type
-    cam_to_world: npt.NDArray[np.float64]  # TODO: Verify specific type
-    pixel_loc: npt.NDArray[np.float64]  # TODO: Verify specific type
-    raw: npt.NDArray[np.uint8]
 
 
 class AgentObservations(Dict[SensorID, SensorObservation]):
