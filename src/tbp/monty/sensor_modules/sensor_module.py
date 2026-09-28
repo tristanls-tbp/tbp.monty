@@ -35,6 +35,7 @@ class TransformContext:
     agent_state: AgentState
     sensor_state: SensorState
     motor_only_step: bool = False
+    suppress_runtime_errors: bool = False
 
 
 class Transform(Protocol):
@@ -141,6 +142,7 @@ class SensorModule(RuntimeSensorModule):
             agent_state=self._agent_state,
             sensor_state=self._sensor_state,
             motor_only_step=motor_only_step,
+            suppress_runtime_errors=ctx.suppress_runtime_errors,
         )
         payload = Payload(observation=observation, percept=None, goals=[])
         for transform in self._transforms:

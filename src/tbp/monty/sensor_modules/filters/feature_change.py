@@ -28,8 +28,8 @@ __all__ = [
     "FeatureChange",
 ]
 
-class FeatureChange(Transform):
 
+class FeatureChange(Transform):
     _delta_thresholds: dict[str, Any]
     _last_percept: Message | None
     _last_sent_n_steps_ago: int
