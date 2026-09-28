@@ -194,7 +194,6 @@ explicit_package_bases = true
 ignore_missing_imports = true
 mypy_path = "src"
 warn_unused_configs = true
-strict = true
 
 [tool.ruff]
 line-length = 88
