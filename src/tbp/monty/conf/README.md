@@ -8,7 +8,7 @@ The `experiment` folder contains Monty experiment configurations. Most of these 
 
 ### Pretraining models
 
-The pretraining configurations are used for running supervised pretraining experiments to generate the models used for follow-on benchmark evaluation experiments. These only need to be rerun if a functional change to the way a learning module learns is introduced. We keep track of version numbers for these, e.g., `ycb_pretrained_v12`.
+The pretraining configurations are used for running supervised pretraining experiments to generate the models used for follow-on benchmark evaluation experiments. These only need to be rerun if a functional change to the way a learning module learns is introduced. We keep track of version numbers for these, e.g., `ycb_pretrained_v13`.
 
 Note that instead of running pretraining, you can also download our pretrained models as outlined in our [getting started guide](https://docs.thousandbrains.org/docs/getting-started#42-download-pretrained-models).
 
@@ -29,37 +29,21 @@ To generate models for the YCB experiments, run the following pretraining:
 
 All of the above can be run at the same time, in parallel.
 
-#### Objects with logos Experiments
+#### COWS Experiments
 
-There are 4 levels of difficulty for testing compositional models:
+Compositional Objects With Stickers (COWS) has small (19 objects) and large (119 objects) variants. Both use `compositional_objects_1.4` and share the five plain 3D children.
 
-1. Logos on flat surfaces
-2. Logos on curved surfaces
-3. Logos at different rotations
-4. Logos with bends
+Run shared 3D pretraining first, then each size's 2D children before its parent models.
 
-To generate models for the objects with logos experiments, run the following pretraining. Note that some of the pretraining depends on the previous ones.
-
-##### Phase 1
-
-- `python run_parallel.py experiment=supervised_pre_training_flat_objects_wo_logos`
-
-##### Phase 2
-
-- `python run_parallel.py experiment=supervised_pre_training_logos_after_flat_objects`
-
-##### Phase 3
-
-- `python run_parallel.py experiment=supervised_pre_training_curved_objects_after_flat_and_logo`
-- `python run_parallel.py experiment=supervised_pre_training_objects_with_logos_lvl1_monolithic_models`
-- `python run_parallel.py experiment=supervised_pre_training_objects_with_logos_lvl1_comp_models`
-- `python run_parallel.py experiment=supervised_pre_training_objects_with_logos_lvl1_comp_models_burst_sampling`
-
-##### Phase 4
-
-- `python run_parallel.py experiment=supervised_pre_training_objects_with_logos_lvl2_comp_models`
-- `python run_parallel.py experiment=supervised_pre_training_objects_with_logos_lvl3_comp_models`
-
+```sh
+python run_parallel.py experiment=supervised_pre_training_cows_3d_children
+python run_parallel.py experiment=supervised_pre_training_cows_small_2d_children 
+python run_parallel.py experiment=supervised_pre_training_cows_small_compositional
+python run_parallel.py experiment=supervised_pre_training_cows_small_monolithic
+python run_parallel.py experiment=supervised_pre_training_cows_large_2d_children
+python run_parallel.py experiment=supervised_pre_training_cows_large_compositional
+python run_parallel.py experiment=supervised_pre_training_cows_large_monolithic
+```
 
 For more details, see [Running Benchmarks](https://docs.thousandbrains.org/docs/running-benchmarks) and [Benchmark Experiments](https://docs.thousandbrains.org/docs/benchmark-experiments) in the documentation.
 

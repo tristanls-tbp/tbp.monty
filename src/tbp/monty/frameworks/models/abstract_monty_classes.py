@@ -12,7 +12,7 @@ from __future__ import annotations
 import abc
 from typing import Any, Collection, Dict, Protocol, Sequence
 
-from tbp.monty.cmp import Goal, Message
+from tbp.monty.cmp import AttentionRegion, Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.experiment.learning_module import ExperimentLearningModule
 from tbp.monty.experiment.monty import ExperimentMonty
@@ -113,6 +113,14 @@ class RuntimeMonty(Protocol):
         """
         ...
 
+    def snapshot(self) -> Memento:
+        """Return an opaque snapshot of Monty state."""
+        ...
+
+    def restore(self, memo: Memento) -> None:
+        """Restore Monty state from an opaque snapshot."""
+        ...
+
 
 class Monty(ExperimentMonty, RuntimeMonty, Snapshotable, metaclass=abc.ABCMeta):
     def _matching_step(
@@ -136,7 +144,6 @@ class Monty(ExperimentMonty, RuntimeMonty, Snapshotable, metaclass=abc.ABCMeta):
         self._pass_goals()
         self._step_motor_system(ctx, observations, proprioceptive_state)
         self._set_step_type_and_check_if_done()
-        self._post_step()
 
     def _exploratory_step(
         self,
@@ -158,7 +165,6 @@ class Monty(ExperimentMonty, RuntimeMonty, Snapshotable, metaclass=abc.ABCMeta):
         self._pass_goals()
         self._step_motor_system(ctx, observations, proprioceptive_state)
         self._set_step_type_and_check_if_done()
-        self._post_step()
 
     @abc.abstractmethod
     def step(
@@ -235,11 +241,6 @@ class Monty(ExperimentMonty, RuntimeMonty, Snapshotable, metaclass=abc.ABCMeta):
         """
         pass
 
-    @abc.abstractmethod
-    def _post_step(self):
-        """Hook for doing things like updating counters."""
-        pass
-
     ###
     # Saving, loading, and logging
     ###
@@ -258,6 +259,14 @@ class Monty(ExperimentMonty, RuntimeMonty, Snapshotable, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def reset(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def snapshot(self) -> Memento:
+        pass
+
+    @abc.abstractmethod
+    def restore(self, memo: Memento) -> None:
         pass
 
     @abc.abstractmethod
@@ -336,6 +345,13 @@ class RuntimeLearningModule(Protocol):
         """Return learning module output (same format as input)."""
         ...
 
+    def init_from_ltm(self) -> None:
+        """Initialize LM state from long-term memory.
+
+        For example, getting initial hypotheses.
+        """
+        ...
+
 
 class LearningModule(
     RuntimeLearningModule, Snapshotable, ExperimentLearningModule, metaclass=abc.ABCMeta
@@ -391,6 +407,10 @@ class LearningModule(
 
     @abc.abstractmethod
     def get_output(self) -> Message | None:
+        pass
+
+    @abc.abstractmethod
+    def init_from_ltm(self) -> None:
         pass
 
     ###
@@ -491,6 +511,9 @@ class SensorModule(ExperimentSensorModule, metaclass=abc.ABCMeta):
 
     def propose_goals(self) -> Collection[Goal]:
         return []
+
+    def propose_region(self) -> AttentionRegion:
+        return AttentionRegion.empty()
 
     @abc.abstractmethod
     def reset(self) -> None:
