@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Collection, Protocol, Sequence
+from typing import Any, Collection, Protocol, Sequence
 
 import numpy as np
 import quaternion as qt
@@ -19,6 +19,7 @@ from tbp.monty.cmp import AttentionRegion, Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.frameworks.models.motor_system_state import AgentState, SensorState
 from tbp.monty.frameworks.sensors import SensorID
+from tbp.monty.memento import Memento, Snapshotable
 from tbp.monty.observations import SensorObservation
 
 
@@ -28,6 +29,7 @@ class Payload:
     percept: Message | None
     goals: list[Goal]
     region: AttentionRegion | None
+    telemetry: dict[str, Any]
 
 
 @dataclass
@@ -105,13 +107,14 @@ class RuntimeSensorModule(Protocol):
         ...
 
 
-class SensorModule(RuntimeSensorModule):
+class SensorModule(RuntimeSensorModule, Snapshotable):
     _agent_state: AgentState
     _goals: list[Goal]
     _region: AttentionRegion | None
     _sensor_id: SensorID
     _sensor_module_id: str
     _sensor_state: SensorState
+    _telemetry: dict[str, Any]
     _transforms: Sequence[Transform]
 
     def __init__(
@@ -122,17 +125,24 @@ class SensorModule(RuntimeSensorModule):
     ) -> None:
         self._sensor_module_id = sensor_module_id
         self._sensor_id = sensor_id
+        self._telemetry = {}
         self._transforms = transforms
 
     @property
     def sensor_module_id(self) -> str:
         return self._sensor_module_id
 
+    def load_state_dict(self, state: Memento) -> None:
+        pass
+
     def propose_goals(self) -> Collection[Goal]:
         return self._goals
 
     def propose_region(self) -> AttentionRegion:
         return self._region if self._region is not None else AttentionRegion.empty()
+
+    def state_dict(self) -> Memento:
+        return {"telemetry": self._telemetry}
 
     def step(
         self: Self,
@@ -157,11 +167,18 @@ class SensorModule(RuntimeSensorModule):
             motor_only_step=motor_only_step,
             suppress_runtime_errors=ctx.suppress_runtime_errors,
         )
-        payload = Payload(observation=observation, percept=None, goals=[], region=None)
+        payload = Payload(
+            observation=observation,
+            percept=None,
+            goals=[],
+            region=None,
+            telemetry=self._telemetry,
+        )
         for transform in self._transforms:
             payload = transform(transform_ctx, payload)
         self._goals = payload.goals
         self._region = payload.region
+        self._telemetry = payload.telemetry
         return payload.percept
 
     def update_state(self: Self, agent: AgentState) -> None:

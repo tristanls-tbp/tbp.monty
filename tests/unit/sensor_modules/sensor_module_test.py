@@ -98,6 +98,20 @@ class SensorModuleTest(unittest.TestCase):
         )
         np.testing.assert_array_equal(region.weights, AttentionRegion.empty().weights)
 
+    def test_step_no_transforms_prepares_empty_telemetry_for_payload(self) -> None:
+        sensor_module = SensorModule(
+            sensor_module_id="test",
+            sensor_id=SensorID("test"),
+            transforms=[],
+        )
+        ctx = RuntimeContext(rng=np.random.RandomState(0))
+        sensor_module.update_state(self._state)
+
+        sensor_module.step(ctx, MagicMock())
+        memento = sensor_module.state_dict()
+
+        self.assertEqual(memento["telemetry"], {})
+
     def test_step_invokes_transforms_in_order(self) -> None:
         observation = MagicMock()
         transform1 = MagicMock()
@@ -132,6 +146,7 @@ class SensorModuleTest(unittest.TestCase):
                 percept=None,
                 goals=[],
                 region=None,
+                telemetry={},
             ),
         )
         transform2_ctx = transform2.call_args_list[0].args[0]
@@ -158,6 +173,7 @@ class SensorModuleTest(unittest.TestCase):
             percept=sentinel.transform2_percept,
             goals=[],
             region=None,
+            telemetry={},
         )
         sensor_module = SensorModule(
             sensor_module_id="test",
@@ -196,6 +212,7 @@ class SensorModuleTest(unittest.TestCase):
             percept=sentinel.transform2_percept,
             goals=sentinel.transform2_goals,
             region=None,
+            telemetry={},
         )
         sensor_module = SensorModule(
             sensor_module_id="test",
@@ -235,6 +252,7 @@ class SensorModuleTest(unittest.TestCase):
             percept=sentinel.transform2_percept,
             goals=[],
             region=sentinel.transform2_region,
+            telemetry={},
         )
         sensor_module = SensorModule(
             sensor_module_id="test",
@@ -248,6 +266,46 @@ class SensorModuleTest(unittest.TestCase):
         region = sensor_module.propose_region()
 
         self.assertEqual(region, sentinel.transform2_region)
+        transform2_ctx = transform2.call_args_list[0].args[0]
+        self.assert_transform_ctx_equals(
+            transform2_ctx,
+            TransformContext(
+                rng=ctx.rng,
+                agent_state=self._state,
+                sensor_state=self._default_sensor_state,
+                motor_only_step=False,
+                suppress_runtime_errors=ctx.suppress_runtime_errors,
+            ),
+        )
+        transform2_payload = transform2.call_args_list[0].args[1]
+        self.assertEqual(transform2_payload, sentinel.transform1_payload)
+
+    def test_step_prepares_last_transforms_payload_telemetry_for_state_dict(
+        self,
+    ) -> None:
+        observation = MagicMock()
+        transform1 = MagicMock()
+        transform1.return_value = sentinel.transform1_payload
+        transform2 = MagicMock()
+        transform2.return_value = Payload(
+            observation=observation,
+            percept=None,
+            goals=[],
+            region=None,
+            telemetry=sentinel.transform2_telemetry,
+        )
+        sensor_module = SensorModule(
+            sensor_module_id="test",
+            sensor_id=SensorID("test"),
+            transforms=[transform1, transform2],
+        )
+        ctx = RuntimeContext(rng=np.random.RandomState(0))
+        sensor_module.update_state(self._state)
+
+        sensor_module.step(ctx, observation)
+        memento = sensor_module.state_dict()
+
+        self.assertIs(memento["telemetry"], sentinel.transform2_telemetry)
         transform2_ctx = transform2.call_args_list[0].args[0]
         self.assert_transform_ctx_equals(
             transform2_ctx,
