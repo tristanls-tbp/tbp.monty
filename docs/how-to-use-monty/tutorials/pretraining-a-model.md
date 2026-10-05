@@ -174,7 +174,7 @@ To run this experiment, call the `run.py` script with the experiment name as the
 uv run python run.py experiment=tutorial/surf_agent_2obj_train_mujoco
 ```
 
-This will take a few minutes to complete and then you can inspect and visualize the learned models. To do so, create a script and paste in the following code. Place the script in the project directory and run it: `uv run python pretraining_tutorial_analysis.py`.
+This will take a few minutes to complete and then you can inspect and visualize the learned models. To do so, create a script and paste in the following code. Name the script `pretraining_tutorial_analysis.py`, place it in the project directory, and run it: `uv run python pretraining_tutorial_analysis.py`.
 
 ```python
 from pathlib import Path
