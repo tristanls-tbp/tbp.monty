@@ -14,15 +14,21 @@ import numpy as np
 import quaternion as qt
 from typing_extensions import Self
 
+from tbp.monty.experiment.sensor_module import ExperimentTransform
 from tbp.monty.observations import SensorObservation
-from tbp.monty.sensor_modules.sensor_module import Payload, Transform, TransformContext
+from tbp.monty.sensor_modules.sensor_module import Payload, TransformContext
 
 
-class Snapshot(Transform):
-    def __init__(self) -> None:
-        pass
+class Snapshot(ExperimentTransform):
+
+    _reset: bool = False
 
     def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
+        if self._reset:
+            payload.telemetry["raw_observations"] = []
+            payload.telemetry["sm_properties"] = []
+            self._reset = False
+
         raw_observations: list[SensorObservation] = payload.telemetry.setdefault(
             "raw_observations", []
         )
@@ -36,3 +42,6 @@ class Snapshot(Transform):
         sm_properties.append({"sm_rotation": sm_rotation, "sm_location": sm_location})
 
         return payload
+
+    def reset(self) -> None:
+        self._reset = True

@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, sentinel
 
 import numpy as np
 import quaternion as qt
+from hypothesis import given
 
 from tbp.monty.cmp import AttentionRegion
 from tbp.monty.context import RuntimeContext
@@ -23,6 +24,7 @@ from tbp.monty.sensor_modules.sensor_module import (
     SensorModule,
     TransformContext,
 )
+from tests.strategies.motor_system_state import agent_state_with_sensor
 
 
 class SensorModuleTest(unittest.TestCase):
@@ -319,3 +321,49 @@ class SensorModuleTest(unittest.TestCase):
         )
         transform2_payload = transform2.call_args_list[0].args[1]
         self.assertEqual(transform2_payload, sentinel.transform1_payload)
+
+class SensorModulePrivateTest(unittest.TestCase):
+    @given(agent_state=agent_state_with_sensor(sensor_id=SensorID("test")))
+    def test_update_state_stores_agent_state_as_is(
+        self, agent_state: AgentState
+    ) -> None:
+        sensor_module = SensorModule(
+            sensor_module_id="test",
+            sensor_id=SensorID("test"),
+            transforms=[],
+        )
+        sensor_module.update_state(agent_state)
+
+        self.assertIs(sensor_module._agent_state, agent_state)
+
+    @given(agent_state=agent_state_with_sensor(sensor_id=SensorID("test")))
+    def test_update_state_stores_sensor_state_in_global_reference_frame(
+        self, agent_state: AgentState
+    ) -> None:
+        sensor_module = SensorModule(
+            sensor_module_id="test",
+            sensor_id=SensorID("test"),
+            transforms=[],
+        )
+        sensor_module.update_state(agent_state)
+
+        # Expect SensorState to be expressed in the global reference frame.
+        # Since AgentState is expressed in the global reference frame, applying the
+        # AgentState as an active transform to the SensorState results in
+        # the SensorState being expressed in the global reference frame.
+        #
+        # Note that technically, this expresses SensorState in the same reference
+        # frame as the AgentState. If AgentState was not in a global reference frame
+        # then SensorState would also not be in a global reference frame.
+        sensor_state = agent_state.sensors[SensorID("test")]
+        expected_sensor_position = agent_state.position + qt.rotate_vectors(
+            agent_state.rotation, sensor_state.position
+        )
+        expected_sensor_rotation = agent_state.rotation * sensor_state.rotation
+
+        np.testing.assert_allclose(
+            expected_sensor_position, sensor_module._sensor_state.position
+        )
+        np.testing.assert_allclose(
+            expected_sensor_rotation, sensor_module._sensor_state.rotation
+        )
