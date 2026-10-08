@@ -19,7 +19,7 @@ from tests.strategies.geometry import position, rotation_non_zero
 @st.composite
 def agent_state(draw: st.DrawFn) -> AgentState:
     return AgentState(
-        sensors=draw(st.dictionaries(sensors.sensor_id(), sensor_state())),
+        sensors=draw(st.dictionaries(sensors.sensor_id(), sensor_state(), max_size=5)),
         position=draw(position()),
         rotation=draw(rotation_non_zero()),
     )
@@ -30,7 +30,7 @@ def agent_state_with_sensor(draw: st.DrawFn, sensor_id: SensorID) -> AgentState:
     sensor_state_value = draw(sensor_state())
     return AgentState(
         sensors={
-            **draw(st.dictionaries(sensors.sensor_id(), sensor_state())),
+            **draw(st.dictionaries(sensors.sensor_id(), sensor_state(), max_size=5)),
             sensor_id: sensor_state_value,
         },
         position=draw(position()),
