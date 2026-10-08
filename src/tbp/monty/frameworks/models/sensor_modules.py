@@ -49,7 +49,6 @@ __all__ = [
     "ObservationProcessor",
     "PassthroughPerceptFilter",
     "PerceptFilter",
-    "Probe",
     "SnapshotTelemetry",
     "SurfaceNormalMethod",
 ]
@@ -377,62 +376,6 @@ class ObservationProcessor:
             )
 
         return surface_normal, valid_sn
-
-
-class Probe(SensorModule):
-    """A probe that can be inserted into Monty in place of a sensor module.
-
-    It will track raw observations for logging, and can be used by experiments
-    for positioning procedures, visualization, etc.
-
-    What distinguishes a probe from a sensor module is that it does not process
-    observations and does not emit a Cortical Message.
-    """
-
-    def __init__(self, sensor_module_id: str, save_raw_obs: bool) -> None:
-        """Initialize the probe.
-
-        Args:
-            rng: Random number generator. Unused.
-            sensor_module_id: Name of sensor module.
-            save_raw_obs: Whether to save raw sensory input for logging.
-        """
-        super().__init__()
-
-        self.is_exploring = False
-        self.sensor_module_id = sensor_module_id
-        self.state: SensorState | None = None
-        self.save_raw_obs = save_raw_obs
-
-        self._snapshot_telemetry = SnapshotTelemetry()
-
-    def state_dict(self) -> Memento:
-        return self._snapshot_telemetry.state_dict()
-
-    def update_state(self, agent: AgentState) -> None:
-        sensor = agent.sensors[SensorID(self.sensor_module_id)]
-        self.state = SensorState(
-            position=agent.position
-            + qt.rotate_vectors(agent.rotation, sensor.position),
-            rotation=agent.rotation * sensor.rotation,
-        )
-
-    def step(
-        self,
-        ctx: RuntimeContext,  # noqa: ARG002
-        observation: SensorObservation,
-        motor_only_step: bool = False,  # noqa: ARG002
-    ) -> None:
-        if self.save_raw_obs and not self.is_exploring:
-            self._snapshot_telemetry.raw_observation(
-                observation, self.state.rotation, self.state.position
-            )
-
-        return None
-
-    def reset(self) -> None:
-        self._snapshot_telemetry.reset()
-        self.is_exploring = False
 
 
 class MessageNoise(Protocol):

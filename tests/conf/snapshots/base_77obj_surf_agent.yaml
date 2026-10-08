@@ -86,9 +86,10 @@ experiment:
             distance: 0.01
           save_raw_obs: false
         sensor_module_1:
-          _target_: tbp.monty.frameworks.models.sensor_modules.Probe
+          _target_: tbp.monty.experiment.sensor_module.ExperimentalSensorModule
           sensor_module_id: view_finder
-          save_raw_obs: false
+          sensor_id: view_finder
+          transforms: []
       sm_to_agent_dict:
         patch: agent_id_0
         view_finder: agent_id_0
@@ -280,7 +281,7 @@ experiment:
             _target_: wandb.util.generate_id
           wandb_group: benchmark_experiments
       run_name: base_77obj_surf_agent
-    show_sensor_output: false
+    show_sensor_output: true
     n_train_epochs: 3
     model_name_or_path: ${constants.pretrained_dir}/surf_agent_1lm_77obj/pretrained/
     n_eval_epochs: ${constants.rotations_3_count}
