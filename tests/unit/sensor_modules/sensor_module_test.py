@@ -322,6 +322,7 @@ class SensorModuleTest(unittest.TestCase):
         transform2_payload = transform2.call_args_list[0].args[1]
         self.assertEqual(transform2_payload, sentinel.transform1_payload)
 
+
 class SensorModulePrivateTest(unittest.TestCase):
     @given(agent_state=agent_state_with_sensor(sensor_id=SensorID("test")))
     def test_update_state_stores_agent_state_as_is(

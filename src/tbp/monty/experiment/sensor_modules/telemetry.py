@@ -20,7 +20,6 @@ from tbp.monty.sensor_modules.sensor_module import Payload, TransformContext
 
 
 class Snapshot(ExperimentTransform):
-
     _reset: bool = False
 
     def __call__(self: Self, ctx: TransformContext, payload: Payload) -> Payload:
