@@ -15,7 +15,7 @@ defaults:
 experiment:
   _target_: tbp.monty.frameworks.experiments.object_recognition_experiments.MontyObjectRecognitionExperiment
   config:
-    show_sensor_output: true
+    show_sensor_output: false
     n_train_epochs: 3
     model_name_or_path: ${constants.pretrained_dir}/surf_agent_1lm_77obj/pretrained/
     n_eval_epochs: ${constants.rotations_3_count}
