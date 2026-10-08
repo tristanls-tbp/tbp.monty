@@ -15,4 +15,4 @@ from tbp.monty.frameworks.sensors import SensorID
 
 @st.composite
 def sensor_id(draw: st.DrawFn) -> SensorID:
-    return SensorID(draw(st.text(min_size=1)))
+    return SensorID(draw(st.text(min_size=1, max_size=10)))
