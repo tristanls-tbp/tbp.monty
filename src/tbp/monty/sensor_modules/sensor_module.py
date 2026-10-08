@@ -123,6 +123,8 @@ class SensorModule(RuntimeSensorModule, Snapshotable):
         sensor_id: SensorID,
         transforms: Sequence[Transform],
     ) -> None:
+        self._goals = []
+        self._region = None
         self._sensor_module_id = sensor_module_id
         self._sensor_id = sensor_id
         self._telemetry = {}
@@ -142,7 +144,7 @@ class SensorModule(RuntimeSensorModule, Snapshotable):
         return self._region if self._region is not None else AttentionRegion.empty()
 
     def state_dict(self) -> Memento:
-        return {"telemetry": self._telemetry}
+        return self._telemetry
 
     def step(
         self: Self,

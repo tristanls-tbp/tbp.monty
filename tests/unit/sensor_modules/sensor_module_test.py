@@ -112,7 +112,7 @@ class SensorModuleTest(unittest.TestCase):
         sensor_module.step(ctx, MagicMock())
         memento = sensor_module.state_dict()
 
-        self.assertEqual(memento["telemetry"], {})
+        self.assertEqual(memento, {})
 
     def test_step_invokes_transforms_in_order(self) -> None:
         observation = MagicMock()
@@ -307,7 +307,7 @@ class SensorModuleTest(unittest.TestCase):
         sensor_module.step(ctx, observation)
         memento = sensor_module.state_dict()
 
-        self.assertIs(memento["telemetry"], sentinel.transform2_telemetry)
+        self.assertIs(memento, sentinel.transform2_telemetry)
         transform2_ctx = transform2.call_args_list[0].args[0]
         self.assert_transform_ctx_equals(
             transform2_ctx,
