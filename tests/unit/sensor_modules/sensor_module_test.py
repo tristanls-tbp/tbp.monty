@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, sentinel
 
 import numpy as np
 import quaternion as qt
-from hypothesis import given
+from hypothesis import HealthCheck, given, settings
 
 from tbp.monty.cmp import AttentionRegion
 from tbp.monty.context import RuntimeContext
@@ -325,6 +325,9 @@ class SensorModuleTest(unittest.TestCase):
 
 class SensorModulePrivateTest(unittest.TestCase):
     @given(agent_state=agent_state_with_sensor(sensor_id=SensorID("test")))
+    # CI tests report slow generation, but test takes under 5 seconds locally
+    # Suppressing for now.
+    @settings(suppress_health_check=[HealthCheck.too_slow])
     def test_update_state_stores_agent_state_as_is(
         self, agent_state: AgentState
     ) -> None:
