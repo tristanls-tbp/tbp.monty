@@ -117,6 +117,8 @@ class SensorModule(RuntimeSensorModule, Snapshotable):
     _telemetry: dict[str, Any]
     _transforms: Sequence[Transform]
 
+    _snapshot_telemetry = {"reset": lambda self: self._snapshot_telemetry.reset()}
+
     def __init__(
         self: Self,
         sensor_module_id: str,
