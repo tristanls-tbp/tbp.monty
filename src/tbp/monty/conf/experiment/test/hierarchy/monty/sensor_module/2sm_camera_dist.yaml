@@ -49,7 +49,7 @@ sensor_module_1:
     distance: 0.05
   save_raw_obs: true
 sensor_module_2:
-  _target_: tbp.monty.experiment.sensor_module.ExperimentalSensorModule
+  _target_: tbp.monty.experiment.sensor_module.ExperimentSensorModule
   sensor_module_id: view_finder
   sensor_id: view_finder
   transforms:

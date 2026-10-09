@@ -16,7 +16,7 @@ from tbp.monty.cmp import AttentionRegion, Goal, Message
 from tbp.monty.context import RuntimeContext
 from tbp.monty.experiment.learning_module import ExperimentLearningModule
 from tbp.monty.experiment.monty import ExperimentMonty
-from tbp.monty.experiment.sensor_module import ExperimentSensorModule
+from tbp.monty.experiment.sensor_module import ResettableSensorModule
 from tbp.monty.frameworks.actions.actions import Action
 from tbp.monty.frameworks.agents import AgentID
 from tbp.monty.frameworks.environments.environment import SemanticID
@@ -491,7 +491,7 @@ class GoalGenerator(metaclass=abc.ABCMeta):
         pass
 
 
-class SensorModule(ExperimentSensorModule, metaclass=abc.ABCMeta):
+class SensorModule(ResettableSensorModule, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def state_dict(self) -> Memento:
         pass

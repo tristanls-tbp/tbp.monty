@@ -40,7 +40,7 @@ experiment:
           save_raw_obs: false
           pc1_is_pc2_threshold: 1
         sensor_module_1:
-          _target_: tbp.monty.experiment.sensor_module.ExperimentalSensorModule
+          _target_: tbp.monty.experiment.sensor_module.ExperimentSensorModule
           sensor_module_id: view_finder
           sensor_id: view_finder
           transforms: []

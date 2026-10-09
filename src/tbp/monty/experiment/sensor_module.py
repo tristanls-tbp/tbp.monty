@@ -19,11 +19,15 @@ from tbp.monty.sensor_modules.sensor_module import (
     Transform,
 )
 
-__all__ = ["ExperimentSensorModule", "ExperimentTransform", "ExperimentalSensorModule"]
+__all__ = [
+    "ExperimentSensorModule",
+    "ExperimentTransform",
+    "ResettableSensorModule",
+]
 
 
-class ExperimentSensorModule(RuntimeSensorModule, Protocol):
-    """Experiment interface to a Sensor Module."""
+class ResettableSensorModule(RuntimeSensorModule, Protocol):
+    """A Sensor Module that can be reset."""
 
     def reset(self) -> None:
         """Reset the internal state of this Sensor Module."""
@@ -44,7 +48,7 @@ class ExperimentTransform(Transform, Protocol):
         pass
 
 
-class ExperimentalSensorModule(SensorModule, ExperimentSensorModule):
+class ExperimentSensorModule(SensorModule, ResettableSensorModule):
     """An experimental wrapper around a Sensor Module with experiment affordances.
 
     Allows for resetting the internal state of the transforms in the transform pipeline.
