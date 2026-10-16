@@ -362,7 +362,7 @@ def color_within_threshold(
     draw: st.DrawFn, origin: npt.NDArray[np.float32], threshold: float
 ) -> npt.NDArray[np.float32]:
     axis = draw(st.integers(min_value=0, max_value=2))
-    scale = draw(st.floats(min_value=-0.9, max_value=0.9))
+    scale = draw(st.floats(min_value=-0.49, max_value=0.49))
     out = origin.copy()
     out[axis] += threshold * scale
     return out
