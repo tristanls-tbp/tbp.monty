@@ -369,12 +369,12 @@ def color_within_threshold(
 
     Args:
         draw: The Hypothesis draw function used to generate values.
-        origin: The original color as a NumPy array of shape (3,) and dtype float32.
+        origin: The original color as a NumPy array of shape (3,).
         threshold: The threshold value for generating colors within the specified range.
 
     Returns:
-        A NumPy array of shape (3,) and dtype float32 representing the generated color
-            within the threshold.
+        A NumPy array of shape (3,) representing the generated color within the
+            threshold.
     """
     axis = draw(st.integers(min_value=0, max_value=2))
     scale = draw(st.floats(min_value=-0.49, max_value=0.49))
